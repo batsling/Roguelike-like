@@ -54,6 +54,9 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
                                 -> {op:apply_status, status, value:n, area?}
     destroy_row                 -> {op:destroy_row}    every OTHER piece in its pack row
     destroy_pick <n>            -> {op:destroy_pick, value:n}  the player picks n
+    nightmare <n>               -> {op:nightmare, value:n}     the player picks 1 to
+                                   destroy; n exact copies of it arrive at the
+                                   start of the next game (Nightmare)
     charge_pick <n>             -> {op:charge_pick, value:n}   n charges into one thing
     exhume                      -> {op:exhume}         a destroyed piece back
     none                        -> nothing
@@ -233,7 +236,7 @@ def parse_clause(s: str) -> list:
             raise ValueError("card effect DSL: gain_stat needs a stat and an amount in %r" % s)
         return [_with_per({"op": "gain_stat", "stat": bare[0], "value": int(bare[1])}, kv, s)]
 
-    if verb in ("lose_hp", "destroy_pick", "charge_pick"):
+    if verb in ("lose_hp", "destroy_pick", "charge_pick", "nightmare"):
         if not bare:
             raise ValueError("card effect DSL: %s needs an amount in %r" % (verb, s))
         return [{"op": verb, "value": int(bare[0])}]

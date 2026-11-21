@@ -1659,6 +1659,9 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	# The run's FIRST game hands over its genre's kit (GameState.START_GEAR) —
 	# from the panel or, on a custom run with none, from whatever card opened it.
 	_grant_start_gear_once(game)
+	# NIGHTMARE's copies, owed since the card was played: "next turn" is the next
+	# game, so they arrive as it starts, the way starting gear does.
+	_grant_nightmare_copies()
 	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	# BEFORE THE BOARD IS SET UP, not after (owner, 6 Nov 2026: bodies "pushed into
@@ -1709,6 +1712,28 @@ func _grant_start_gear_once(game: GameData) -> void:
 				genre, items.size()], UITheme.GOLD)
 			_drops.queue.append(_drops.rolled_drop(items))
 			_drops.pump()
+	_refresh_items()
+
+# NIGHTMARE (Slay the Spire): the exact copies of the piece it destroyed, handed
+# over as the next game starts. Into the pack where they fit; the rest are asked
+# about on the drop screen, as starting gear's leftovers are, never lost.
+func _grant_nightmare_copies() -> void:
+	var copies: Array = GameState.take_nightmare_copies()
+	if copies.is_empty():
+		return
+	var leftover: Array = []
+	var counts: Dictionary = {}   # name -> copies, so two Nightmares read as two
+	for entry in copies:
+		var name: String = LootSystem.display_name(entry)
+		counts[name] = int(counts.get(name, 0)) + 1
+		if not GameState.take_loot_entry(entry):
+			leftover.append(entry)
+	var parts := PackedStringArray()
+	for name in counts:
+		parts.append("%d x %s" % [counts[name], name])
+	GameLog.add("Nightmare: %s." % ", ".join(parts), UITheme.GOLD)
+	if not leftover.is_empty():
+		_drops.on_loot_offered(leftover)
 	_refresh_items()
 
 # WHAT STANDS ON THE BOARD, which is the node's kind and nothing else (§19.1).

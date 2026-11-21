@@ -450,6 +450,31 @@ var actions_this_game: int = 0
 # a slot, so a piece comes back the way it dropped.
 var destroyed_loot: Array = []
 
+# NIGHTMARE'S COPIES, owed at the start of the next game (Slay the Spire's "next
+# turn"). Each is an EXACT copy of the piece the card destroyed — upgrades,
+# charges, identified or not (the owner, 21 Nov 2026) — kept without a slot, as
+# the destroyed pile keeps its pieces. `Overworld2._begin_game` hands them over
+# right after starting gear and empties this; saved with the run.
+var nightmare_copies: Array = []
+
+# Owe `count` exact copies of `entry` at the start of the next game. A curse is
+# never copied (it could not have been destroyed to get here anyway).
+func owe_nightmare_copies(entry: Dictionary, count: int) -> void:
+	if entry.is_empty() or count <= 0 or is_curse_entry(entry):
+		return
+	var kept: Dictionary = entry.duplicate(true)
+	kept.erase("pack_slot")
+	kept.erase("pack_cells")
+	kept.erase("rot")
+	for i in range(count):
+		nightmare_copies.append(kept.duplicate(true))
+
+# Hand over every copy Nightmare owes: the list, emptied here so it pays once.
+func take_nightmare_copies() -> Array:
+	var out: Array = nightmare_copies.duplicate(true)
+	nightmare_copies.clear()
+	return out
+
 # How many EXTRA copies of the piece being used are owed right now. Its own reader
 # so the loot path never touches the pack directly — the same shape
 # `banks_shields()` gives Barricade.
@@ -1668,6 +1693,7 @@ func reset_run() -> void:
 	pending_masks = 0
 	smelted_loot.clear()
 	destroyed_loot.clear()
+	nightmare_copies.clear()
 	smelt_target = null
 	Notifications.clear()
 	phase = Phase.MENU

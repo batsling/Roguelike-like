@@ -32,7 +32,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 39, "the sheet's 39 rows all generated")
+	assert_eq(cards.size(), 40, "the sheet's 40 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -624,6 +624,63 @@ func test_prepared_asks_for_one_and_destroys_exactly_that() -> void:
 	assert_eq(GameState.loot_items.size(), 3, "nothing handed over yet")
 	CardSystem.destroy_chosen([GameState.loot_items[0]])
 	assert_eq(GameState.loot_items.size(), 2)
+
+# NIGHTMARE (the owner, 21 Nov 2026): destroy any one piece, and EXACT copies of it
+# arrive at the start of the next game. Prepared's pick, with copies owed.
+func test_nightmare_asks_to_destroy_one_and_owes_three() -> void:
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.add_card_loot(&"v_the_hierophant")
+	var out: Dictionary = _play(&"nightmare")
+	assert_eq((out["requests"] as Array).size(), 1)
+	var req: Dictionary = (out["requests"] as Array)[0]
+	assert_eq(String(req["kind"]), "destroy_loot", "the destroy picker Prepared uses")
+	assert_eq(int(req["count"]), 1)
+	assert_eq(int(req["copies"]), 3)
+	assert_eq(GameState.loot_items.size(), 2, "nothing destroyed before the pick")
+	var line: String = CardSystem.destroy_chosen([GameState.loot_items[0]], int(req["copies"]))
+	assert_string_contains(line, "3 copies")
+	assert_eq(GameState.loot_items.size(), 1, "the piece is destroyed now")
+	assert_eq(GameState.destroyed_loot.size(), 1, "and on the pile, as any destroyed piece is")
+	assert_eq(GameState.nightmare_copies.size(), 3, "owed, not handed over yet")
+	for c in GameState.nightmare_copies:
+		assert_eq(c["id"], &"vi_the_lovers")
+
+func test_nightmare_copies_are_exact() -> void:
+	var w: WeaponData = Data.all_weapons()[0]
+	var entry: Dictionary = WeaponSystem.new_entry(w, false)
+	entry["charges"] = 1
+	entry[LootUpgrade.RUN_KEY] = 2
+	GameState.loot_items.append(entry)
+	GameState.loot_items[0]["pack_slot"] = 4
+	CardSystem.destroy_chosen([GameState.loot_items[0]], 3)
+	assert_eq(GameState.nightmare_copies.size(), 3)
+	for c in GameState.nightmare_copies:
+		assert_eq(c["id"], entry["id"], "the same piece")
+		assert_eq(int(c["charges"]), 1, "with the charges it had")
+		assert_eq(int(c[LootUpgrade.RUN_KEY]), 2, "and its upgrades")
+		assert_false(c.has("pack_slot"), "but no slot: it lands wherever there is room")
+	GameState.nightmare_copies[0]["charges"] = 0
+	assert_eq(int(GameState.nightmare_copies[1]["charges"]), 1, "three copies, not one shared")
+
+func test_nightmare_pays_once() -> void:
+	GameState.owe_nightmare_copies(_entry(&"vi_the_lovers"), 3)
+	assert_eq(GameState.take_nightmare_copies().size(), 3)
+	assert_true(GameState.take_nightmare_copies().is_empty(), "the next game gets none")
+
+func test_a_piece_that_cannot_be_destroyed_owes_nothing() -> void:
+	GameState.owe_nightmare_copies({}, 3)
+	assert_true(GameState.nightmare_copies.is_empty())
+	CardSystem.destroy_chosen([{"type": "card", "id": &"vi_the_lovers"}], 3)
+	assert_true(GameState.nightmare_copies.is_empty(), "not in the pack, so not destroyed")
+
+func test_nightmare_copies_survive_a_save() -> void:
+	GameState.owe_nightmare_copies(_entry(&"vi_the_lovers"), 3)
+	var data: Dictionary = JSON.parse_string(JSON.stringify(SaveSystem._build_payload()))
+	GameState.reset_run()
+	assert_true(GameState.nightmare_copies.is_empty(), "a new run owes nothing")
+	SaveSystem._apply_save_data(data)
+	assert_eq(GameState.nightmare_copies.size(), 3)
+	assert_eq(StringName(GameState.nightmare_copies[0]["id"]), &"vi_the_lovers")
 
 func test_bloodletting_costs_health_and_asks_what_to_charge() -> void:
 	GameState.hp = 5

@@ -832,9 +832,12 @@ func _pick_destroy(req: Dictionary) -> void:
 				and GameState.can_destroy(e):
 			candidates.append(e)
 	var need: int = mini(int(req.get("count", 1)), candidates.size())
+	# Nightmare's pick is this one, owing copies of what it destroys.
+	var copies: int = int(req.get("copies", 0))
 	if need > 0 and _pick_in_pack({"candidates": candidates, "count": need, "exact": true,
-			"verb": "destroy", "accent": UITheme.DANGER}, func(chosen: Array):
-				_report(CardSystem.destroy_chosen(chosen))
+			"verb": "destroy" if copies <= 0 else "destroy (%d copies of it arrive next game)" % copies,
+			"accent": UITheme.DANGER}, func(chosen: Array):
+				_report(CardSystem.destroy_chosen(chosen, copies))
 				_process_next_request()):
 		return
 	_rebuild_panel()
@@ -844,7 +847,8 @@ func _pick_destroy(req: Dictionary) -> void:
 		_body.add_child(_muted("There is nothing else in your pack to destroy."))
 		_body.add_child(_continue_button())
 		return
-	_body.add_child(_muted("Choose %d to destroy." % need))
+	_body.add_child(_muted("Choose %d to destroy." % need if copies <= 0 else
+		"Choose 1 to destroy. %d copies of it arrive at the start of your next game." % copies))
 	var selected: Dictionary = {}   # index in candidates -> entry
 	var confirm := UITheme.confirm_button("Destroy Selected", Vector2(180, 34))
 	confirm.disabled = true
@@ -863,7 +867,7 @@ func _pick_destroy(req: Dictionary) -> void:
 	_body.add_child(grid)
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
-		_report(CardSystem.destroy_chosen(selected.values()))
+		_report(CardSystem.destroy_chosen(selected.values(), copies))
 		_process_next_request())
 	_body.add_child(confirm)
 

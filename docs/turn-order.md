@@ -72,7 +72,9 @@ _run_trigger(item, trig, ctx_extras, loot)
    usually swept it already (§ the screens after); this catches a game that
    ended without one, or a piece put down between games.
 1. The game's and the character's **rank bars** are noted, for the end screen.
-2. **Starting gear**, first game of the run only.
+2. **Starting gear**, first game of the run only. Then **Nightmare's copies**,
+   if a Nightmare was played since the last game: the exact copies of the piece
+   it destroyed go into the pack, and what does not fit is offered.
 3. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
    Fractures. *Then* signal `game_selected` → items (Anchor's +1 lands on top), the
    speedrun clock starts, the overlay updates. Before the board, so a body that
@@ -103,6 +105,7 @@ scripts/redesign2/Overworld2.gd :: _begin_game
 _drops.clear_floor()
 GameLoop2.rank_start =
 _grant_start_gear_once(game)
+_grant_nightmare_copies()
 GameLoop2.grant_selection_shields(game)
 _commit_board(game, enemy, tier)
 _announce_difficulty_step(tier_before, board_before)

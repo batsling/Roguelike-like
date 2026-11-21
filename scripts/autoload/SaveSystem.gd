@@ -316,6 +316,8 @@ func _build_payload() -> Dictionary:
 		# Smelter: the pieces taken out of the pack that work as relics.
 		"smelted_loot": GameState.smelted_loot.duplicate(true),
 		"destroyed_loot": GameState.destroyed_loot.duplicate(true),
+		# Nightmare: copies owed at the start of the next game.
+		"nightmare_copies": GameState.nightmare_copies.duplicate(true),
 		# Curse cards handed out and not yet placed (docs/loot-passives.md §18).
 		"pending_curses": GameState.pending_curses.duplicate(true),
 		"total_combats_completed": GameState.total_combats_completed,
@@ -646,6 +648,10 @@ func _apply_save_data(data: Dictionary) -> void:
 	for e in data.get("destroyed_loot", []):
 		if e is Dictionary:
 			GameState.destroyed_loot.append((e as Dictionary).duplicate(true))
+	GameState.nightmare_copies.clear()
+	for e in data.get("nightmare_copies", []):
+		if e is Dictionary:
+			GameState.nightmare_copies.append((e as Dictionary).duplicate(true))
 	GameState.pending_curses.clear()
 	for e in data.get("pending_curses", []):
 		if e is Dictionary:

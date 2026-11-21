@@ -161,6 +161,14 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 				out["requests"].append({"kind": "destroy_loot",
 					"count": int(effect.get("value", 1)),
 					"candidates": GameState.loot_items.duplicate()})
+		"nightmare":
+			# NIGHTMARE: Prepared's pick of exactly one piece, and the piece comes back
+			# as `value` exact copies at the start of the next game (destroy_chosen
+			# owes them, Overworld2._begin_game pays them).
+			if int(effect.get("value", 0)) > 0:
+				out["requests"].append({"kind": "destroy_loot", "count": 1,
+					"copies": int(effect.get("value", 0)),
+					"candidates": GameState.loot_items.duplicate()})
 		"charge_pick":
 			if int(effect.get("value", 1)) > 0:
 				out["requests"].append({"kind": "charge_loot",
@@ -343,17 +351,27 @@ func pieces_in_row(slot: int) -> Array:
 
 # PREPARED's pick: destroy exactly these carried pieces (live entries). Returns the
 # line to report.
-func destroy_chosen(entries: Array) -> String:
+#
+# NIGHTMARE's too, with `copies` > 0: each piece that really was destroyed is owed
+# back as that many exact copies at the start of the next game. A piece the destroy
+# refused (a curse that cannot be destroyed) owes nothing.
+func destroy_chosen(entries: Array, copies: int = 0) -> String:
 	var names: Array = []
 	for entry in entries:
 		for i in range(GameState.loot_items.size()):
 			if is_same(GameState.loot_items[i], entry):
-				names.append(LootSystem.display_name(entry))
-				GameState.destroy_loot_at(i)
+				var name: String = LootSystem.display_name(entry)
+				var gone: Dictionary = GameState.destroy_loot_at(i)
+				if not gone.is_empty():
+					names.append(name)
+					GameState.owe_nightmare_copies(gone, copies)
 				break
 	if names.is_empty():
 		return "Nothing was destroyed."
-	return "Destroyed %s." % ", ".join(PackedStringArray(names))
+	var line: String = "Destroyed %s." % ", ".join(PackedStringArray(names))
+	if copies > 0:
+		line += " %d copies of it arrive at the start of your next game." % copies
+	return line
 
 
 # BLOODLETTING / OFFERING's pick: put `amount` charges into one chargeable thing —
