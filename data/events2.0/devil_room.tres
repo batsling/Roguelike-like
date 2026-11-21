@@ -9,7 +9,7 @@ display_name = "Devil Room"
 source_game = "The Binding of Isaac"
 tier_tags = PackedStringArray()
 where = ""
-requirement = {"stat": "enemy_hp_lost", "op": "==", "value": 0, "percent": false}
+requirement = {}
 trigger = "after"
 rarity = "Rare"
 file = "DevilRoom"

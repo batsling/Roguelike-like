@@ -37,8 +37,8 @@ func test_the_two_rooms_are_rare_wordless_events_with_door_art() -> void:
 			"%s has its door" % id)
 		assert_not_null(DealRooms.statue_art(id), "%s has its statue" % id)
 		assert_not_null(DealRooms.icon_art(id), "%s has its chip icon" % id)
-		assert_eq(String(ev.requirement.get("stat", "")), "enemy_hp_lost",
-			"gated on no enemy taking Health this game")
+		assert_true(ev.requirement.is_empty(),
+			"dealt after any game: Batsaac's roll is the one that counts hits")
 
 func test_batsaac_has_the_mechanic() -> void:
 	var p: PlayerData = Data.get_player(BATSAAC)
@@ -78,7 +78,8 @@ func test_the_bag_never_deals_an_angel_and_batsaac_never_draws_either() -> void:
 	assert_false(EventSystem.blockers_for(angel, &"").is_empty())
 	assert_true(EventSystem.blockers_for(devil, &"").is_empty(), "a clean game deals it")
 	GameState.change_hp(-1, GameState.HEALTH_SOURCE_ENEMY_ATTACK)
-	assert_false(EventSystem.blockers_for(devil, &"").is_empty(), "an enemy took Health")
+	assert_true(EventSystem.blockers_for(devil, &"").is_empty(),
+		"and so does one an enemy hurt you in")
 	GameState.reset_run()
 	_start(BATSAAC)
 	assert_false(EventSystem.blockers_for(devil, &"").is_empty(),

@@ -18,7 +18,9 @@ from _xlsx_surgery import Workbook  # noqa: E402
 
 BOOK = os.path.join(os.path.dirname(__file__), "..", "Roguelikes.xlsx")
 
-GATE = "enemy_hp_lost=0"
+# The owner took the no-hit gate off both events later the same day: Batsaac's
+# roll already counts hits, and the bag deals them after any game.
+GATE = ""
 MECHANIC = "Devil and Angel Deals"
 MECHANIC_TEXT = ("After a game in which no enemy took any of your Health, a Devil or "
                  "Angel Room may open, by Isaac's deal chance: 1%, +35% if the floor's "

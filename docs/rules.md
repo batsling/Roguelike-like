@@ -456,7 +456,7 @@ Machines draw under the board, and their buttons are greyed rather than hidden w
 
 ### Devil and Angel Rooms
 
-The Binding of Isaac's deal rooms, as a rare event. One can only be dealt after a game in which no enemy took any of your Health — a hit your Shields stopped does not count against you. Its door shows first; walk in and the statue is there with 2 to 4 items, four only rarely.
+The Binding of Isaac's deal rooms, as a rare event. Its door shows first; walk in and the statue is there with 2 to 4 items, four only rarely.
 
 - **Devil Room** — Each item costs Max Health by its rarity: 2, 4, 6, 8 for Common to Legendary. A price bigger than your Max Health takes all of it, and you live on only if you hold a Shield. With no Max Health left, a deal costs 3 Shields.
 - **Angel Room** — Every item is free, but take one and the rest vanish.

@@ -294,9 +294,9 @@ Then, back in `Overworld2.report`:
    as it opens (`Overworld2._open_post_game`: every piece on the board is offered
    there once, and what is not taken is gone); the **report chest** is queued (beaten, not escaped); status penalties are announced; each kill is recorded to the
    Atlas and the character.
-2. An **event** is rolled for after the haul (not on a detour). The **Devil
-   Room** is in the bag for any player only if no enemy took Health this game
-   (`docs/deal-rooms-design.md`). Then the **deal chance** is rolled
+2. An **event** is rolled for after the haul (not on a detour); the **Devil
+   Room** is in the bag for any player but Batsaac (`docs/deal-rooms-design.md`).
+   Then the **deal chance** is rolled
    (`DealRooms.roll_after_game`) for a bonus deal door that opens before that
    event: Batsaac's after a clean game, never on the first; anyone else's — what
    their relics add, Book of Revelations and the like — once a difficulty up, after

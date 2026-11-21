@@ -752,11 +752,13 @@ func test_a_lone_event_at_its_rarity_can_only_repeat_itself() -> void:
 	# bag reshuffles onto it every time — and that is the intended answer, not a
 	# gap. If the sheet ever gives that rung a second event this test becomes
 	# unreachable and says so instead of quietly passing.
-	# ARRANGED, not hoped for: an enemy took Health this game, which gates the Devil
-	# Room (DealRooms) and leaves the Potion Lab alone at Rare again — the rung this
-	# test was written against. Put back before the test ends.
-	GameState.deals["lost_game"] = 1
-	var restore := func(): GameState.deals["lost_game"] = 0
+	# ARRANGED, not hoped for: the run is Batsaac's, whose bag never deals the Devil
+	# Room (DealRooms finds his by chance), which leaves the Potion Lab alone at
+	# Rare again — the rung this test was written against. Put back before the
+	# test ends.
+	var player_before: StringName = GameState.player_id
+	GameState.player_id = &"batsaac"
+	var restore := func(): GameState.player_id = player_before
 	var lone: EventData2 = null
 	for ev in Data.all_events2():
 		if ev is EventData2 and _rarity_siblings(ev) == 1 \

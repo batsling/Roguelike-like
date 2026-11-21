@@ -5,18 +5,19 @@ extends RefCounted
 # Binding of Isaac: Repentance's Devil and Angel Rooms, as two events, and
 # Batsaac's mechanic of FINDING them the way Isaac does.
 #
-#   * ANY PLAYER can be dealt the Devil Room as a Rare event, after a game in which
-#     no enemy took any of their Health (an enemy's hit past the Shields, or a
-#     status's charge). The Angel Room is never dealt by the bag: it is what the
-#     Devil Room's door turns out to be, by Repentance's coin flips (`pick_kind`).
+#   * ANY PLAYER can be dealt the Devil Room as a Rare event, after any game. The
+#     Angel Room is never dealt by the bag: it is what the Devil Room's door turns
+#     out to be, by Repentance's coin flips (`pick_kind`).
 #   * BATSAAC (the `devil_and_angel_deals` mechanic) does not draw them from the
-#     bag at all. After a clean game he rolls Isaac's deal chance (`chance`) for a
-#     BONUS deal room, opened before the game's ordinary event.
+#     bag at all. After a CLEAN game — no enemy took any of his Health: a hit past
+#     the Shields, or a status's charge — he rolls Isaac's deal chance (`chance`)
+#     for a BONUS deal room, opened before the game's ordinary event. The clean
+#     game is his alone: the owner took it off the events and the relics' roll
+#     ("batsaac's mechanic already integrates getting hit").
 #   * ANY OTHER PLAYER HOLDING A RELIC THAT RAISES THE CHANCE (Book of
 #     Revelations, The Book of Belial) gets that much of it (the owner, 21 Nov
 #     2026): rolled once a floor, after the game a difficulty up lands in, for a
-#     bonus door of the same kind (`roll_item_bonus`). No clean-game gate: the
-#     owner took it off this one ("it should work without it").
+#     bonus door of the same kind (`roll_item_bonus`). No clean-game gate.
 #   * A room has 2-4 items, with 4 the rarest (Repentance's layout weights). Devil
 #     items cost Max Health by rarity (2/4/6/8); Isaac's three-soul-heart price is
 #     3 Shields when there is no Max Health left to pay with. Angel items are free,
@@ -171,7 +172,8 @@ static func note_donated(gold: int) -> void:
 static func clean_game() -> bool:
 	return int(_s().get("lost_game", 0)) <= 0
 
-# Health enemies took this game — the events sheet's `enemy_hp_lost` gate.
+# Health enemies took this game — the events sheet's `enemy_hp_lost` gate stat,
+# there for any event that wants it (the deal rooms no longer do).
 static func enemy_hp_lost() -> int:
 	return int(_s().get("lost_game", 0))
 

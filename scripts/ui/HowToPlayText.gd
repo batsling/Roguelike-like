@@ -853,10 +853,8 @@ static func _ch_events() -> Dictionary:
 			_note("The Donation Machine's bank is the one number in this game that "
 				+ "is not about the current run. It survives your death."),
 			_h("Devil and Angel Rooms"),
-			_p("The Binding of Isaac's deal rooms, as a rare event. One can only be "
-				+ "dealt after a game in which no enemy took any of your Health — a "
-				+ "hit your Shields stopped does not count against you. Its door "
-				+ "shows first; walk in and the statue is there with %d to %d items, "
+			_p("The Binding of Isaac's deal rooms, as a rare event. Its door shows "
+				+ "first; walk in and the statue is there with %d to %d items, "
 				% [2, 4] + "four only rarely."),
 			_kv("Devil Room", "Each item costs Max Health by its rarity: %s for "
 				% ", ".join(PackedStringArray(DealRooms.PRICE_BY_RARITY.map(func(n): return str(n))))

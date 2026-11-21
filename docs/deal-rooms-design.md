@@ -1,7 +1,8 @@
 # Devil and Angel Deals
 
 The Binding of Isaac: Repentance's Devil Room and Angel Room, as two events any
-player can be dealt, and Batsaac's mechanic of FINDING them the way Isaac does.
+player can be dealt after any game, and Batsaac's mechanic of FINDING them the way
+Isaac does.
 Asked for by the owner on 21 Nov 2026. The numbers come from the Repentance
 wiki's Devil Room and Angel Room pages (bindingofisaacrebirth.wiki.gg; the
 Fandom copy refuses scripts).
@@ -19,24 +20,27 @@ Fandom copy refuses scripts).
 | tests | `test/test_deal_rooms.gd` |
 | art | `images2.0/events/`: `DevilRoom` / `AngelRoom` (the doors), `DevilStatue` / `AngelStatue`, `DevilRoomIcon` / `AngelRoomIcon` (the chip's marks), all the wiki's originals |
 
-## 1. The gate: no enemy took your Health this game
+## 1. Batsaac's gate: no enemy took your Health this game
 
-Every deal room drawn from the bag or found by Batsaac needs a game in which
-no ENEMY took any of the player's Health. "An enemy" is a hit that got past the
+**Only Batsaac's roll (§3) asks this.** The events in the bag were gated on it at
+first and the owner took it off them the same day ("batsaac's mechanic already
+integrates getting hit"), and the relics' roll (§3.1) never had it.
+
+A clean game is one in which no ENEMY took any of the player's Health. "An enemy"
+is a hit that got past the
 Shields (`HEALTH_SOURCE_ENEMY_ATTACK`) or a status's charge (`HEALTH_SOURCE_STATUS`,
 Burn's bill). A hit a Shield stopped took no Health, so it does not count; nor does
 anything the player did to themselves (an event's price, the Blood Donation
 Machine, a pill, Hunger, a deal), because Isaac's red-heart-damage rule excludes
 self-damage too. `DealRooms.note_health_lost` counts it off `TriggerBus.health_lost`;
-`note_game_started` (from `GameLoop2.choose_game`) clears it. The relics' roll for
-other players (§3.1) does not ask it.
+`note_game_started` (from `GameLoop2.choose_game`) clears it.
 
-On the events sheet it is the Requirement `enemy_hp_lost=0`, a gate stat like any
-other (`EventSystem._run_stat`, `generate_event2_tres.GATE_STATS`).
+The count is also a Requirement gate stat any event can use, `enemy_hp_lost`
+(`EventSystem._run_stat`, `generate_event2_tres.GATE_STATS`); the deal rooms do not.
 
 ## 2. The events
 
-Both are **Rare**, **wordless** like the Arcade Room, and two buttons: **Enter**
+Both are **Rare**, dealt after any game (blank Requirement), **wordless** like the Arcade Room, and two buttons: **Enter**
 (`Repeat: Stay`, `enter_deal_room`) and **Leave** (`nothing`).
 
 - The picture is the **door** until you walk in, then the **statue**
@@ -61,7 +65,7 @@ After every game handed in (not a detour), `Overworld2.report` rolls
 | term | value | Isaac's |
 |---|---|---|
 | never on the run's first game | 0 | no deal on Basement 1 |
-| an enemy took Health this game | 0 | the gate (§1) |
+| an enemy took Health this game | 0 | his gate (§1) |
 | a door already opened this floor | 0 | one deal room a floor |
 | base | 1% | 1% |
 | the floor's boss fell this game | +35% | no red-heart damage against the boss |

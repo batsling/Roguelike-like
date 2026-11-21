@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **No hit rule on the deal-room events (21 Nov 2026).** The owner: "I was
+  talking about the devil room event as well because batsaac's mechanic already
+  integrates getting hit". The Devil and Angel Rooms' `enemy_hp_lost=0`
+  Requirement is gone: the bag deals the Devil Room after any game. Only
+  Batsaac's own roll still needs a game no enemy took Health in.
+
 - **The deal chance for every player (21 Nov 2026).** The owner: "holding things
   that give devil deal bonus should give it to any player and it should show the
   %. It will trigger as a bonus event after increasing difficulty". A player
