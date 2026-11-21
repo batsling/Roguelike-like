@@ -1,6 +1,6 @@
 <mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.6.6 Chrome/144.0.7559.236 Electron/40.8.4 Safari/537.36">
   <diagram name="Page-1" id="7ndxkVG6Xf9et4kp1aJq">
-    <mxGraphModel dx="29655" dy="10805" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+    <mxGraphModel dx="21966" dy="6213" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -632,7 +632,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="8wVvn6oCmSjFue8jIp2x-42" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Wall World" vertex="1">
-          <mxGeometry height="31.5" width="42" x="-5985" y="5004" as="geometry" />
+          <mxGeometry height="31.5" width="42" x="-8061" y="5004" as="geometry" />
         </mxCell>
         <mxCell id="8wVvn6oCmSjFue8jIp2x-43" edge="1" parent="1" source="8wVvn6oCmSjFue8jIp2x-40" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="8wVvn6oCmSjFue8jIp2x-42" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -920,7 +920,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="CAKBO90U9Rm-TWz1v_Hs-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Dungeon Deathball" vertex="1">
-          <mxGeometry height="25" width="43" x="-4983" y="4599" as="geometry" />
+          <mxGeometry height="24" width="43" x="-4983" y="4599" as="geometry" />
         </mxCell>
         <mxCell id="CAKBO90U9Rm-TWz1v_Hs-7" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Picayune Dreams" vertex="1">
           <mxGeometry height="25" width="43" x="3372" y="5007" as="geometry" />
@@ -5741,7 +5741,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="BssGonvdKTxdweaBfkIX-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Wall World 2" vertex="1">
-          <mxGeometry height="32" width="46.5" x="-6571" y="5406" as="geometry" />
+          <mxGeometry height="32" width="46.5" x="-8737" y="5406" as="geometry" />
         </mxCell>
         <mxCell id="BssGonvdKTxdweaBfkIX-10" edge="1" parent="1" source="8wVvn6oCmSjFue8jIp2x-42" style="endArrow=classic;html=1;rounded=0;strokeColor=#0000FF;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="BssGonvdKTxdweaBfkIX-8" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -7070,7 +7070,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="GJVTXl9ZzAd7GP_ln8gO-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Don&#39;t Lose Aggro" vertex="1">
-          <mxGeometry height="33" width="64" x="14562" y="5599" as="geometry" />
+          <mxGeometry height="33" width="64" x="14597" y="5599" as="geometry" />
         </mxCell>
         <mxCell id="GJVTXl9ZzAd7GP_ln8gO-9" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="&lt;div&gt;Void Scrappers&lt;/div&gt;" vertex="1">
           <mxGeometry height="26" width="47" x="2621" y="4792" as="geometry" />
@@ -9224,7 +9224,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="4M3I49reKBS6Ftscvy_V-56" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;strokeColor=light-dark(#000000, #a8a8ff);" value="Space Grunts" vertex="1">
-          <mxGeometry height="37" width="51" x="-3375" y="3603" as="geometry" />
+          <mxGeometry height="26" width="42" x="-3375" y="3609" as="geometry" />
         </mxCell>
         <mxCell id="4M3I49reKBS6Ftscvy_V-57" edge="1" parent="1" source="XIpR5z0taZn_DdPnJwBL-25" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="4M3I49reKBS6Ftscvy_V-56" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -9305,7 +9305,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="4M3I49reKBS6Ftscvy_V-74" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Dungeon Drafters" vertex="1">
-          <mxGeometry height="28" width="46" x="-4889" y="5005" as="geometry" />
+          <mxGeometry height="24" width="46" x="-4889" y="5005" as="geometry" />
         </mxCell>
         <mxCell id="4M3I49reKBS6Ftscvy_V-77" edge="1" parent="1" source="y5wdreLHsI0aOC0Qk7-A-6" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="4M3I49reKBS6Ftscvy_V-74" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -10868,7 +10868,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="MLoO5yuKF3TizsRJUIAL-32" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="&lt;div&gt;Trash of the Titans&lt;/div&gt;" vertex="1">
-          <mxGeometry height="42" width="31" x="-6988" y="5207" as="geometry" />
+          <mxGeometry height="38" width="31" x="-6988" y="5207" as="geometry" />
         </mxCell>
         <mxCell id="MLoO5yuKF3TizsRJUIAL-33" edge="1" parent="1" source="CAKBO90U9Rm-TWz1v_Hs-73" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="MLoO5yuKF3TizsRJUIAL-32" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -11975,7 +11975,7 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="iiQTbO4OPWpFmw_inC4x-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Lost Eidolons: Veil of the Witch" vertex="1">
-          <mxGeometry height="60" width="42" x="-7313" y="5194" as="geometry" />
+          <mxGeometry height="51" width="54" x="-7319" y="5194" as="geometry" />
         </mxCell>
         <mxCell id="iiQTbO4OPWpFmw_inC4x-9" edge="1" parent="1" source="AweIfFG6nZfIsoWg6aLu-2" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="iiQTbO4OPWpFmw_inC4x-8" value="">
           <mxGeometry height="50" relative="1" width="50" as="geometry">
@@ -13499,6 +13499,18 @@
           <mxGeometry height="50" relative="1" width="50" as="geometry">
             <mxPoint x="4005" y="4636" as="sourcePoint" />
             <mxPoint x="4055" y="4586" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="0Np-2gU4txj8gvSH6x-F-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="Sticker/Ball" vertex="1">
+          <mxGeometry height="26" width="57" x="14529" y="5608" as="geometry" />
+        </mxCell>
+        <mxCell id="0Np-2gU4txj8gvSH6x-F-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fontSize=10;" value="&lt;div&gt;Panzer Deck&lt;/div&gt;" vertex="1">
+          <mxGeometry height="27" width="37" x="-9502" y="5608" as="geometry" />
+        </mxCell>
+        <mxCell id="0Np-2gU4txj8gvSH6x-F-3" edge="1" parent="1" source="CAKBO90U9Rm-TWz1v_Hs-73" style="endArrow=classic;html=1;rounded=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;" target="0Np-2gU4txj8gvSH6x-F-2" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="117.6470588235294" y="3985" as="sourcePoint" />
+            <mxPoint x="-6264" y="5367" as="targetPoint" />
           </mxGeometry>
         </mxCell>
       </root>
