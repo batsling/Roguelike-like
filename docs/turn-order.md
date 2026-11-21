@@ -296,9 +296,11 @@ Then, back in `Overworld2.report`:
    Atlas and the character.
 2. An **event** is rolled for after the haul (not on a detour). The **Devil
    Room** is in the bag for any player only if no enemy took Health this game
-   (`docs/deal-rooms-design.md`). Then **Batsaac's deal chance** is rolled
-   (`DealRooms.roll_bonus`) — after a clean game, never on the first — for a bonus
-   deal door that opens before that event. A game the player opened a **shop** at
+   (`docs/deal-rooms-design.md`). Then the **deal chance** is rolled
+   (`DealRooms.roll_after_game`) for a bonus deal door that opens before that
+   event: Batsaac's after a clean game, never on the first; anyone else's — what
+   their relics add, Book of Revelations and the like — once a difficulty up, after
+   the clean game it lands in. A game the player opened a **shop** at
    queues its button.
 3. Signal `game_beaten` (any report but an escape, won or not) → items (Burning
    Blood), every charged item +1, Harvesting, the toast, the overlay.
@@ -349,7 +351,7 @@ _queue_report_chests(
 _announce_status_penalties(res)
 _record_defeat(played_game, cleared)
 EventSystem.roll_for_arrival(slot_here)
-DealRooms.roll_bonus(_deal_rng, GameState.games_played)
+DealRooms.roll_after_game(_deal_rng, GameState.games_played)
 ShopSystem.is_shop(slot_here)
 TriggerBus.game_beaten.emit(
 TriggerBus.game_won.emit(
@@ -378,7 +380,7 @@ Once the animation ends (`_end_resolve`):
    the boss warning, and *Go to Shop* at a game with a shop. Autosave
    when it closes.
 3. The **Collapse** screen, Fracture 10's Amulet only.
-4. **Batsaac's bonus deal door**, if his chance came up — whether it is a Devil's
+4. **The bonus deal door**, if the deal chance came up — whether it is a Devil's
    or an Angel's is decided as it opens (`DealRooms.open_door`).
 5. The **event** rolled at the report. A Devil Room out of the bag is also only a
    door until it opens, and may turn out to be the Angel Room.

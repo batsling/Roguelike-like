@@ -12,6 +12,10 @@ extends RefCounted
 #   * BATSAAC (the `devil_and_angel_deals` mechanic) does not draw them from the
 #     bag at all. After a clean game he rolls Isaac's deal chance (`chance`) for a
 #     BONUS deal room, opened before the game's ordinary event.
+#   * ANY OTHER PLAYER HOLDING A RELIC THAT RAISES THE CHANCE (Book of
+#     Revelations, The Book of Belial) gets that much of it (the owner, 21 Nov
+#     2026): rolled once a floor, after the game a difficulty up lands in, for a
+#     bonus door of the same kind — clean games only (`roll_item_bonus`).
 #   * A room has 2-4 items, with 4 the rarest (Repentance's layout weights). Devil
 #     items cost Max Health by rarity (2/4/6/8); Isaac's three-soul-heart price is
 #     3 Shields when there is no Max Health left to pay with. Angel items are free,
@@ -95,6 +99,7 @@ static func fresh() -> Dictionary:
 		"deal_taken": false,   # a Deal with the Devil was paid for: no more Angels
 		"angel_promised": false,  # the first devil door was walked away from
 		"donated": {},         # str(floor) -> gold into a Donation Machine
+		"rolled_floor": 0,     # the last floor a relic's chance was rolled for
 		"room": {},            # the room standing open, if any
 	}
 
@@ -210,10 +215,6 @@ static func chance_parts(games_before: int = -1) -> Dictionary:
 static func chance(games_before: int = -1) -> float:
 	return float(chance_parts(games_before)["total"])
 
-# The chance as Luck will actually roll it (§16), which is what the chip quotes.
-static func shown_chance() -> float:
-	return Stats.effective_chance(chance(), Stats.Favour.HIGH)
-
 # Relics that raise it: `deal_chance` in an item's stat bonuses (Book of
 # Revelations' +17.5%, and whatever Pentagram-likes the sheet adds later).
 static func item_bonus() -> float:
@@ -246,6 +247,66 @@ static func roll_bonus(rng: RandomNumberGenerator, games_before: int) -> bool:
 	if c <= 0.0:
 		return false
 	return Stats.roll_chance(rng, c, Stats.Favour.HIGH)
+
+
+# --- any other player: the relics' share, once a floor -----------------------
+
+# Does a player WITHOUT the mechanic hold anything that raises the chance?
+static func item_roll_active() -> bool:
+	return not active() and item_bonus() > 0.0
+
+# Is there a chance to show at all — Batsaac's, or a relic's for anyone else?
+static func chip_active() -> bool:
+	return active() or item_bonus() > 0.0
+
+# A difficulty up has landed since the relics' chance was last rolled.
+static func item_roll_due() -> bool:
+	var s := _s()
+	return int(s.get("floor", 0)) > int(s.get("rolled_floor", 0))
+
+# The relics' chance for a player without the mechanic: only what they hold, cut
+# by a recent door like Batsaac's, and nothing after a game an enemy hurt you in
+# or on a floor that has already had its door.
+static func item_chance_parts() -> Dictionary:
+	var out := {"items": item_bonus(), "mult": seen_multiplier(), "total": 0.0, "why": ""}
+	if float(out["items"]) <= 0.0:
+		out["why"] = "no relic that raises it"
+		return out
+	if not clean_game():
+		out["why"] = "an enemy took Health this game"
+		return out
+	if door_this_floor():
+		out["why"] = "a door already opened this floor"
+		return out
+	out["total"] = clampf(float(out["items"]) * float(out["mult"]), 0.0, 100.0)
+	return out
+
+static func item_chance() -> float:
+	return float(item_chance_parts()["total"])
+
+# After a report (Overworld2.report): when a difficulty up has landed since the
+# last roll, the relics' chance is rolled ONCE for it — spent whether or not this
+# game was clean, as Isaac has one chance a floor.
+static func roll_item_bonus(rng: RandomNumberGenerator) -> bool:
+	if active() or not item_roll_due():
+		return false
+	_s()["rolled_floor"] = int(_s().get("floor", 0))
+	var c: float = item_chance()
+	if c <= 0.0:
+		return false
+	return Stats.roll_chance(rng, c, Stats.Favour.HIGH)
+
+# EVERY bonus door a report can open, whoever the player is: Batsaac's after any
+# clean game, anyone else's relic chance after a difficulty up.
+static func roll_after_game(rng: RandomNumberGenerator, games_before: int) -> bool:
+	if active():
+		return roll_bonus(rng, games_before)
+	return roll_item_bonus(rng)
+
+# The chance the chip quotes, for whichever player this is.
+static func chip_chance() -> float:
+	var raw: float = chance() if active() else item_chance()
+	return Stats.effective_chance(raw, Stats.Favour.HIGH) if raw > 0.0 else 0.0
 
 
 # --- Devil or Angel ----------------------------------------------------------

@@ -872,6 +872,11 @@ static func _ch_events() -> Dictionary:
 			_b("Take one Deal with the Devil and no Angel Room will ever open for "
 				+ "you again that run. Walk away from your first Devil Room without "
 				+ "going in, and the next door is guaranteed to be an Angel's."),
+			_b("Relics that raise the Devil Deal chance — Book of Revelations, The "
+				+ "Book of Belial — work for every player. Hold one and the chance "
+				+ "shows beside your character; it is rolled once each difficulty "
+				+ "up, after the game the difficulty up lands in, for a bonus door "
+				+ "before that game's event — if no enemy took your Health in it."),
 		],
 	}
 

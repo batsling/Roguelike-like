@@ -164,9 +164,10 @@ var _pending_event: EventData2 = null
 # The node that event was rolled for, so opening it can SPEND that node — one
 # event per game, however many times the run walks back through it.
 var _pending_event_node: StringName = &""
-# BATSAAC'S BONUS DEAL ROOM (DealRooms): his deal chance came up after a clean
-# game, so a Devil or Angel Room's door opens BEFORE the game's own event, which
-# stays queued behind it in `_pending_event`.
+# THE BONUS DEAL ROOM (DealRooms): the deal chance came up after a clean game —
+# Batsaac's after any, anyone else's relic chance after a difficulty up — so a
+# Devil or Angel Room's door opens BEFORE the game's own event, which stays queued
+# behind it in `_pending_event`.
 var _pending_deal: bool = false
 var _deal_rng := RandomNumberGenerator.new()
 # Checklist bindings for the event-goal section. ReportChecklist owns them; this
@@ -2783,9 +2784,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	if played_game != null and not on_detour:
 		_pending_event = EventSystem.roll_for_arrival(slot_here)
 		_pending_event_node = slot_here
-		# Batsaac's deal chance (DealRooms): rolled after a game no enemy took Health
-		# in, never on the first game — `games_played` has not moved for this one yet.
-		_pending_deal = DealRooms.roll_bonus(_deal_rng, GameState.games_played)
+		# The deal chance (DealRooms): Batsaac's after a game no enemy took Health in,
+		# never on the first — `games_played` has not moved for this one yet — and
+		# anyone else's relic chance after the game a difficulty up lands in.
+		_pending_deal = DealRooms.roll_after_game(_deal_rng, GameState.games_played)
 		if _pending_deal:
 			GameLog.add("A door opens…", DealRooms.DEVIL_COLOR)
 	if played_game != null and not escaped:
@@ -7122,15 +7124,19 @@ const DEAL_ICON := 18
 func _paint_deal_chip(_a = null, _b = null) -> void:
 	if _deal_chip == null or not is_instance_valid(_deal_chip):
 		return
-	var on: bool = DealRooms.active()
+	# Batsaac always; anyone else while holding a relic that raises the chance.
+	var on: bool = DealRooms.chip_active()
 	_deal_chip.visible = on
 	if not on:
 		return
-	var parts: Dictionary = DealRooms.chance_parts()
-	var door: float = DealRooms.shown_chance()
+	var door: float = DealRooms.chip_chance()
 	var angel_share: float = DealRooms.angel_chance() / 100.0
 	_deal_devil_lbl.text = "%d%%" % roundi(door * (1.0 - angel_share))
 	_deal_angel_lbl.text = "%d%%" % roundi(door * angel_share)
+	if not DealRooms.active():
+		_deal_chip.tooltip_text = _item_deal_tooltip(door)
+		return
+	var parts: Dictionary = DealRooms.chance_parts()
 	var lines := PackedStringArray(["Deal chance after this game: %d%%" % roundi(door)])
 	if String(parts.get("why", "")) != "":
 		lines.append("None: %s." % String(parts["why"]))
@@ -7149,6 +7155,22 @@ func _paint_deal_chip(_a = null, _b = null) -> void:
 	lines.append("Angel Room chance if a door opens: %d%%" % roundi(DealRooms.angel_chance()))
 	lines.append("Any Health an enemy takes this game rules a door out.")
 	_deal_chip.tooltip_text = "\n".join(lines)
+
+# The relics' chance, for a player without the mechanic: rolled once a difficulty
+# up, after the game it lands in.
+func _item_deal_tooltip(door: float) -> String:
+	var parts: Dictionary = DealRooms.item_chance_parts()
+	var when: String = "after this game" if DealRooms.item_roll_due() \
+		else "after the game the next difficulty up lands in"
+	var lines := PackedStringArray(["Deal chance %s: %d%%" % [when, roundi(door)]])
+	if String(parts.get("why", "")) != "":
+		lines.append("None: %s." % String(parts["why"]))
+	lines.append("+%s%% from relics" % str(snappedf(float(parts["items"]), 0.1)))
+	if float(parts["mult"]) < 1.0:
+		lines.append("×%s — a deal door opened recently" % str(parts["mult"]))
+	lines.append("Angel Room chance if a door opens: %d%%" % roundi(DealRooms.angel_chance()))
+	lines.append("Any Health an enemy takes in that game rules a door out.")
+	return "\n".join(lines)
 
 # The Hunger pips and whether Eat is live. Hidden for a player without Hunger.
 func _paint_hunger_chip() -> void:

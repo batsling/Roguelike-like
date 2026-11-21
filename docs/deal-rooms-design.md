@@ -14,7 +14,7 @@ Fandom copy refuses scripts).
 | the mechanic | `mechanics` sheet → `data/mechanics/devil_and_angel_deals.tres`, on Batsaac's `players` row |
 | the item pools | the items sheet's `pools` column: `devil_room`, `angel_room` |
 | the room on screen | `EventModal2` (`_render_deals`, `_deal_card`) |
-| Batsaac's roll and the door | `Overworld2.report`, `_open_pending_event` (`docs/turn-order.md` §4–5) |
+| the bonus roll (Batsaac's, or anyone's relics) and the door | `Overworld2.report` → `DealRooms.roll_after_game`, `_open_pending_event` (`docs/turn-order.md` §4–5) |
 | the odds chip | `Overworld2._build_deal_chip` / `_paint_deal_chip` |
 | tests | `test/test_deal_rooms.gd` |
 | art | `images2.0/events/`: `DevilRoom` / `AngelRoom` (the doors), `DevilStatue` / `AngelStatue`, `DevilRoomIcon` / `AngelRoomIcon` (the chip's marks), all the wiki's originals |
@@ -79,6 +79,23 @@ for it). The bonus spends no node.
 **The chip** beside the Hunger pips (Batsaac only) shows the Devil's and the Angel's
 share of the chance a door opens after this game, with the Isaac map marks, and a
 tooltip listing every term.
+
+### 3.1 Anyone else: the relics' chance, once a difficulty up
+
+The owner, 21 Nov 2026: "holding things that give devil deal bonus should give
+it to any player and it should show the %. It will trigger as a bonus event after
+increasing difficulty". A player WITHOUT the mechanic who holds a relic with
+`deal_chance` (Book of Revelations 17.5, The Book of Belial 12.5) gets exactly
+that much — none of Batsaac's base or boss terms — cut by the same recent-door
+multiplier (`item_chance_parts`). It is rolled ONCE per difficulty up, at the
+report of the game the difficulty up lands in (`roll_item_bonus`, `rolled_floor`),
+and is spent for that floor whether or not the game was clean; a game an enemy
+took Health in, or a floor that already had its door, rolls nothing. A hit is the
+same bonus door before the game's own event. `roll_after_game` is the one call the
+report makes for both kinds of player.
+
+The chip shows for them too (`chip_active`) while they hold such a relic, with the
+chance that will be rolled and when.
 
 ## 4. Devil or Angel (Repentance's coin flips)
 
@@ -145,5 +162,5 @@ count), as Isaac lives on soul hearts. Everywhere:
 - More items in the two pools, and the chance items (Pentagram, Goat Head, Black
   Candle, Eucharist, Rosary Bead, Act of Contrition) — the owner is adding items.
   The devil pool is five so far: Brimstone Bombs, The Mark, The Necronomicon, and
-  (21 Nov 2026) The Book of Belial (+4 Temporary Strength, +12.5% deal chance) and
+  (21 Nov 2026) The Book of Belial (Charged 3: +4 Temporary Strength; +12.5% deal chance) and
   Whore of Babylon (+3 Strength and +1 Speed at 2 Health or less).

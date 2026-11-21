@@ -122,12 +122,57 @@ func test_the_chance_is_zero_after_an_enemy_takes_health() -> void:
 	assert_eq(DealRooms.chance(3), 0.0)
 	assert_false(DealRooms.roll_bonus(_rng, 3))
 
-func test_only_batsaac_rolls() -> void:
+func test_only_batsaac_rolls_after_every_game() -> void:
 	_start()
 	DealRooms.note_new_floor()
 	DealRooms.note_floor_boss(5)
 	DealRooms.note_off_board(5)
 	assert_false(DealRooms.roll_bonus(_rng, 3), "the basic player draws from the bag")
+	assert_false(DealRooms.chip_active(), "and has no chance to show without a relic")
+	assert_false(DealRooms.roll_after_game(_rng, 3), "nothing held, nothing rolled")
+
+
+# --- anyone else: the relics' chance, once a difficulty up (the owner) -------
+
+func test_a_relic_gives_any_player_its_chance_and_the_chip_shows_it() -> void:
+	_start()
+	GameState.add_item(Data.get_item2(&"book_of_revelations"))
+	assert_true(DealRooms.chip_active())
+	assert_true(DealRooms.item_roll_active())
+	assert_almost_eq(DealRooms.item_chance(), 17.5, 0.001, "what the relic adds, no more")
+	GameState.add_item(Data.get_item2(&"the_book_of_belial"))
+	assert_almost_eq(DealRooms.item_chance(), 30.0, 0.001, "17.5 + 12.5")
+
+func test_the_relic_chance_is_rolled_once_a_difficulty_up() -> void:
+	_start()
+	var book: ItemData = Data.get_item2(&"book_of_revelations").duplicate()
+	book.stat_bonuses = {"deal_chance": 100.0}     # a sure thing, to see the timing
+	GameState.add_item(book)
+	assert_false(DealRooms.item_roll_due(), "no difficulty up yet")
+	assert_false(DealRooms.roll_after_game(_rng, 3))
+	DealRooms.note_new_floor()
+	assert_true(DealRooms.item_roll_due())
+	assert_true(DealRooms.roll_after_game(_rng, 3), "after the game the difficulty up lands in")
+	assert_false(DealRooms.item_roll_due(), "spent for the floor")
+	assert_false(DealRooms.roll_after_game(_rng, 3), "once a floor")
+
+func test_the_relic_chance_is_spent_by_a_game_an_enemy_hurt_you_in() -> void:
+	_start()
+	var book: ItemData = Data.get_item2(&"book_of_revelations").duplicate()
+	book.stat_bonuses = {"deal_chance": 100.0}
+	GameState.add_item(book)
+	DealRooms.note_new_floor()
+	GameState.change_hp(-1, GameState.HEALTH_SOURCE_ENEMY_ATTACK)
+	assert_eq(DealRooms.item_chance(), 0.0)
+	assert_false(DealRooms.roll_after_game(_rng, 3))
+	DealRooms.note_game_started()
+	assert_false(DealRooms.roll_after_game(_rng, 3), "that floor's chance is gone")
+
+func test_batsaac_keeps_his_own_roll_with_the_relics_in_it() -> void:
+	_start(BATSAAC)
+	GameState.add_item(Data.get_item2(&"book_of_revelations"))
+	assert_false(DealRooms.item_roll_active(), "his roll already counts them")
+	assert_almost_eq(DealRooms.chance(3), 18.5, 0.001, "1 + 17.5")
 
 
 # --- Devil or Angel -----------------------------------------------------------
@@ -308,11 +353,11 @@ func test_an_event_price_is_only_lethal_past_the_shields() -> void:
 
 # --- the devil pool's own items (the owner, 21 Nov 2026) ----------------------
 
-func test_the_book_of_belial_is_a_two_charge_devilish_book() -> void:
+func test_the_book_of_belial_is_a_three_charge_devilish_book() -> void:
 	var book: ItemData = Data.get_item2(&"the_book_of_belial")
 	assert_not_null(book)
 	assert_eq(int(book.rarity), ItemData.Rarity.UNCOMMON, "4 Max Health in a Devil Room")
-	assert_eq(book.charge_cost, 2)
+	assert_eq(book.charge_cost, 3)
 	assert_true(book.tags.has("book") and book.tags.has("devilish"))
 	assert_true(book.in_pool(DealRooms.DEVIL))
 	assert_almost_eq(float(book.stat_bonuses.get("deal_chance", 0.0)), 12.5, 0.001,
