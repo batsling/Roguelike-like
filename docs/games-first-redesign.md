@@ -2336,8 +2336,8 @@ turn up at a shop more often than the rest of their rarity while still dropping
 off a body like anything else. Isaac's shop pool is a separate table nothing else
 reaches; against a catalogue of thirty relics and a run that visits at most ten
 hubs, that would have made every shop the same two items. `devil_room` /
-`angel_room` are authored ahead of the encounters that will read them and are
-inert until those exist.
+`angel_room` are what the Devil and Angel Rooms draw their items from
+(`docs/deal-rooms-design.md`).
 
 Sample synergies already in the sheet: **Crown** doubles Level Ups; **Snowball**
 doubles Transmute gains; **Alien Baby** (+6 Max Health but all enemies +1 Health)
@@ -2358,6 +2358,8 @@ and so brought a piece of machinery with it:
 | **Wooden Nickel** | Common, Charged 1 | Nothing new: a 50% `chance` at +1 Gold, on the shortest bar in the game. |
 | **Mom's Key** | Uncommon, `shop` | `base_chest_bonus` — +1 Key, and a beaten game's own chest point raised to 2 (§8.2). |
 | **The Book of Sin** | Uncommon, Charged 2 | `one_of` — Gold, Health, a Bomb, a Key or a piece of Loot, one at random. |
+| **The Book of Belial** | Uncommon, Charged 2, `devil_room` | +4 **Temporary** Strength (`games=1`), and Isaac's +12.5% Devil Deal chance while held (`deal_chance`, `docs/deal-rooms-design.md`). |
+| **Whore of Babylon** | Common, `devil_room` | `passive_status: … while hp<=2` — +3 Strength and +1 Speed held up only at 2 Health or less, switched on and off as Health moves (`ItemData.status_condition`, `GameState._sync_conditional_statuses`). |
 | **Latch Key** | Common | Nothing new: +1 Key and +1 Shield kept, +1 Luck while held. |
 | **Book of Revelations** | Rare, Charged 3 | Nothing new: +1 Shield (the pool that stays) per use. |
 | **The Necronomicon** | Uncommon, Charged 3, `devil_room` | Nothing new: Stun 1 on every body on the board and the enemy in play (`apply_status stun 1 target=all`). |

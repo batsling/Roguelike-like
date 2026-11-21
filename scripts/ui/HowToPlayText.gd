@@ -664,7 +664,8 @@ static func _ch_players() -> Dictionary:
 			+ "+%d%% more if no enemy took your Health from the moment that boss "
 			% roundi(DealRooms.FLOOR_CLEAN_BONUS)
 			+ "walked on. A floor is the stretch from one difficulty-up boss to the "
-			+ "next. Book of Revelations adds 17.5%."),
+			+ "next. Book of Revelations adds 17.5% while you hold it, The Book of "
+			+ "Belial 12.5%."),
 		_b("One door a floor. After one opens the chance is quartered for the "
 			+ "rest of that floor and the next, and halved on the one after."),
 		_b("The two marks beside your character show the odds: the Devil's and "

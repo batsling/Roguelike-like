@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Two more devil-pool items (21 Nov 2026).** The owner: "add some more devil
+  deal items so that there's theoretically enough". **The Book of Belial**
+  (Uncommon, Charged 2, `book, devilish`): +4 Temporary Strength, and Isaac's
+  +12.5% Devil Deal chance while held. **Whore of Babylon** (Common,
+  `devilish`): +3 Strength and +1 Speed while at 2 Health or less — a new
+  `while hp<=2` on `passive_status:` (`ItemData.status_condition`), switched on
+  and off by `GameState._sync_conditional_statuses` whenever Health or the relics
+  move, and only its own share. The Mark now gives +1 Strength like the Vajra in
+  place of its Bash. Art: the wiki's newest sprites. The devil pool is five.
+
 - **Devil and Angel Deals, Batsaac's mechanic (21 Nov 2026).** The owner: "I'm
   ready to start batsaac's mechanic, Devil and Angel deals". The Binding of
   Isaac: Repentance's deal rooms, from the wiki's own numbers

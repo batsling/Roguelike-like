@@ -1821,6 +1821,7 @@ func _reset_item_tracking() -> void:
 	_applied_item_verbs = {}
 	_applied_scaling_max_hp = 0
 	_applied_pack_statuses = {}
+	_applied_conditional_statuses = {}
 	max_hp_cap = -1
 	_next_item_instance_id = 1
 	_gold_spent_accum = 0
@@ -1953,6 +1954,7 @@ func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 	else:
 		hp = mini(hp, max_hp)
 	Stats.note_max_hp_change(max_hp, old_max)
+	_sync_conditional_statuses()
 	emit_signal("hp_changed", hp, max_hp)
 	# SCALING items keyed off max_hp (Beefy Ring) need a refresh whenever
 	# the pool moves outside of the inventory-recompute path. Guarded by
@@ -1965,6 +1967,7 @@ func change_max_hp(delta: int) -> void:
 
 func set_hp(new_hp: int) -> void:
 	hp = clamp(new_hp, 0, max_hp)
+	_sync_conditional_statuses()
 	emit_signal("hp_changed", hp, max_hp)
 
 # `source` names WHAT took the Health, and is passed through to the health_lost
@@ -3776,6 +3779,11 @@ func remove_item_at(index: int) -> void:
 func _apply_status_bonuses(item: ItemData, direction: int) -> void:
 	if item == null or item.status_bonuses.is_empty():
 		return
+	# A grant held only WHILE something is true is the sync's to switch, not the
+	# slot's to put up (Whore of Babylon, _sync_conditional_statuses).
+	if not item.status_condition.is_empty():
+		_sync_conditional_statuses()
+		return
 	for key in item.status_bonuses.keys():
 		var stacks: int = int(item.status_bonuses[key]) * direction
 		if stacks != 0:
@@ -3791,6 +3799,48 @@ func _apply_status_bonuses(item: ItemData, direction: int) -> void:
 # change — and, like a relic's, only ever its own share: Speed gained any other way
 # is never the pack's to take back.
 var _applied_pack_statuses: Dictionary = {}
+
+# --- relic statuses held only WHILE a condition holds (ItemData.status_condition) --
+#
+# Whore of Babylon: +3 Strength and +1 Speed at 2 Health or less. The same diff the
+# pack's statuses use: what the held relics whose condition is met want, against
+# what was applied a moment ago, re-asked whenever Health or the relics change.
+# Only ever its own share, so Strength gained any other way is never taken back.
+var _applied_conditional_statuses: Dictionary = {}
+
+func _conditional_statuses_wanted() -> Dictionary:
+	var want: Dictionary = {}
+	for it in inventory:
+		if not (it is ItemData):
+			continue
+		var item: ItemData = it
+		if item.status_condition.is_empty() or item.status_bonuses.is_empty():
+			continue
+		if not item.status_condition_met():
+			continue
+		for k in item.status_bonuses.keys():
+			want[String(k)] = int(want.get(String(k), 0)) + int(item.status_bonuses[k])
+	return want
+
+func _sync_conditional_statuses() -> void:
+	var want: Dictionary = _conditional_statuses_wanted()
+	if want.is_empty() and _applied_conditional_statuses.is_empty():
+		return
+	var keys: Dictionary = {}
+	for k in want.keys():
+		keys[k] = true
+	for k in _applied_conditional_statuses.keys():
+		keys[k] = true
+	var before: Dictionary = _applied_conditional_statuses
+	_applied_conditional_statuses = want
+	for k in keys.keys():
+		var delta: int = int(want.get(k, 0)) - int(before.get(k, 0))
+		if delta != 0:
+			apply_status(StringName(k), delta)
+
+# A save load restores the statuses with this share already in them.
+func adopt_conditional_statuses() -> void:
+	_applied_conditional_statuses = _conditional_statuses_wanted()
 
 func _on_pack_changed() -> void:
 	_recompute_item_bonuses()
@@ -3959,6 +4009,7 @@ func _apply_capped_max_hp_delta(total: int, applied: int) -> int:
 	var actual_delta: int = new_max - max_hp
 	max_hp = maxi(0, new_max)
 	hp = mini(hp, max_hp)
+	_sync_conditional_statuses()
 	emit_signal("hp_changed", hp, max_hp)
 	return applied + actual_delta
 

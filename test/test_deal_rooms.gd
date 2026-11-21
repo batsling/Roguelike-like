@@ -304,3 +304,58 @@ func test_an_event_price_is_only_lethal_past_the_shields() -> void:
 	assert_false(EventSystem.is_lethal(choice, 0), "two Health and two Shields")
 	choice = {"effects": [{"type": "lose_hp", "value": 4}]}
 	assert_true(EventSystem.is_lethal(choice, 0))
+
+
+# --- the devil pool's own items (the owner, 21 Nov 2026) ----------------------
+
+func test_the_book_of_belial_is_a_two_charge_devilish_book() -> void:
+	var book: ItemData = Data.get_item2(&"the_book_of_belial")
+	assert_not_null(book)
+	assert_eq(int(book.rarity), ItemData.Rarity.UNCOMMON, "4 Max Health in a Devil Room")
+	assert_eq(book.charge_cost, 2)
+	assert_true(book.tags.has("book") and book.tags.has("devilish"))
+	assert_true(book.in_pool(DealRooms.DEVIL))
+	assert_almost_eq(float(book.stat_bonuses.get("deal_chance", 0.0)), 12.5, 0.001,
+		"Isaac's +12.5% while held")
+
+func test_the_book_of_belial_gives_four_strength_for_the_game() -> void:
+	_start()
+	var before: int = GameState.status_stacks(&"strength")
+	var book: ItemData = Fixtures_give(&"the_book_of_belial")
+	assert_true(GameState.use_item(book), "it starts charged")
+	assert_eq(GameState.status_stacks(&"strength"), before + 4, "+4 Strength")
+	assert_eq(GameState.permanent_stacks(&"strength"), 0,
+		"all of it temporary: it goes when the game does")
+	assert_false(GameState.can_fire_item(book), "and the bar is empty again")
+
+func test_whore_of_babylon_switches_with_health() -> void:
+	_start()
+	GameState.set_max_hp(7, true)
+	var whore: ItemData = Fixtures_give(&"whore_of_babylon")
+	assert_eq(int(whore.rarity), ItemData.Rarity.COMMON, "2 Max Health in a Devil Room")
+	assert_true(whore.in_pool(DealRooms.DEVIL))
+	assert_eq(GameState.status_stacks(&"strength"), 0, "nothing at 7 Health")
+	GameState.set_hp(2)
+	assert_eq(GameState.status_stacks(&"strength"), 3, "+3 Strength at 2 Health")
+	assert_eq(GameState.status_stacks(&"speed"), 1, "and +1 Speed")
+	GameState.set_hp(1)
+	assert_eq(GameState.status_stacks(&"strength"), 3, "not twice on the way down")
+	GameState.set_hp(3)
+	assert_eq(GameState.status_stacks(&"strength"), 0, "gone above 2")
+	assert_eq(GameState.status_stacks(&"speed"), 0)
+	GameState.set_hp(2)
+	GameState.remove_item_at(GameState.inventory.find(whore))
+	assert_eq(GameState.status_stacks(&"strength"), 0, "and gone with the relic")
+
+func test_whore_of_babylon_leaves_strength_from_elsewhere_alone() -> void:
+	_start()
+	GameState.set_max_hp(7, true)
+	GameState.apply_status(&"strength", 2)
+	Fixtures_give(&"whore_of_babylon")
+	GameState.set_hp(1)
+	assert_eq(GameState.status_stacks(&"strength"), 5)
+	GameState.set_hp(7)
+	assert_eq(GameState.status_stacks(&"strength"), 2, "only its own share comes off")
+
+func Fixtures_give(id: StringName) -> ItemData:
+	return GameState.add_item(Data.get_item2(id))

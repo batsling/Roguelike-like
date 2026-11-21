@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_the_book_of_belial"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/TheBookOfBelial.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"the_book_of_belial"
+display_name = "The Book of Belial"
+kind = 6
+rarity = 1
+description = "Gain 4 Temporary Strength. While held: +12.5% Devil Deal chance."
+triggers = [{"on": "item_used", "effects": [{"type": "apply_status", "status": "strength", "value": 4, "target": "player", "games": 1}]}]
+stat_bonuses = {"deal_chance": 12.5}
+charge_cost = 2
+starts_charged = true
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("book", "devilish")
+pools = PackedStringArray("devil_room")
+image = ExtResource("2_img")

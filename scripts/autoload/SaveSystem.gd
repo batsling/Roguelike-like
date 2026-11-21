@@ -578,6 +578,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	# holding up (Goat Hoof's Speed), so the pack ADOPTS them rather than granting
 	# them again when the inventory_changed below re-derives its grants.
 	GameState.adopt_pack_statuses()
+	# …and so do the relics whose statuses are held only while a condition holds
+	# (Whore of Babylon at 2 Health or less).
+	GameState.adopt_conditional_statuses()
 	var ident: Array[StringName] = []
 	for s in data.get("identified_potion_types", []):
 		ident.append(StringName(s))

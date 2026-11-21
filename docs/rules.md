@@ -83,7 +83,7 @@ No extra rules: the game as it is.
 ### Devil and Angel Deals
 
 - You FIND deal rooms the way Isaac does, instead of drawing them as events. After any game in which no enemy took your Health — never the first — a door may open before the game's own event.
-- The chance is 1%, +35% if the floor's boss fell that game, and +99% more if no enemy took your Health from the moment that boss walked on. A floor is the stretch from one difficulty-up boss to the next. Book of Revelations adds 17.5%.
+- The chance is 1%, +35% if the floor's boss fell that game, and +99% more if no enemy took your Health from the moment that boss walked on. A floor is the stretch from one difficulty-up boss to the next. Book of Revelations adds 17.5% while you hold it, The Book of Belial 12.5%.
 - One door a floor. After one opens the chance is quartered for the rest of that floor and the next, and halved on the one after.
 - The two marks beside your character show the odds: the Devil's and the Angel's share of a door opening after this game.
 

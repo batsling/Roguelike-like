@@ -65,7 +65,7 @@ After every game handed in (not a detour), `Overworld2.report` rolls
 | base | 1% | 1% |
 | the floor's boss fell this game | +35% | no red-heart damage against the boss |
 | …and no enemy took Health since it walked on | +99% | no red-heart damage all floor |
-| relics with `deal_chance` (Book of Revelations +17.5) | + | Pentagram, Black Candle, … |
+| relics with `deal_chance` (Book of Revelations +17.5, The Book of Belial +12.5) | + | the same two, Afterbirth+ numbers |
 | a door on this floor or the last | ×0.25 | seen less than two floors ago |
 | a door two floors ago | ×0.5 | seen two floors ago |
 
@@ -143,5 +143,7 @@ count), as Isaac lives on soul hearts. Everywhere:
 - Bombing a statue (Uriel / Gabriel, Key Pieces), Krampus — "we can figure out the
   statue thing later".
 - More items in the two pools, and the chance items (Pentagram, Goat Head, Black
-  Candle, Book of Belial, Eucharist, Rosary Bead, Act of Contrition) — the owner is
-  adding items.
+  Candle, Eucharist, Rosary Bead, Act of Contrition) — the owner is adding items.
+  The devil pool is five so far: Brimstone Bombs, The Mark, The Necronomicon, and
+  (21 Nov 2026) The Book of Belial (+4 Temporary Strength, +12.5% deal chance) and
+  Whore of Babylon (+3 Strength and +1 Speed at 2 Health or less).

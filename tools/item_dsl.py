@@ -13,6 +13,8 @@ sheet's output, data/items/, was deleted; its own run is gone with it.)
 Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
   passive:        passive: +3 strength, -2 discovery        -> stat_bonuses
   passive status: passive_status: speed 3                   -> status_bonuses
+                  passive_status: strength 3, speed 1 while hp<=2
+                                                            -> status_bonuses + status_condition
                   (stacks held up by the slot — gone when the item is)
   trigger:        combat_start: +10 block (self)            -> triggers[{on, effects}]
                   enemy_killed: 50% chance +2 hp
@@ -944,6 +946,19 @@ def parse_item(row):
             # stacks on at pickup and takes them back off when the item leaves,
             # which is what separates it from `item_acquired: apply_status`
             # (The Mark), where the status is yours to keep.
+            #
+            # A trailing `while <stat><op><n>` holds them up only while that is
+            # true (Whore of Babylon: `while hp<=2`) — GameState switches them on
+            # and off as the number moves (status_condition).
+            cond = re.split(r"\s+while\s+", payload.strip(), maxsplit=1, flags=re.I)
+            if len(cond) == 2:
+                payload = cond[0]
+                cm = re.match(r"^([a-z_]+)\s*(<=|>=|==|<|>)\s*(\d+)$", cond[1].strip().lower())
+                if not cm or cm.group(1) not in ("hp", "max_hp"):
+                    raise ValueError("item DSL: passive_status `while` wants "
+                                     "`hp<=<n>` (or max_hp, and <, >, >=, ==) in %r" % clause)
+                fields["status_condition"] = {"stat": cm.group(1), "op": cm.group(2),
+                                              "value": int(cm.group(3))}
             for part in split_top(payload, ","):
                 mm = re.match(r"^\+?\s*(?:(\d+)\s+([a-z_]+)|([a-z_]+)\s+(\d+))$",
                               part.strip().lower())
@@ -1608,6 +1623,7 @@ def item_tres(row):
         ("boss_chest_bonus", lambda v: str(v)),
         ("base_chest_bonus", lambda v: str(v)),
         ("status_bonuses", lambda v: gd_value(v)),
+        ("status_condition", lambda v: gd_value(v)),
         ("destroyed_by_enemy_damage", lambda v: "true"),
     ]:
         if key in f and f[key] not in (None, [], {}, 0, False, ""):

@@ -228,6 +228,25 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Speed forever, while a passive grant is only yours while you still have the
 # thing that gave it.
 @export var status_bonuses: Dictionary = {}
+# …held up only WHILE this is true, when it is set (the sheet's `passive_status:
+# … while hp<=2`): Whore of Babylon's Strength and Speed are there at 2 Health or
+# less and gone the moment you heal past it. {stat: "hp"|"max_hp", op, value}.
+# GameState._sync_conditional_statuses switches them; `_apply_status_bonuses`
+# leaves an item with a condition alone.
+@export var status_condition: Dictionary = {}
+
+func status_condition_met() -> bool:
+	if status_condition.is_empty():
+		return true
+	var have: int = GameState.hp if String(status_condition.get("stat", "hp")) == "hp" \
+		else GameState.max_hp
+	var want: int = int(status_condition.get("value", 0))
+	match String(status_condition.get("op", "<=")):
+		"<": return have < want
+		">": return have > want
+		">=": return have >= want
+		"==": return have == want
+		_: return have <= want
 
 # Multiplicative stat scaling (Cricket's Head: "Multiply all Strength by 1.5").
 # Maps a stat id -> multiplier applied to that stat's whole effective value
