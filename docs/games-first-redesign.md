@@ -2351,7 +2351,7 @@ and so brought a piece of machinery with it:
 |---|---|---|
 | **Piggy Bank** | Uncommon, `shop` | The `health_lost` hook — *any* Health leaving the player, anywhere in the run. |
 | **There's Options** | Uncommon, `shop` | A dropped item restated as a Small **chest**, and `boss_chest_bonus` to buy a boss's one a size up (§8.2). |
-| **The Mark** | Uncommon, `devil_room` | Nothing new: +1 Bash and the **Speed** status (§13), the way Vajra grants Strength. |
+| **The Mark** | Uncommon, `devil_room` | Nothing new: the **Strength** and **Speed** statuses (§13), +1 each, the way Vajra grants Strength. (It paid +1 Bash instead of the Strength until 21 Nov 2026.) |
 | **Stigmata** | Uncommon, `angel_room` | Nothing new: +2 Max Health arriving full, and +1 Bash. |
 | **Charm of the Vampire** | Uncommon | The **incremental** counter, and `enemy_killed` for it to count. |
 | **D10** | Common, Charged 2 | `reroll_enemies` — the board re-rolled at its own difficulty and type. |
@@ -2385,7 +2385,7 @@ event's bill, or a curse's drain — is not an attack and breaks nothing either.
 `GameLoop2._take_hit` is the only caller that tags it as a swing.
 
 **Ban Hammer** (Uncommon, Yet Another Zombie Survivors) rounds the set out and
-brought nothing with it: +2 Bashes on pickup, the same `gain_stat` The Mark pays
+brought nothing with it: +2 Bashes on pickup, the same `gain_stat` Stigmata pays
 one of.
 
 **The potion five** are the Slay the Spire side of the shelf, and two of them
