@@ -401,7 +401,8 @@ func _render() -> void:
 		if _prose_box.get_child_count() > 0:
 			_prose_box.add_child(_rule())
 		_prose_box.add_child(_prose(_last_result, UITheme.TEXT_DIM, 13))
-	if _last_text != "":
+	# A deal room's "Walk in" is what the statue replacing the door already says.
+	if _last_text != "" and not DealRooms.is_deal_event(_event):
 		_prose_box.add_child(_did_line(_last_text, 12))
 
 	var offered: int = 0
@@ -526,6 +527,12 @@ func _render_deals() -> void:
 		if statue != null and _art_rect.texture != statue:
 			_art_rect.texture = statue
 			UITheme.apply_crisp(_art_rect, statue)
+			# SHORTER INSIDE: the items need the height the door had to itself, and
+			# at the door's size the room's Leave went below the fold of a 720p
+			# window. Only the stacked banner — a side column costs no height.
+			if _art_rect.get_parent() == _right:
+				var aspect: float = float(statue.get_width()) / maxf(1.0, float(statue.get_height()))
+				_art_rect.custom_minimum_size = Vector2(ROOM_ART_HEIGHT * aspect, ROOM_ART_HEIGHT)
 	var list: Array = DealRooms.items()
 	if list.is_empty():
 		var empty := _prose("The room is bare.", UITheme.TEXT_DIM, 13)
@@ -537,6 +544,7 @@ func _render_deals() -> void:
 
 
 const DEAL_CARD_W := 150.0
+const ROOM_ART_HEIGHT := 110.0
 
 func _deal_card(i: int) -> Control:
 	var item: ItemData = DealRooms.item_at(i)
