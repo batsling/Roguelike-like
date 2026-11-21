@@ -11,6 +11,32 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Devil and Angel Deals, Batsaac's mechanic (21 Nov 2026).** The owner: "I'm
+  ready to start batsaac's mechanic, Devil and Angel deals". The Binding of
+  Isaac: Repentance's deal rooms, from the wiki's own numbers
+  (`docs/deal-rooms-design.md`). **Two Rare events**, Devil Room and Angel Room,
+  shaped like the Arcade Room: the door's picture with Enter / Leave, then the
+  statue and 2–4 items (Repentance's layout weights: four is rare). Any player
+  can be dealt one, but only after a game in which **no enemy took any of their
+  Health** (`enemy_hp_lost=0`); the bag deals the Devil Room and Repentance's coin
+  flips decide at the door whether it is the Angel's (first door always the
+  Devil's; 50%, +50% for 10 Gold into a Donation Machine this floor; a deal ever
+  taken shuts the Angels; leaving the first Devil Room unentered promises one).
+  Devil items cost **Max Health by rarity, 2/4/6/8**, all of it when the price is
+  bigger, 3 Shields at 0 Max Health; Angel items are free and the rest vanish.
+  **Batsaac** (the `Devil and Angel Deals` mechanic) does not draw them: after a
+  clean game, never the first, he rolls Isaac's deal chance — 1%, +35% when the
+  floor's boss fell that game, +99% when no enemy took Health all floor (a floor
+  is a difficulty-up boss's band), ×0.25 / ×0.5 after a recent door, one a floor
+  — for a bonus door before the game's own event, with the odds on a chip beside
+  his token. Book of Revelations carries Isaac's +17.5% (`deal_chance`, so the
+  items sheet's `passive:` now takes a decimal). **Rule change that came with it,
+  everywhere:** a run at 0 Health or 0 Max Health lives while it holds permanent
+  Shields (`GameState.out_of_health`); a Health bill that runs past the Health
+  comes off them, one per point; Max Health floors at 0, Drain included; lethal
+  warnings count the Shields. Art: the wiki's original doors, statues and map
+  marks. Tests `test_deal_rooms.gd`.
+
 - **Live Stun and Shield numbers in loot text, green and red (20 Nov 2026).** The
   owner: "show the proper amount when factoring dex or power, with green text if
   higher than base and red if lower". `scripts/runtime/LiveNumbers.gd` rewrites

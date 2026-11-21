@@ -294,8 +294,12 @@ Then, back in `Overworld2.report`:
    as it opens (`Overworld2._open_post_game`: every piece on the board is offered
    there once, and what is not taken is gone); the **report chest** is queued (beaten, not escaped); status penalties are announced; each kill is recorded to the
    Atlas and the character.
-2. An **event** is rolled for after the haul (not on a detour); a game the
-   player opened a **shop** at queues its button.
+2. An **event** is rolled for after the haul (not on a detour). The **Devil
+   Room** is in the bag for any player only if no enemy took Health this game
+   (`docs/deal-rooms-design.md`). Then **Batsaac's deal chance** is rolled
+   (`DealRooms.roll_bonus`) — after a clean game, never on the first — for a bonus
+   deal door that opens before that event. A game the player opened a **shop** at
+   queues its button.
 3. Signal `game_beaten` (any report but an escape, won or not) → items (Burning
    Blood), every charged item +1, Harvesting, the toast, the overlay.
 4. Signal `game_won` (goal met) → items; then `game_perfected` (won with no lost
@@ -345,6 +349,7 @@ _queue_report_chests(
 _announce_status_penalties(res)
 _record_defeat(played_game, cleared)
 EventSystem.roll_for_arrival(slot_here)
+DealRooms.roll_bonus(_deal_rng, GameState.games_played)
 ShopSystem.is_shop(slot_here)
 TriggerBus.game_beaten.emit(
 TriggerBus.game_won.emit(
@@ -373,8 +378,11 @@ Once the animation ends (`_end_resolve`):
    the boss warning, and *Go to Shop* at a game with a shop. Autosave
    when it closes.
 3. The **Collapse** screen, Fracture 10's Amulet only.
-4. The **event** rolled at the report.
-5. The **shop**'s button, if the player opened a shop at this game.
+4. **Batsaac's bonus deal door**, if his chance came up — whether it is a Devil's
+   or an Angel's is decided as it opens (`DealRooms.open_door`).
+5. The **event** rolled at the report. A Devil Room out of the bag is also only a
+   door until it opens, and may turn out to be the Angel Room.
+6. The **shop**'s button, if the player opened a shop at this game.
 
 ```order
 scripts/redesign2/Overworld2.gd :: _end_resolve
@@ -388,6 +396,22 @@ scripts/redesign2/Overworld2.gd :: _on_post_game_finished
 autosave()
 CollapseScreen.open(
 _open_pending_event()
+```
+
+```order
+scripts/redesign2/Overworld2.gd :: _open_pending_event
+if _pending_deal:
+DealRooms.open_door(_deal_rng)
+var ev: EventData2 = _pending_event
+DealRooms.is_deal_event(ev)
+_raise_event(ev, node)
+```
+
+```order
+scripts/redesign2/Overworld2.gd :: _on_event_finished
+_start_play_game(play_request)
+_open_pending_event()
+_open_pending_shop()
 ```
 
 ## 6. The kill chain

@@ -164,6 +164,11 @@ var _pending_event: EventData2 = null
 # The node that event was rolled for, so opening it can SPEND that node — one
 # event per game, however many times the run walks back through it.
 var _pending_event_node: StringName = &""
+# BATSAAC'S BONUS DEAL ROOM (DealRooms): his deal chance came up after a clean
+# game, so a Devil or Angel Room's door opens BEFORE the game's own event, which
+# stays queued behind it in `_pending_event`.
+var _pending_deal: bool = false
+var _deal_rng := RandomNumberGenerator.new()
 # Checklist bindings for the event-goal section. ReportChecklist owns them; this
 # is a read-only view under the name the tests reach for.
 var _event_goal_checks: Array:
@@ -198,6 +203,11 @@ var _level_chip: Label = null
 var _hunger_chip: HBoxContainer = null
 var _hunger_pips: Array[TextureRect] = []
 var _eat_btn: Button = null
+# BATSAAC'S DEAL CHANCE (DealRooms), beside the Hunger pips: the Devil Room's mark
+# and its odds, the Angel Room's and its, the way Repentance's HUD shows them.
+var _deal_chip: HBoxContainer = null
+var _deal_devil_lbl: Label = null
+var _deal_angel_lbl: Label = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
 var _route_strip: HBoxContainer = null
@@ -603,6 +613,7 @@ func _ready() -> void:
 	# save recorded. This only covers the gap between the two — a page mounted and
 	# poked at without either, which is a test rather than a run.
 	_rng.randomize()
+	_deal_rng.randomize()
 	_build_ui()
 	# The board-peek's per-frame check (see "the board off the board").
 	get_tree().process_frame.connect(_tick_board_peek)
@@ -774,6 +785,7 @@ func start_run(character_id: StringName = &"", player_id: StringName = Data.BASI
 	_pending_shop = &""
 	_pending_event = null
 	_pending_event_node = &""
+	_pending_deal = false
 	_return_choice = &""
 	_pending_detour = false
 	_play_return_to = &""
@@ -2771,6 +2783,11 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	if played_game != null and not on_detour:
 		_pending_event = EventSystem.roll_for_arrival(slot_here)
 		_pending_event_node = slot_here
+		# Batsaac's deal chance (DealRooms): rolled after a game no enemy took Health
+		# in, never on the first game — `games_played` has not moved for this one yet.
+		_pending_deal = DealRooms.roll_bonus(_deal_rng, GameState.games_played)
+		if _pending_deal:
+			GameLog.add("A door opens…", DealRooms.DEVIL_COLOR)
 	if played_game != null and not escaped:
 		# The shop, if the player has opened one at this node (§19.10): the haul
 		# screen's exit names it and its button is put back up behind the chain.
@@ -3096,6 +3113,7 @@ func _end_resolve() -> void:
 		# run is not a cue to go shopping.
 		_pending_event = null
 		_pending_event_node = &""
+		_pending_deal = false
 		_pending_shop = &""
 		_post_snapshot = {}
 		_attempt_resolve = false
@@ -3199,7 +3217,7 @@ func _open_post_game() -> void:
 	# chests and the payout hidden behind it.
 	_dismiss_route_map()
 	_post_screen = PostCombatScreen.open(self, snap, drops,
-		_pending_event != null, shop_id, boss_tier, bosses)
+		_pending_event != null or _pending_deal, shop_id, boss_tier, bosses)
 	# The screen is up, so it is the one holding the offering back now (see above).
 	_post_snapshot = {}
 	var screen: PostCombatScreen = _post_screen
@@ -3259,6 +3277,15 @@ func _dismiss_post_game() -> void:
 # because an event is a decision with consequences and a shop is spending, so the
 # money should be spent knowing how the event went.
 func _open_pending_event() -> void:
+	# BATSAAC'S BONUS DOOR FIRST (DealRooms), with the game's own event left queued
+	# behind it: `_on_event_finished` comes back here for that one. No node is spent
+	# by it — the game still pays its ordinary event.
+	if _pending_deal:
+		_pending_deal = false
+		var door: EventData2 = DealRooms.open_door(_deal_rng)
+		if door != null:
+			_raise_event(door, &"")
+			return
 	var ev: EventData2 = _pending_event
 	var node: StringName = _pending_event_node
 	_pending_event = null
@@ -3266,6 +3293,16 @@ func _open_pending_event() -> void:
 	if ev == null:
 		_open_pending_shop()
 		return
+	# A DEVIL ROOM DRAWN FROM THE BAG is only a door until it opens: whether it is a
+	# Devil's or an Angel's is decided now, by Repentance's coin flips.
+	if DealRooms.is_deal_event(ev):
+		var door: EventData2 = DealRooms.open_door(_deal_rng)
+		if door != null:
+			ev = door
+	_raise_event(ev, node)
+
+# Put `ev` on the screen, spending `node`'s event if it names one.
+func _raise_event(ev: EventData2, node: StringName) -> void:
 	# An arrival popup already up gives way to the event and comes back after it
 	# (_show_location_if_unseen), so the location is always read second.
 	if _location_popup != null and is_instance_valid(_location_popup) \
@@ -3317,6 +3354,10 @@ func _on_event_finished(play_request: Dictionary) -> void:
 		# and opens when that detour comes back through _end_resolve, rather than
 		# being dropped over the top of a game about to start.
 		_start_play_game(play_request)
+		return
+	# A bonus deal room was in front of the game's own event: that one now.
+	if _pending_event != null and not GameLoop2.run_over:
+		_open_pending_event()
 		return
 	_open_pending_shop()
 
@@ -7037,9 +7078,77 @@ func _build_character_chip() -> Control:
 	row.add_child(_eat_btn)
 	GameState.hunger_changed.connect(func(_h): _paint_hunger_chip())
 	GameState.inventory_changed.connect(_paint_hunger_chip)
+	row.add_child(_build_deal_chip())
 	_character_wrap = wrap
 	_paint_character_chip()
 	return wrap
+
+# THE DEAL CHANCE (DealRooms): Batsaac's odds of a deal door after this game, if it
+# ends with no enemy having taken any Health. Split the way Repentance's HUD splits
+# it — the chance a door opens, shared between the Devil and the Angel by the coin
+# flips that would decide which.
+func _build_deal_chip() -> Control:
+	_deal_chip = HBoxContainer.new()
+	_deal_chip.name = "DealChip"
+	_deal_chip.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	_deal_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	_deal_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for kind in [DealRooms.DEVIL, DealRooms.ANGEL]:
+		var icon := UITheme.crisp_tex(DealRooms.icon_art(kind), DEAL_ICON)
+		icon.mouse_filter = Control.MOUSE_FILTER_PASS
+		_deal_chip.add_child(icon)
+		var lbl := Label.new()
+		lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+		lbl.add_theme_color_override("font_color",
+			DealRooms.DEVIL_COLOR if kind == DealRooms.DEVIL else DealRooms.ANGEL_COLOR)
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.mouse_filter = Control.MOUSE_FILTER_PASS
+		_deal_chip.add_child(lbl)
+		if kind == DealRooms.DEVIL:
+			_deal_devil_lbl = lbl
+		else:
+			_deal_angel_lbl = lbl
+	# _refresh_stats repaints it with the chips beside it (every hp_changed and
+	# stats_changed); the board moving is the one thing it hears about itself, since
+	# a floor boss falling or a hit landing is what moves the odds.
+	GameLoop2.loop_changed.connect(_paint_deal_chip)
+	GameState.inventory_changed.connect(_paint_deal_chip)
+	_paint_deal_chip()
+	return _deal_chip
+
+const DEAL_ICON := 18
+
+# Arguments ignored: it hangs off signals that carry some (hp_changed's two).
+func _paint_deal_chip(_a = null, _b = null) -> void:
+	if _deal_chip == null or not is_instance_valid(_deal_chip):
+		return
+	var on: bool = DealRooms.active()
+	_deal_chip.visible = on
+	if not on:
+		return
+	var parts: Dictionary = DealRooms.chance_parts()
+	var door: float = DealRooms.shown_chance()
+	var angel_share: float = DealRooms.angel_chance() / 100.0
+	_deal_devil_lbl.text = "%d%%" % roundi(door * (1.0 - angel_share))
+	_deal_angel_lbl.text = "%d%%" % roundi(door * angel_share)
+	var lines := PackedStringArray(["Deal chance after this game: %d%%" % roundi(door)])
+	if String(parts.get("why", "")) != "":
+		lines.append("None: %s." % String(parts["why"]))
+	else:
+		lines.append("Base %d%%" % roundi(float(parts["base"])))
+		if float(parts["boss"]) > 0.0:
+			lines.append("+%d%% the floor's boss fell with no enemy taking Health"
+				% roundi(float(parts["boss"])))
+		if float(parts["floor"]) > 0.0:
+			lines.append("+%d%% the whole floor went without an enemy taking Health"
+				% roundi(float(parts["floor"])))
+		if float(parts["items"]) > 0.0:
+			lines.append("+%s%% from relics" % str(snappedf(float(parts["items"]), 0.1)))
+		if float(parts["mult"]) < 1.0:
+			lines.append("×%s — a deal door opened recently" % str(parts["mult"]))
+	lines.append("Angel Room chance if a door opens: %d%%" % roundi(DealRooms.angel_chance()))
+	lines.append("Any Health an enemy takes this game rules a door out.")
+	_deal_chip.tooltip_text = "\n".join(lines)
 
 # The Hunger pips and whether Eat is live. Hidden for a player without Hunger.
 func _paint_hunger_chip() -> void:
@@ -7360,6 +7469,7 @@ func _on_gold_changed(_amount: int = 0) -> void:
 
 func _refresh_stats(_a = null) -> void:
 	_paint_character_chip()
+	_paint_deal_chip()
 	_paint_health_chip()
 	_paint_gold_chip()
 	_paint_shop_bar()

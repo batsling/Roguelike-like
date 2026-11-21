@@ -1024,6 +1024,12 @@ def parse_reward_clause(clause):
                 "%s %s %s" % (_span(lo, hi), tag,
                               "machine" if hi == 1 else "machines"))
 
+    # `enter_deal_room` — walk through a Devil or Angel Room's door
+    # (scripts/runtime/DealRooms.gd): the statue replaces the door in the event's
+    # picture and the room's items are laid out under it.
+    if verb == "enter_deal_room":
+        return {"type": "enter_deal_room"}, "Walk in"
+
     # An explicit no-op, so "this choice does nothing" can be authored rather
     # than left blank and read as unfinished.
     if verb == "nothing":

@@ -655,7 +655,7 @@ func _build_run_tab() -> void:
 	_body.add_child(_stepper("Health", func(): return GameState.hp,
 		func(d: int) -> void: GameState.change_hp(d)))
 	_body.add_child(_stepper("Max Health", func(): return GameState.max_hp,
-		func(d: int) -> void: GameState.set_max_hp(maxi(1, GameState.max_hp + d), false)))
+		func(d: int) -> void: GameState.set_max_hp(maxi(0, GameState.max_hp + d), false)))
 	_body.add_child(_stepper("Gold", func(): return GameState.gold,
 		func(d: int) -> void: GameState.change_gold(d)))
 

@@ -72,13 +72,20 @@ No extra rules: the game as it is.
 
 ### Batsaac
 
-No extra rules: the game as it is.
+- **Devil and Angel Deals** — After a game in which no enemy took any of your Health, a Devil or Angel Room may open, by Isaac's deal chance: 1%, +35% if the floor's boss fell that game, +99% if no enemy took your Health all floor. Less for a while after a door opens. Never on the first game.
 
 ### Hunger
 
 - Your Hunger is the five food icons beside your character at the top left, one full icon per point. Every game you hand in — beaten, missed or escaped — costs 1.
 - The game that empties it costs nothing more. After that, every game you finish and every run you lose costs 2 Health until you eat.
 - Drinking any potion is +1. So is eating: press Eat beside the icons and click a piece of food in your pack or a food relic — it is gone, and you are +1. You cannot eat at 5.
+
+### Devil and Angel Deals
+
+- You FIND deal rooms the way Isaac does, instead of drawing them as events. After any game in which no enemy took your Health — never the first — a door may open before the game's own event.
+- The chance is 1%, +35% if the floor's boss fell that game, and +99% more if no enemy took your Health from the moment that boss walked on. A floor is the stretch from one difficulty-up boss to the next. Book of Revelations adds 17.5%.
+- One door a floor. After one opens the chance is quartered for the rest of that floor and the next, and halved on the one after.
+- The two marks beside your character show the odds: the Devil's and the Angel's share of a door opening after this game.
 
 ### Unidentified equipment
 
@@ -344,8 +351,10 @@ PUT ONE DOWN by dragging it out of your pack onto a free square. A piece on the 
 
 The whole survival model is two numbers, and they are deliberately tiny so they fit on a stream overlay.
 
-- **Health** — Set by your character. Reaching 0 ends the run, immediately, wherever you are.
+- **Health** — Set by your character. Reaching 0 with no Shields left ends the run, immediately, wherever you are.
 - **Shields** — Each stops one hit outright, however big. The Temporary ones a game grants expire when you report it; the plain ones stay until something breaks them.
+
+The Shields that stay keep you alive at 0 Health — even at 0 Max Health — the way soul hearts do in Isaac. A price paid in Health (an event, a Blood Donation Machine, a deal) that runs past your Health takes one of those Shields per point instead. When the last one goes with no Health behind it, the run is over.
 
 ### Everything that can take Health off you
 
@@ -444,6 +453,15 @@ A machine is a thing in the room rather than a room. An event ends when you answ
 Machines draw under the board, and their buttons are greyed rather than hidden when you cannot use them — the button itself tells you why. Jammed. Full. Needs 1 Bomb. A machine is a physical object and its buttons do not disappear because you are broke.
 
 > The Donation Machine's bank is the one number in this game that is not about the current run. It survives your death.
+
+### Devil and Angel Rooms
+
+The Binding of Isaac's deal rooms, as a rare event. One can only be dealt after a game in which no enemy took any of your Health — a hit your Shields stopped does not count against you. Its door shows first; walk in and the statue is there with 2 to 4 items, four only rarely.
+
+- **Devil Room** — Each item costs Max Health by its rarity: 2, 4, 6, 8 for Common to Legendary. A price bigger than your Max Health takes all of it, and you live on only if you hold a Shield. With no Max Health left, a deal costs 3 Shields.
+- **Angel Room** — Every item is free, but take one and the rest vanish.
+- The first deal door of a run is always the Devil's. After that each door has a 50% chance of being the Angel's, and putting 10 Gold into a Donation Machine since the last difficulty up adds another 50% coin flip.
+- Take one Deal with the Devil and no Angel Room will ever open for you again that run. Walk away from your first Devil Room without going in, and the next door is guaranteed to be an Angel's.
 
 ## 🎒 What you carry
 

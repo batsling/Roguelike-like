@@ -133,6 +133,7 @@ func _register_defaults() -> void:
 	register("jam_object", _h_jam_object)
 	register("destroy_object", _h_destroy_object)
 	register("spawn_object", _h_spawn_object)
+	register("enter_deal_room", _h_enter_deal_room)
 	register("spend_bomb", _h_spend_bomb)
 	# The loot-passive verbs (docs/loot-passives.md §3).
 	register("gain_card", _h_gain_card)
@@ -215,8 +216,8 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 # Events charge for things, so every grant above has a mirror here rather than a
 # second code path with its own rounding.
 
-# Max Health down. Floors at 1 — a Max Health of 0 is a run that ended without
-# anything saying so.
+# Max Health down. Floors at 0: a Max Health of 0 is a run that lives on its
+# Shields, and ends when they are gone (GameState.out_of_health).
 #
 # Losing the cap does NOT cost Health: the mirror of `gain_max_hp` is deliberately
 # not symmetrical, because a full container is a gift and an emptied one is a
@@ -226,7 +227,7 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 func _h_lose_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
 	if v != 0:
-		GameState.set_max_hp(maxi(1, GameState.max_hp - v), false)
+		GameState.set_max_hp(maxi(0, GameState.max_hp - v), false)
 
 func _h_lose_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 	var stat: String = String(effect.get("stat", ""))
@@ -1140,6 +1141,12 @@ func _h_destroy_object(effect: Dictionary, ctx: Dictionary) -> void:
 func _h_spawn_object(effect: Dictionary, _ctx: Dictionary) -> void:
 	ObjectSystem.spawn_by_tag(StringName(String(effect.get("tag", ""))),
 		int(effect.get("min", 1)), int(effect.get("max", 1)))
+
+
+# Walk through a Devil or Angel Room's door (DealRooms): the statue replaces the
+# door in the event's picture and the room's items are laid out under it.
+func _h_enter_deal_room(_effect: Dictionary, _ctx: Dictionary) -> void:
+	DealRooms.enter(_rng)
 
 
 # A Bomb spent somewhere that is not the battlefield. Fires the same bomb_used

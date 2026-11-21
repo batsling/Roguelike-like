@@ -813,9 +813,12 @@ def parse_passive(payload):
         part, _, _ = strip_notes(part)
         # Stat names are matched case-insensitively and stored lowercase so a
         # sheet entry like "-2 Strength" still lands on the `strength` field.
-        m = re.match(r"^([+-]?\d+)\s+([a-zA-Z_]+)$", part)
+        # A decimal is kept as one: Book of Revelations' +17.5 deal_chance (the
+        # Devil Deal chance, scripts/runtime/DealRooms.gd) is Isaac's own number.
+        m = re.match(r"^([+-]?\d+(?:\.\d+)?)\s+([a-zA-Z_]+)$", part)
         if m:
-            bonuses[m.group(2).lower()] = int(m.group(1))
+            num = m.group(1)
+            bonuses[m.group(2).lower()] = float(num) if "." in num else int(num)
     return bonuses
 
 

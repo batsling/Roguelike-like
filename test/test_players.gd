@@ -70,11 +70,12 @@ func test_hungers_sentence_says_the_numbers_the_rules_use() -> void:
 	assert_string_contains(line, "lose %d Health" % HungerSystem.STARVE_DAMAGE)
 
 # Batsaac's art is painted, not pixel art: kept at its full size (the transparent
-# margin trimmed), and no mechanics until the owner gives him some.
-func test_batsaac_is_painted_art_with_no_mechanics_yet() -> void:
+# margin trimmed). His one mechanic is the Devil and Angel Deals (the owner, 21 Nov
+# 2026; docs/deal-rooms-design.md, test_deal_rooms.gd).
+func test_batsaac_is_painted_art_with_the_deal_rooms() -> void:
 	var bat: PlayerData = Data.get_player(BATSAAC)
 	assert_not_null(bat)
-	assert_true(bat.mechanics.is_empty())
+	assert_eq(bat.mechanics, [&"devil_and_angel_deals"] as Array[StringName])
 	assert_not_null(bat.portrait)
 	assert_gt(bat.portrait.get_height(), 500, "full resolution, not a thumbnail")
 	assert_null(Achievements.for_player(BATSAAC), "nothing locks him yet")

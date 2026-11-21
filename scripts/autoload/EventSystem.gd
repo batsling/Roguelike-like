@@ -123,6 +123,14 @@ func blockers_for(ev: EventData2, game_id: StringName) -> PackedStringArray:
 		out.append("needs %s" % requirement_text(ev.requirement))
 	if not _play_pools_stocked(ev):
 		out.append("no game carries its play_game tag")
+	# THE DEAL ROOMS (DealRooms). The Angel Room is never dealt by the bag: it is
+	# what a Devil Room's door turns out to be. And a player who FINDS them by
+	# chance (Batsaac) does not also draw them, or one game could pay two.
+	if DealRooms.is_deal_event(ev):
+		if ev.id == DealRooms.ANGEL:
+			out.append("only behind a Devil Room's door")
+		elif DealRooms.active():
+			out.append("this player finds deal rooms by chance")
 	return out
 
 
@@ -148,6 +156,8 @@ const GATE_STAT_NAMES := {
 	"curses": "Liftable Curses",
 	# Cards that could be handed over: not curses, not pinned (A Note For Yourself).
 	"cards": "Cards",
+	# The deal rooms' gate (DealRooms): Health an enemy took this game.
+	"enemy_hp_lost": "Health lost to enemies this game",
 }
 
 # The same names for ONE of the thing — "Needs 1 Bomb", not "Needs 1 Bombs". Only
@@ -706,6 +716,8 @@ func _run_stat(stat: String) -> int:
 		# Cards that could be left behind — A Note For Yourself's gate, since its
 		# Take and Give has to store one.
 		"cards": return EffectSystem.note_candidates().size()
+		# Health an ENEMY took this game — the Devil Room's gate (DealRooms).
+		"enemy_hp_lost": return DealRooms.enemy_hp_lost()
 		_: return -1
 
 
@@ -888,7 +900,9 @@ func possible_health_cost(choice: Dictionary, taken: int) -> int:
 # Would taking this press end the run?
 func is_lethal(choice: Dictionary, taken: int) -> bool:
 	var cost: int = health_cost(choice, taken)
-	return cost > 0 and cost >= GameState.hp
+	# Against the Health AND the Shields behind it: a bill that runs past the
+	# Health comes off them (GameState.change_hp), and the run lives on them.
+	return cost > 0 and cost >= GameState.health_and_shields()
 
 
 # COULD taking this press end the run, without it being certain? False once it is
@@ -897,7 +911,7 @@ func is_possibly_lethal(choice: Dictionary, taken: int) -> bool:
 	if is_lethal(choice, taken):
 		return false
 	var worst: int = possible_health_cost(choice, taken)
-	return worst > 0 and worst >= GameState.hp
+	return worst > 0 and worst >= GameState.health_and_shields()
 
 
 # Either way of dying, for the views: a button that can end the run is painted
@@ -982,12 +996,18 @@ func confirm_deadly(host: Node, choice: Dictionary, taken: int, on_yes: Callable
 	# take the last of your Health is not the same claim as a cost that certainly
 	# will, and the question the player is answering has to be the right one.
 	var body: String = ""
+	# What stands between the player and the end: the Health, and the Shields a
+	# bill falls through to once it is gone (GameState.change_hp).
+	var holding: String = "%d" % GameState.hp
+	if GameState.bonus_shields > 0:
+		holding = "%d Health and %d %s" % [GameState.hp, GameState.bonus_shields,
+			EventSystem.gate_stat_name("bonus_shields", GameState.bonus_shields)]
 	if is_lethal(choice, taken):
-		body = ("%s costs %d Health and you are holding %d. Taking it ends the run."
-			% [String(choice.get("text", "This")), health_cost(choice, taken), GameState.hp])
+		body = ("%s costs %d Health and you are holding %s. Taking it ends the run."
+			% [String(choice.get("text", "This")), health_cost(choice, taken), holding])
 	else:
-		body = ("%s can cost up to %d Health and you are holding %d. If it goes badly, the run ends here."
-			% [String(choice.get("text", "This")), possible_health_cost(choice, taken), GameState.hp])
+		body = ("%s can cost up to %d Health and you are holding %s. If it goes badly, the run ends here."
+			% [String(choice.get("text", "This")), possible_health_cost(choice, taken), holding])
 	var layer := CanvasLayer.new()
 	layer.layer = CONFIRM_LAYER
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS

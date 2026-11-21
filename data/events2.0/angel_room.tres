@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_angel_room"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"angel_room"
+display_name = "Angel Room"
+source_game = "The Binding of Isaac"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {"stat": "enemy_hp_lost", "op": "==", "value": 0, "percent": false}
+trigger = "after"
+rarity = "Rare"
+file = "AngelRoom"
+prompt = ""
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "enter", "text": "Enter", "repeat": "stay", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "enter_deal_room"}], "effects_text": "Walk in", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

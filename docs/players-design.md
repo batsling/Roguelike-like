@@ -31,7 +31,7 @@ Every player is an **original work**, not a character from a real game.
 |---|---|---|---|
 | Basic | none — the game as it is | always | none: the picker draws the word "Basic" |
 | Retro Bat | Hunger, Unidentified Equipment | beat 20 different traditional roguelikes | `images2.0/players/RetroBat.png` |
-| Batsaac | none yet — the owner's to give | always (for now) | `images2.0/players/Batsaac.png` |
+| Batsaac | Devil and Angel Deals (`docs/deal-rooms-design.md`) | always (for now) | `images2.0/players/Batsaac.png` |
 
 Retro Bat was called Batty for its first day (the owner renamed it, 13 Nov 2026);
 its id is `retro_bat`, its achievement `player_retro_bat`.
