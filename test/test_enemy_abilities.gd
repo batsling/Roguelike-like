@@ -359,8 +359,9 @@ func test_drain_on_max_health_moves_the_ceiling_and_the_floor_with_it() -> void:
 
 func test_drain_never_takes_a_run_below_the_floor() -> void:
 	# A stat already at 0 is drained for 0 — the rider reports nothing rather than
-	# writing a negative — and Max Health stops at 1, because the run is lost by
-	# Health reaching 0 and not by its ceiling doing it.
+	# writing a negative — and Max Health stops at 0, never below: a run at 0 Max
+	# Health lives on its Shields (GameState.out_of_health, the owner, 21 Nov 2026;
+	# it stopped at 1 before that).
 	GameState.luck = 0
 	GameState.max_hp = 3
 	GameState.hp = 3
@@ -370,7 +371,7 @@ func test_drain_never_takes_a_run_below_the_floor() -> void:
 	GameLoop2.reset()
 	_put(_enemy([_ability(&"drain", 99, &"max_health", "Max Health")]), Vector2i(1, 0))
 	_turn()
-	assert_eq(GameState.max_hp, 1, "and Max Health bottoms out at one")
+	assert_eq(GameState.max_hp, 0, "and Max Health bottoms out at zero")
 
 func test_drain_only_fires_on_a_hit_that_lands() -> void:
 	# The same contract every other rider keeps — the sheet's wording is "attacks
