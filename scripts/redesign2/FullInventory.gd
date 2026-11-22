@@ -259,7 +259,7 @@ func _status_chip(row: Dictionary) -> Control:
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(r)
 	if sd.image != null:
-		r.add_child(UITheme.crisp_tex(sd.image, 18))
+		r.add_child(UITheme.crisp_tex(Cosmetics.status_art(sd), 18))
 	var l := _line("%s %d" % [sd.display_name, stacks], tint)
 	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	r.add_child(l)

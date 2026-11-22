@@ -101,8 +101,11 @@ as a duration ("1 hour 30 minutes") rather than a bare number, so a fractional
 window reads as a time instead of as "1.5", and `{X:chests}` renders a count of
 chest POINTS as the chests it buys ("1 Huge Chest and 1 Small Chest").
 
-Art: Image -> res://images2.0/statuses/<Image>.png, referenced eagerly (three
-files, unlike the 818 game covers that forced GameData's lazy path).
+Art: Image -> res://images2.0/statuses/<Image>.png, referenced eagerly (seven
+small files, unlike the 818 game covers that forced GameData's lazy path). That
+is each status's BASIC icon, drawn by tools/build_status_art.py; the game
+pictures they used to be are unlocks in images2.0/icons/Statuses/<Status>/, and
+what is drawn is Cosmetics.status_art (22 Nov 2026).
 
   python3 tools/generate_status_tres.py           # regenerate every status
   python3 tools/generate_status_tres.py --list    # print the parse, write nothing

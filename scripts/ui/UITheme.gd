@@ -770,7 +770,7 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 		frame.add_theme_stylebox_override("panel",
 			flat(BG, 4, 2, 1, tint.lerp(BORDER, 0.35)))
 		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		frame.add_child(timed_art(status.image, ADDON_ICON,
+		frame.add_child(timed_art(Cosmetics.status_art(status), ADDON_ICON,
 			int(addon.get("games", 0)) > 0))
 		row.add_child(frame)
 	var l := Label.new()

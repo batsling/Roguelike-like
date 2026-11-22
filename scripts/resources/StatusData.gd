@@ -382,7 +382,8 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 		# colour is the fastest thing on the card and it must not promise a way out
 		# that this body does not offer.
 		"accent": Color(1.0, 0.82, 0.30) if good and not nullified else Color(0.90, 0.26, 0.22),
-		"art": image,
+		# The icon WORN for this status, else its basic one (Cosmetics.status_art).
+		"art": Cosmetics.status_art(self),
 		"lines": lines,
 		"note": decrease_note(which),
 	}

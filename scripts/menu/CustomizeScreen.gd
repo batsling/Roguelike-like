@@ -301,7 +301,7 @@ static func hat_tiles(pl: PlayerData, side: int, on_change: Callable) -> Array:
 # --- icons --------------------------------------------------------------------------
 
 func _build_icons() -> void:
-	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; a set of several changes with the chest's size. A Health icon is your heart and every enemy's.")
+	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; a set of several changes with the chest's size. A Health icon is your heart and every enemy's. A status icon is drawn wherever that status is shown.")
 	for kind in CosmeticCatalog.KINDS:
 		var block := VBoxContainer.new()
 		block.name = "Kind_%s" % kind
@@ -315,6 +315,38 @@ func _build_icons() -> void:
 		var glyph: String = KIND_GLYPHS[kind]
 		for t in slot_tiles(Cosmetics.icon_slot(kind), null, glyph, "Default — %s" % glyph,
 				CosmeticCatalog.icons_of(kind), TILE, _refresh):
+			row.add_child(t)
+		if CosmeticCatalog.icons_of(kind).is_empty():
+			var none := _dim("No icons to earn yet.")
+			none.custom_minimum_size = Vector2(0, TILE)
+			none.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			row.add_child(none)
+	_build_status_icons()
+
+# STATUSES (the owner, 22 Nov 2026): one row each, its BASIC icon as the default
+# tile (the glyph art, StatusData.image) and every game picture earned for it. A
+# status is only ever drawn, so the default is a picture where the kinds above
+# have a glyph; the kind is the status's id.
+func _build_status_icons() -> void:
+	var statuses: Array = Data.all_statuses().duplicate()
+	statuses.sort_custom(func(a, b): return a.display_name < b.display_name)
+	if statuses.is_empty():
+		return
+	_body.add_child(_heading("Statuses"))
+	for st in statuses:
+		var status: StatusData = st
+		var kind := String(status.id)
+		var block := VBoxContainer.new()
+		block.name = "Kind_%s" % kind
+		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		_body.add_child(block)
+		block.add_child(_dim(status.display_name))
+		var row := HFlowContainer.new()
+		row.add_theme_constant_override("h_separation", UITheme.GAP)
+		row.add_theme_constant_override("v_separation", UITheme.GAP)
+		block.add_child(row)
+		for t in slot_tiles(Cosmetics.icon_slot(kind), status.image, "",
+				"Default — %s" % status.display_name, CosmeticCatalog.icons_of(kind), TILE, _refresh):
 			row.add_child(t)
 		if CosmeticCatalog.icons_of(kind).is_empty():
 			var none := _dim("No icons to earn yet.")

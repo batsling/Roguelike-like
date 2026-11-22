@@ -1205,7 +1205,7 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 	# Timed rows carry the clock, like the board's pips do — the row's text says how
 	# many games are left (clock_suffix) and the badge is what makes it findable
 	# without reading the sentence.
-	frame.add_child(UITheme.timed_art(status.image, STATUS_ICON_SIZE, games > 0))
+	frame.add_child(UITheme.timed_art(Cosmetics.status_art(status), STATUS_ICON_SIZE, games > 0))
 	HoverCard.attach(frame, status.hover_card(which, stacks, nullified, games, any_time))
 	return frame
 
@@ -2304,7 +2304,7 @@ func _buff_strip(entry: Dictionary) -> Control:
 		var chip := PanelContainer.new()
 		chip.add_theme_stylebox_override("panel",
 			UITheme.flat(UITheme.BG, 3, 1, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.35)))
-		chip.add_child(UITheme.timed_art(sd.image, BUFF_ICON_SIZE,
+		chip.add_child(UITheme.timed_art(Cosmetics.status_art(sd), BUFF_ICON_SIZE,
 			int(row.get("games", 0)) > 0))
 		HoverCard.attach(chip, sd.hover_card(StatusData.ENEMY, int(row["stacks"]),
 			false, int(row.get("games", 0)), GameLoop2.answered_any_time(entry)))

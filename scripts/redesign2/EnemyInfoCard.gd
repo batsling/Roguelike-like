@@ -183,7 +183,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		# the two places Stun appears on this card are recognisably the same thing.
 		var worth: String = "sits out your next %d lost run%s" % [stun, "" if stun == 1 else "s"]
 		var sd: StatusData = Data.get_status(&"stun")
-		stat_col.add_child(_stat_row_art(sd.image if sd != null else null,
+		stat_col.add_child(_stat_row_art(Cosmetics.status_art(sd),
 			sd.display_name if sd != null else "Stun", worth, Color(0.6, 0.8, 1.0)))
 	top.add_child(stat_col)
 	inner.add_child(top)
@@ -437,7 +437,7 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 		# The clock in the corner for a borrowed status, exactly as the board's pips
 		# draw it — the card and the pip are the same status and must not disagree
 		# about whether it is going away.
-		var art := UITheme.timed_art(status.image, STATUS_ART, games > 0)
+		var art := UITheme.timed_art(Cosmetics.status_art(status), STATUS_ART, games > 0)
 		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(art)
 	var col := VBoxContainer.new()
