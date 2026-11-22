@@ -183,7 +183,20 @@ ICON_STORE = os.path.join(STORE, "icons")
 
 
 def icon_kinds():
-    return sorted(d for d in os.listdir(ICON_ART) if os.path.isdir(os.path.join(ICON_ART, d)))
+    """Every art folder an icon can go in. `Statuses` is a folder of folders, one
+    per status (Statuses/Bleed, Statuses/Poison...), so each of those is a kind of
+    its own and `Statuses` itself is not (build_cosmetics_index.status_kinds)."""
+    out = []
+    for d in sorted(os.listdir(ICON_ART)):
+        path = os.path.join(ICON_ART, d)
+        if not os.path.isdir(path):
+            continue
+        if d == "Statuses":
+            out += ["Statuses/" + s for s in sorted(os.listdir(path))
+                    if os.path.isdir(os.path.join(path, s))]
+        else:
+            out.append(d)
+    return out
 
 
 def icon_candidate(row):
