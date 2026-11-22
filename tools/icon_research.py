@@ -156,7 +156,12 @@ def cmd_add(args):
     out = R.icon_candidate(row)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     open(out, "wb").write(data)
-    R.write_rows("icons", rows + [row])
+    rows.append(row)
+    # Its ID now, not at the next `build`: `sheet` numbers candidates by ID, and a
+    # sheet drawn before `build` named every one "" — so `answer` refused the
+    # owner's numbers off it (22 Nov 2026, the first batch of status icons).
+    R.assign_ids("icons", rows)
+    R.write_rows("icons", rows)
     print(f"candidate: {os.path.relpath(out, R.ROOT)} ({row['Size']}), shown in game as {shown!r} from {game}")
 
 

@@ -1911,6 +1911,36 @@
 			]
 		},
 		{
+			"id": "bleed/bleed_darkest_dungeon_2",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_dead_cells",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "bleed/bleed_mewgenics",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -1926,6 +1956,21 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_rogue_legacy_2",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_brutal_orchestra",
 			"kind": "burn",
 			"name": "Burn",
@@ -1934,6 +1979,81 @@
 				{
 					"name": "Burn",
 					"path": "res://images2.0/icons/Statuses/Burn/Burn_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_darkest_dungeon_2",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_dead_cells",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_mewgenics",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_noita",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_rogue_legacy_2",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Rogue_Legacy_2.png",
 					"min": 0,
 					"max": 10
 				}
