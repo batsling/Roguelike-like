@@ -209,13 +209,16 @@ func test_fire_potion_sets_the_drinker_alight_and_costs_them_nothing_up_front() 
 	assert_gt(GameState.status_stacks(&"burn"), 0, "+3 Burn, and that is the whole cost")
 	assert_false((out["logs"] as Array).is_empty())
 
-func test_a_quaffed_burn_has_NO_clock_on_it() -> void:
+func test_a_quaffed_burn_has_NO_potion_clock_on_it() -> void:
 	# Only the rows whose prose says "until the end of the next combat" are timed.
-	# Burn is a debt, and a debt that expires by itself is a suggestion (§5.2).
+	# A quaffed Burn is OWNED, not borrowed for a game (§5.2): it wears down on
+	# Burn's own clock — a stack a game, since every debuff lasts X games (the
+	# owner, 22 Nov 2026) — rather than all at once when the potion's game ends.
 	PotionSystem.quaff_potion({"type": "potion", "id": &"fire_potion"}, {"rng": Fixtures.rng(11)})
 	var burn: int = GameState.status_stacks(&"burn")
+	assert_eq(GameState.status_games_left(&"burn"), 0, "no potion clock on it")
 	GameLoop2.beat_game(true)
-	assert_eq(GameState.status_stacks(&"burn"), burn, "it is still owed")
+	assert_eq(GameState.status_stacks(&"burn"), burn - 1, "one game worn, the rest still owed")
 
 func test_a_speed_potion_is_borrowed_for_exactly_one_game() -> void:
 	# The whole reason the timed layer was built first (§5.1): the potion is the

@@ -410,9 +410,11 @@ mean the four rows that move real numbers — Block, Fruit Juice, and the two he
 potions — are the roster's reliable half, and the status rows are its swingy half.
 
 **Not everything a potion applies is timed.** Fire Potion's `+3 Burn` on the drinker
-carries **no** clock: Burn is a debt (§13), and a debt that expires by itself is a
-suggestion. Only the rows whose prose says *"until the end of the next combat"* are
-authored with `games=1`.
+carries **no** potion clock: the stacks are OWNED, not borrowed for a game. Since 22
+Nov 2026 every debuff lasts X games, so they wear down one a game on Burn's own
+clock (`Each Game`) rather than all at once when the potion's game ends. Only the
+rows whose prose says *"until the end of the next combat"* are authored with
+`games=1`.
 
 ### 5.3 A clause with a clock has to read that way
 
