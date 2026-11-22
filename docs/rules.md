@@ -491,15 +491,17 @@ A status is first of all a clause bolted onto a GOAL, which is the only currency
 - **A clause** — ANDed onto goals and REQUIRED. On you, it tightens every enemy's goal. On an enemy, just that one's.
 - **A bonus** — An optional extra objective, claimable for a reward and free to ignore.
 - **A demand** — An obligation with a price. It pays nothing for being met, and charges you at the end of any game you did not meet it.
+- **A tick** — A row on an enemy you can tick ANY TIME, the enemy still standing. Ticking it switches the status on for that enemy; unticking switches it off.
 - **A way out** — An alternative to an enemy's goal — do this instead and that enemy is cleared. It counts as a clear and not as a win: nothing about it goes on the record, because you never did what it asked. Never offered on a boss.
 
-The five of them, and what they do in a fight:
+The six of them, and what they do in a fight:
 
 - **Strength** — Every hit that enemy lands is worth 1 more per stack. On YOU, every Stun you deal lands 1 more per stack — a card, a weapon, a scroll, a bomb, an item, each body it reaches. Not the Stun an enemy takes for surviving its goal's hit.
 - **Speed** — It closes one extra tile per stack, every turn — so it reaches you sooner than the board looks like it should.
 - **Dexterity** — It gets a Shield per stack. Each one stops a whole hit and is spent doing it, so a shielded enemy takes an extra goal per shield to put down. On YOU, every time loot gives you Shields you get 1 more per stack — not the Shields for choosing a game.
 - **Marked** — Everything that lands on it is DOUBLED and goes straight through Shields. On YOU it is a debt as well: every game, get 2 achievements in one run of the game you are playing — or a random enemy on the board gains 3 Strength. It lasts a game per stack. On an ENEMY the same condition pays a chest instead, so a marked body is worth engaging.
 - **Burn** — It hits for half. On YOU it is a debt instead: every game, beat the run while skipping or trashing 3 items — or take 3 damage once the enemies have swung. It lasts a game per stack, and stacks no higher than 3. On an ENEMY its goal grows a way out: beat the run while skipping or trashing 3 items. And it burns PAPER: every time Burn lands on you there is a 1-in-4 chance that one random scroll in your pack goes up with it. Pills and potions are safe.
+- **Poison** — On YOU it is a debt: every game, defeat an enemy using a status effect — or take as much damage as you have stacks. It lasts a game per stack. On an ENEMY it is a tick: once you defeat an enemy using a status effect, tick it and that enemy deals 1 less damage per stack, down to 0. It loses a stack every turn it takes.
 - A piece's text shows its Stun and Shield numbers as they will land — GREEN when Strength, Dexterity or an upgrade raised them, RED when a downgrade lowered them. On a "for each" piece the bonus is on each one: Strength 2 makes "Stun 1 for each" Stun 3 for each.
 - Each status says what it does to you and to an enemy separately. Speed is felt by enemies only — you have no tile to close. Marked on YOU doubles every hit you take and goes straight past the shields you were counting on to stop it. Burn's halving is enemies only: there is no attack of yours for a halving to sit on.
 

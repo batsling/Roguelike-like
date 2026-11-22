@@ -39,6 +39,10 @@ Side effect DSL — one clause per cell:
            must <condition>, or <penalty>". The one verb whose payload is what
            you pay rather than what you earn, so it is written after `else ->`.
            Burn's player side.
+  trigger  an ENEMY's row the player may tick ANY TIME, the body still standing:
+           ticking it switches on the status's COMBAT side on that body (Poison:
+           "deals X less damage"). Until it is ticked the combat side does
+           nothing. No reward of its own; never on the player.
   instead  an ALTERNATIVE way to satisfy the goal it hangs off — "<goal> or
            instead <condition>". The goal counts as cleared without its own
            condition ever being set, so the engine banks no record of the beat.
@@ -322,11 +326,11 @@ def _amount(tok: str):
 
 # --- a side's effect cell -------------------------------------------------
 
-MODES = ("goal", "clause", "bonus", "demand", "instead")
+MODES = ("goal", "clause", "bonus", "demand", "instead", "trigger")
 # The verbs that name a REQUIREMENT rather than an offer: nothing is handed over
 # for meeting one, so a `-> reward` on either is an authoring mistake rather than
 # a payout to be silently dropped.
-UNPAID_MODES = ("clause", "instead")
+UNPAID_MODES = ("clause", "instead", "trigger")
 # The modes whose side rides an enemy's GOAL and so can be worded per `Ticked`.
 GOAL_RIDING_MODES = ("clause", "bonus", "instead")
 SIDE_RE = re.compile(
@@ -364,6 +368,14 @@ def parse_side(raw, where):
     pays = (m.group("arrow") or "").startswith("else")
     reward, reward_text = parse_reward(None if pays else m.group("payload"))
     penalty, penalty_text = parse_reward(m.group("payload") if pays else None)
+    # A TRIGGER (Poison, the owner, 22 Nov 2026) is an ENEMY's row the player can
+    # tick ANY TIME, the body still standing: ticking it switches on the status's
+    # combat side on that body. What it pays is that combat side, so it carries no
+    # reward of its own, and the player has no body for it to switch on.
+    if mode == "trigger" and "On Player" in where:
+        raise ValueError("statuses2.0 %s: a `trigger` switches on a status's combat "
+                         "side on the ENEMY it is ticked against — the player side "
+                         "has no body to switch on" % where)
     if mode in UNPAID_MODES and reward:
         raise ValueError("statuses2.0 %s: a `%s` is a requirement, not a "
                          "payout — move the reward to a `bonus` or a `goal`"
@@ -613,8 +625,10 @@ def parse_combat(raw, where, player=False):
                 raise ValueError("statuses2.0 %s: %r is not a multiplier (%r)"
                                  % (where, amount, clause))
             continue
-        if not amount.startswith("+"):
-            raise ValueError("statuses2.0 %s: combat amount %r needs a leading + "
+        # `-N` LOWERS the field (Poison's `damage_dealt -{X}`, the owner, 22 Nov
+        # 2026): the same expression, negated.
+        if not amount.startswith(("+", "-")):
+            raise ValueError("statuses2.0 %s: combat amount %r needs a leading +, - "
                              "or x (%r)" % (where, amount, clause))
         if field not in add_fields:
             raise ValueError("statuses2.0 %s: unknown combat field %r (known: %s)"
@@ -622,7 +636,7 @@ def parse_combat(raw, where, player=False):
         kind, val = _amount(amount[1:])
         # Literal or hole, it is stored as an expression string: one evaluator at
         # runtime rather than two code paths that have to agree.
-        out[field] = str(val)
+        out[field] = str(val) if amount.startswith("+") else "-(%s)" % val
     return out
 
 
@@ -1210,7 +1224,8 @@ def status_tres(row) -> tuple:
     lines.append('id = &"%s"' % sid)
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('kind = &"%s"' % kind)
-    lines.append('source_game = "%s"' % gd_str(_clean(row.get("Game"))))
+    # No game credit (the owner, 22 Nov 2026): a status is an icon now, and its
+    # games are the icons you can earn for it. The sheet's Game column is unread.
     lines.append('stackable = "%s"' % gd_str(_clean(row.get("Stackable")) or "Intensity"))
     lines.append("max_stacks = %d" % max_stacks)
     lines.append('decrease = "%s"' % gd_str(decrease))

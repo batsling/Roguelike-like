@@ -44,6 +44,7 @@ var fulfil_checks: Array = []        # [{check: CheckBox, instance: int}]
 # the key IS the bare id, so the name still reads true for the common case.
 var status_goal_checks: Array = []   # [{check: CheckBox, status: String}]
 var bonus_checks: Array = []         # [{check: CheckBox, instance: int, status: StringName}]
+var trigger_checks: Array = []       # the same, for Poison's tick-any-time rows
 var instead_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
 # Bindings for the event-goal section, cleared with the rest in reset_state.
 # Each entry is {check, index into GameState's array}.
@@ -600,6 +601,7 @@ func _add_body_rows(entry: Dictionary) -> void:
 	# condition would be reading it backwards.
 	_add_clause_rows(entry)
 	_add_instead_rows(entry)
+	_add_trigger_rows(entry)
 	_add_bonus_rows(entry)
 
 # The pennant a `game beaten` body's row leads with, sized and boxed like the
@@ -1073,6 +1075,39 @@ func _add_clause_rows(entry: Dictionary) -> void:
 			String(addon.get("text", ""))],
 			UITheme.addon_color(true), null, instance,
 			_status_mark(sd, stacks, which, false, games, any_time)), false, true)
+
+# A TRIGGER ROW (Poison, the owner, 22 Nov 2026) is ticked ANY TIME, the body
+# still standing, and takes effect AT ONCE: it switches the status's combat side
+# on for that body ("it deals X less damage"). Unticking switches it off again —
+# it has handed nothing over, so it is free to take back, like an armed bonus.
+func _add_trigger_rows(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	var instance: int = int(entry.get("instance", 0))
+	var any_time: bool = GameLoop2.answered_any_time(entry)
+	for row in GameLoop2.trigger_objectives_for(entry):
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var games: int = int(row.get("games", 0))
+		var trow := verify_row(
+			"%s %s%s" % [_status_prefix(sd, stacks),
+				sd.objective_text(StatusData.ENEMY, stacks, any_time),
+				StatusData.clock_suffix(games)],
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
+			_status_mark(sd, stacks, StatusData.ENEMY, false, games, any_time))
+		_add_row(trow["row"], false, true)
+		var cb: CheckBox = trow["check"]
+		if cb == null:
+			continue
+		trigger_checks.append({"check": cb, "instance": instance, "status": sd.id})
+		if GameLoop2.is_triggered(entry, sd.id):
+			cb.set_pressed_no_signal(true)
+		cb.toggled.connect(func(on: bool) -> void:
+			if cb.disabled:
+				return
+			if GameLoop2.set_triggered(instance, sd.id, on) and on:
+				_announce("%s on %s: it deals %d less damage." % [sd.display_name,
+					enemy_name_of(instance), stacks], UITheme.GOLD))
 
 func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 	if entry.is_empty():
@@ -1716,6 +1751,7 @@ func reset_state() -> void:
 	status_goal_checks.clear()
 	winning_rows.clear()
 	bonus_checks.clear()
+	trigger_checks.clear()
 	instead_checks.clear()
 	event_goal_checks.clear()
 	# Rows held back for the bottom belong to ONE build. A build that never reached

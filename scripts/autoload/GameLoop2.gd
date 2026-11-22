@@ -317,6 +317,9 @@ const BODY_KEYS := {
 	"stolen": true, "fleeing": true, "tags": true,
 	"corpse": true, "corpse_revive": true, "progress": true,
 	"rift": true,
+	# Poison's TRIGGER rows ticked against this body: {status id (String): true}.
+	# Its combat side counts only once ticked (`set_triggered`, `enemy_combat`).
+	"triggered": true,
 }
 
 # The keys every body has from birth. The rest are the ability fields (§7.6),
@@ -5941,6 +5944,8 @@ func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int,
 			total = maxi(int(held.get(status_id, 0)), status.cap_stacks(total))
 		if total <= 0:
 			held.erase(status_id)
+			# Worn off: a fresh application has to be ticked again.
+			(entry.get("triggered", {}) as Dictionary).erase(String(status_id))
 		else:
 			held[status_id] = total
 		entry["statuses"] = held
@@ -6217,6 +6222,15 @@ func goal_addons_for(entry: Dictionary) -> Array:
 			"text": "%s%s" % [asd.alternative_text(StatusData.ENEMY, int(alt["stacks"]), any_time),
 				StatusData.clock_suffix(int(alt.get("games", 0)))],
 		})
+	for trig in trigger_objectives_for(entry):
+		var tsd: StatusData = trig["status"]
+		out.append({
+			"status": tsd, "stacks": int(trig["stacks"]),
+			"games": int(trig.get("games", 0)),
+			"kind": "trigger", "source": "enemy", "required": false,
+			"joiner": "",
+			"text": tsd.objective_text(StatusData.ENEMY, int(trig["stacks"]), any_time),
+		})
 	for bonus in bonus_objectives_for(entry):
 		var bsd: StatusData = bonus["status"]
 		out.append({
@@ -6252,7 +6266,49 @@ func goal_addons_for(entry: Dictionary) -> Array:
 
 # What every status on `entry` adds up to in combat.
 func enemy_combat(entry: Dictionary) -> Dictionary:
-	return StatusData.combat_totals(entry_statuses_effective(entry), StatusData.ENEMY)
+	var held: Dictionary = entry_statuses_effective(entry)
+	# A TRIGGER status (Poison) does nothing on the board until its row is ticked
+	# against this body (the owner, 22 Nov 2026).
+	var untriggered: Array = []
+	for id in held:
+		var sd: StatusData = Data.get_status(StringName(id))
+		if sd != null and sd.is_trigger(StatusData.ENEMY) and not is_triggered(entry, sd.id):
+			untriggered.append(id)
+	if not untriggered.is_empty():
+		held = held.duplicate()
+		for id in untriggered:
+			held.erase(id)
+	return StatusData.combat_totals(held, StatusData.ENEMY)
+
+# --- trigger rows (Poison, the owner, 22 Nov 2026) --------------------------
+#
+# A `trigger` side is a row on an ENEMY's goal the player may tick ANY TIME, the
+# body still standing: "Tick when you defeat an enemy using a status effect: it
+# deals X less damage". Ticking switches the status's combat side on for that body
+# (`enemy_combat`); unticking switches it off; the status wearing away clears it.
+
+func trigger_objectives_for(entry: Dictionary) -> Array:
+	var out: Array = []
+	for row in enemy_statuses(entry):
+		if (row["status"] as StatusData).is_trigger(StatusData.ENEMY):
+			out.append(row)
+	return out
+
+func is_triggered(entry: Dictionary, status_id: StringName) -> bool:
+	return bool((entry.get("triggered", {}) as Dictionary).get(String(status_id), false))
+
+func set_triggered(instance: int, status_id: StringName, on: bool = true) -> bool:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty() or int((entry.get("statuses", {}) as Dictionary).get(status_id, 0)) <= 0:
+		return false
+	var done: Dictionary = entry.get("triggered", {})
+	if on:
+		done[String(status_id)] = true
+	else:
+		done.erase(String(status_id))
+	entry["triggered"] = done
+	loop_changed.emit()
+	return true
 
 # --- Stun (§13.2, §13.4) --------------------------------------------------
 

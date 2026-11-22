@@ -2016,3 +2016,64 @@ func test_the_combat_line_says_the_rolls_rather_than_an_average() -> void:
 
 func test_stuns_combat_line_says_it_loses_its_turn() -> void:
 	assert_string_contains(Data.get_status(&"stun").combat_line(1), "loses its turn")
+
+# --- Poison (the owner, 22 Nov 2026) ------------------------------------------
+#
+# On you: defeat an enemy using a status effect, or take damage equal to the
+# stacks; a stack goes each game. On an enemy: a row the player may tick ANY TIME
+# ("tick when you defeat an enemy using a status effect: it deals X less damage"),
+# which switches its weakening on for that body, down to 0; a stack goes each turn.
+
+func test_poison_on_you_bills_its_stacks_and_wears_per_game() -> void:
+	GameState.apply_status(&"poison", 3)
+	GameState.shields = 0
+	var before: int = GameState.hp
+	Fixtures.choose_solo(_enemy("Beat it"))
+	GameLoop2.beat_game(true)
+	assert_eq(before - GameState.hp, 3, "damage equal to the stacks")
+	assert_eq(GameState.status_stacks(&"poison"), 2, "and one stack gone with the game")
+
+func test_answering_poison_costs_nothing() -> void:
+	GameState.apply_status(&"poison", 2)
+	var before: int = GameState.hp
+	Fixtures.choose_solo(_enemy("Beat it"))
+	GameLoop2.beat_game(true, [], {"status_goals": [&"poison"]})
+	assert_eq(GameState.hp, before, "met, so no bill")
+
+func test_poison_on_an_enemy_weakens_it_only_once_ticked() -> void:
+	var e: GoalEnemyData = _enemy("Beat it")
+	e.damage = 3
+	var inst: int = Fixtures.choose_solo(e)
+	GameLoop2.apply_enemy_status(&"poison", 2, "current")
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	var base: int = GameLoop2.enemy_damage(entry)
+	assert_eq(GameLoop2.trigger_objectives_for(entry).size(), 1, "a row to tick")
+	assert_true(GameLoop2.set_triggered(inst, &"poison", true), "ticked, the body still standing")
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.entry_for(inst)), base - 2, "it deals 2 less")
+	GameLoop2.set_triggered(inst, &"poison", false)
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.entry_for(inst)), base, "untick, and it is back")
+
+func test_poison_can_take_an_attack_to_zero() -> void:
+	var e: GoalEnemyData = _enemy("Beat it")
+	e.damage = 1
+	var inst: int = Fixtures.choose_solo(e)
+	GameLoop2.apply_enemy_status(&"poison", 5, "current")
+	GameLoop2.set_triggered(inst, &"poison", true)
+	assert_eq(GameLoop2.enemy_damage(GameLoop2.entry_for(inst)), 0, "down to 0, never below")
+
+func test_poisons_rows_read_as_the_owner_wrote_them() -> void:
+	var p: StatusData = Data.get_status(&"poison")
+	assert_eq(p.objective_text(StatusData.PLAYER, 2),
+		"You must defeat an enemy using a status effect, or take 2 Damage")
+	assert_eq(p.objective_text(StatusData.ENEMY, 2),
+		"Tick when you defeat an enemy using a status effect: it deals 2 less damage")
+	assert_eq(p.decrease, "Each Turn", "a turn on an enemy, a game on you")
+	assert_true(p.wears_per_turn() and p.wears_per_game())
+
+func test_a_status_carries_no_game_credit() -> void:
+	# The owner, 22 Nov 2026: a status is an icon now, and its games are the icons
+	# you can earn for it.
+	for st in Data.all_statuses():
+		var sd: StatusData = st
+		assert_eq(sd.source_game, "", "%s names no game" % sd.id)
+		assert_false(String(sd.hover_card(StatusData.ENEMY, 1)["subtitle"]).contains("Slay the Spire"))

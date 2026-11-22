@@ -1986,6 +1986,51 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_mewgenics",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_slay_the_spire",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_slay_the_spire_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_mewgenics",
 			"kind": "speed",
 			"name": "Speed",

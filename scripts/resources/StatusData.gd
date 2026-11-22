@@ -219,6 +219,11 @@ func is_demand(which: StringName) -> bool:
 	return mode_for(which) == &"demand"
 
 # An alternative that satisfies the goal it hangs off (Burn on an enemy).
+# A row the player may tick any time on the ENEMY, which switches on this status's
+# combat side on that body (Poison). GameLoop2.set_triggered / is_triggered.
+func is_trigger(which: StringName) -> bool:
+	return mode_for(which) == &"trigger"
+
 func is_alternative(which: StringName) -> bool:
 	return mode_for(which) == &"instead"
 
@@ -305,6 +310,10 @@ func alternative_text(which: StringName, stacks: int, any_time: bool = false) ->
 # advertise what skipping it forfeits, and a row that charges has to advertise
 # what missing it costs.
 func objective_text(which: StringName, stacks: int, any_time: bool = false) -> String:
+	if is_trigger(which):
+		var does: String = combat_line(stacks, which)
+		return "Tick when %s%s" % [condition_text(which, stacks, any_time),
+			(": it %s" % does) if does != "" else ""]
 	if is_demand(which):
 		var owed: String = "You must %s" % condition_text(which, stacks, any_time)
 		var price: String = penalty_at(which, stacks)
@@ -347,12 +356,14 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 			sub = "Obligation  ·  " + sub
 		&"instead":
 			sub = "Way out  ·  " + sub
-	if source_game != "":
-		sub += "  ·  %s" % source_game
+		&"trigger":
+			sub = "Tick any time  ·  " + sub
+	# NO GAME CREDIT (the owner, 22 Nov 2026): a status is an icon now, and the
+	# games it comes from are the icons you can earn for it (docs/customization.md).
 
 	var lines: Array = []
 	match mode:
-		&"goal", &"bonus", &"demand":
+		&"goal", &"bonus", &"demand", &"trigger":
 			lines.append(objective_text(which, stacks, any_time))
 		&"clause":
 			lines.append(("Every enemy's goal also needs: %s" if which == PLAYER
@@ -459,8 +470,6 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 	var head: String = "%s %d" % [display_name, stacks]
 	if is_capped():
 		head += "/%d" % max_stacks
-	if source_game != "":
-		head += "   (%s)" % source_game
 	var body: String = ""
 	match mode_for(which):
 		&"goal":
@@ -472,6 +481,8 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 				else "This enemy's goal also needs: %s") % clause_text(which, stacks, any_time)
 		&"demand":
 			body = "Every game — %s" % objective_text(which, stacks, any_time)
+		&"trigger":
+			body = objective_text(which, stacks, any_time)
 		&"instead":
 			if nullified:
 				body = "Nullified — a boss comes off the board on its goal alone, " \
@@ -678,8 +689,10 @@ func combat_line(stacks: int, which: StringName = ENEMY) -> String:
 		return ""
 	var parts: PackedStringArray = []
 	var dealt: int = combat_bonus(&"damage_dealt", stacks, which)
-	if dealt != 0:
+	if dealt > 0:
 		parts.append("deals %+d damage" % dealt)
+	elif dealt < 0:
+		parts.append("deals %d less damage" % -dealt)
 	var dealt_mult: float = combat_mult(&"damage_dealt", which)
 	if not is_equal_approx(dealt_mult, 1.0):
 		parts.append("deals %sx damage" % format_number(dealt_mult))

@@ -202,10 +202,13 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   (under 128 px the UI would treat it as pixel art and break its outlines into
   dots), and drawn through `UITheme.timed_art`, which shrinks any big picture
   once with Lanczos to its exact screen size (💪 Strength, ✋ Dexterity, 🪽 Speed, 🔥 Burn, 🩸 Bleed,
-  🎯 Marked, 💫 Stun, the owner's picks). The game picture each status used to be
+  🎯 Marked, 💫 Stun, ☣ Poison, the owner's picks). The game picture each status used to be
   is that game's unlock in `images2.0/icons/Statuses/<Status>/` (Slay the Spire's
   Strength, Dexterity and Stun; Brutal Orchestra's Burn; Mewgenics' Speed, Bleed
-  and Marked), carrying `"status": true` in the index. **Draw a status with
+  and Marked; Poison's are Slay the Spire's, Slay the Spire 2's and Mewgenics'
+  drop, the last drawn from the wiki's SVG at 390 px), carrying `"status": true`
+  in the index. A status names no game of its own any more: these icons are its
+  games. **Draw a status with
   `Cosmetics.status_art(status)`, never `status.image`**: the board's pips, the
   checklist rows and buff strip, the enemy card, the inventory, the hover card
   (`StatusData.hover_card`) and the OBS overlay all do. The Icons tab lists them

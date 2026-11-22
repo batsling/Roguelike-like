@@ -927,11 +927,14 @@ static func _ch_pack() -> Dictionary:
 				+ "free to ignore."),
 			_kv("A demand", "An obligation with a price. It pays nothing for being "
 				+ "met, and charges you at the end of any game you did not meet it."),
+			_kv("A tick", "A row on an enemy you can tick ANY TIME, the enemy still "
+				+ "standing. Ticking it switches the status on for that enemy; "
+				+ "unticking switches it off."),
 			_kv("A way out", "An alternative to an enemy's goal — do this instead "
 				+ "and that enemy is cleared. It counts as a clear and not as a "
 				+ "win: nothing about it goes on the record, because you never did "
 				+ "what it asked. Never offered on a boss."),
-			_p("The five of them, and what they do in a fight:"),
+			_p("The six of them, and what they do in a fight:"),
 			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack. "
 				+ "On YOU, every Stun you deal lands 1 more per stack — a card, a "
 				+ "weapon, a scroll, a bomb, an item, each body it reaches. Not "
@@ -957,6 +960,12 @@ static func _ch_pack() -> Dictionary:
 				+ "PAPER: every time Burn lands on you there is a 1-in-4 chance "
 				+ "that one random scroll in your pack goes up with it. Pills "
 				+ "and potions are safe."),
+			_kv("Poison", "On YOU it is a debt: every game, defeat an enemy using a "
+				+ "status effect — or take as much damage as you have stacks. It "
+				+ "lasts a game per stack. On an ENEMY it is a tick: once you "
+				+ "defeat an enemy using a status effect, tick it and that enemy "
+				+ "deals 1 less damage per stack, down to 0. It loses a stack every "
+				+ "turn it takes."),
 			_b("A piece's text shows its Stun and Shield numbers as they will land — "
 				+ "GREEN when Strength, Dexterity or an upgrade raised them, RED when a "
 				+ "downgrade lowered them. On a \"for each\" piece the bonus is on "

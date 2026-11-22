@@ -8,7 +8,6 @@ script = ExtResource("1_status")
 id = &"dexterity"
 display_name = "Dexterity"
 kind = &"buff"
-source_game = "Slay the Spire"
 stackable = "Intensity"
 max_stacks = 0
 decrease = "N/A"

@@ -3416,6 +3416,17 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 | Marked | `demand "get 2 achievements in one run" else -> apply_status strength 3 target=random` | `bonus "you get 2 achievements in one run" -> gain_chest reward {X}` |
 | Dexterity | `goal "a boss was beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat a boss without getting hit"` |
 | Burn | `demand "beat the run while skipping or trashing 3 items/upgrades" else -> take_damage 3` | `instead "beat the run while skipping or trashing 3 items/upgrades"` |
+| Poison | `demand "defeat an enemy using a status effect" else -> take_damage {X}` | `trigger "you defeat an enemy using a status effect"` (combat: `damage_dealt -{X}`) |
+
+**POISON, and the sixth mode, `trigger`** (the owner, 22 Nov 2026). On you,
+Poison is a demand whose bill is its stacks. On an enemy it is a row the player
+may tick ANY TIME, the body still standing — unlike a `bonus`, which pays only
+once its body is cleared. Ticking it switches the status's combat side on for
+that body (`GameLoop2.set_triggered`, the body key `triggered`), so a ticked
+Poison makes the enemy deal X less damage, down to 0; unticking switches it off,
+and the status wearing away clears it. `Each Turn`: a stack a turn on an enemy,
+a game on you. Statuses carry no game credit any more: the sheet's `Game` column
+is empty and unread, and a status's games are the icons you can earn for it.
 
 **SIMPLIFIED, 22 Nov 2026 (the owner).** No condition carries X any more: on
 Dexterity X is the chest's size (Strength and Speed pay only their Bash and
@@ -3505,6 +3516,7 @@ would only make it a worse item.
 | **Dexterity** | Buff | Slay the Spire | a boss was beaten without getting hit | [chest reward X] | +X Shields |
 | **Marked** | Debuff | Mewgenics | you get 2 achievements in one run; lasts X games | [chest reward X] on an enemy; on the player, missing it gives a random enemy 3 Strength | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | beat the run while skipping or trashing 3 items/upgrades; lasts X games | *nothing* — it charges 3 Damage for being missed | deals half damage |
+| **Poison** | Debuff | — | defeat an enemy using a status effect; lasts X games | *nothing* on you — it charges X Damage for being missed; on an enemy a tick-any-time row | once ticked, deals X less damage (to 0) |
 | **Bleed** | Debuff | Mewgenics | don't heal intentionally | *nothing* on the player — it charges 3 Damage for being missed; [chest reward X] on an enemy | X separate 50% rolls of 1 damage **to itself** when it attacks |
 | **Stun** | Debuff | Slay the Spire | *none — no goal side on either end* | *none* | loses its turn |
 

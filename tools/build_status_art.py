@@ -55,6 +55,7 @@ STATUSES = {
 	"Bleed": ("\U0001FA78", RED),         # 🩸 drop of blood
 	"Marked": ("\U0001F3AF", RED),        # 🎯 target
 	"Stun": ("\U0001F4AB", RED),          # 💫 dizzy star
+	"Poison": ("\u2623", RED),           # ☣ biohazard (22 Nov 2026)
 }
 
 # Where a glyph is looked for, best first (the same priority as the UI's chain).
