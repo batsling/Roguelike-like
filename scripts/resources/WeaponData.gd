@@ -42,6 +42,12 @@ extends Resource
 # Stun laid on every enemy the area covers, ONCE per enemy however many of its
 # squares are covered. Before the pack's bonuses (WeaponSystem.stun_for).
 @export var stun: int = 0
+# STATUSES laid with the Stun, on every enemy covered, once each — status id ->
+# stacks, in the order the sheet's Effect writes them (Rusty Razor's
+# `stun 1, poison 1, bleed 1` is {"poison": 1, "bleed": 1}). They land after the
+# Stun and before any push, as the player's (GameLoop2.player_stun: Empty Syringe
+# adds to each). Not grown by an upgrade or a roll, which move the Stun only.
+@export var statuses: Dictionary = {}
 # After the Stun, every enemy covered is shoved `push` squares toward `push_dir`
 # ("right" away from you, "left" toward you, "up", "down") — Hero Longsword's
 # `push right 1`. Free, and as far as it fits (GameLoop2.shove). 0 for no push.

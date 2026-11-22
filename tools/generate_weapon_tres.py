@@ -39,6 +39,9 @@ off their own goal.
                     bounce N            a `ray` bounces N times, mirrored off
                                         each wall or enemy it meets, before it
                                         stops (refused on any other Aim)
+                    <status> N          N stacks of a status (any id in
+                                        data/statuses2.0/: poison, bleed...) on
+                                        every enemy covered, after the Stun
                   Anything else refuses.
   Type            Melee | Ranged — what kind of weapon it is (blank: Melee).
   Passive         the prose the player reads.
@@ -136,11 +139,24 @@ def check_area(raw, name):
     return text
 
 
+STATUS_DIR = os.path.join(PROJECT_ROOT, "data", "statuses2.0")
+
+
+def status_ids():
+    """Every status id the game has, from data/statuses2.0/ (generated first)."""
+    if not os.path.isdir(STATUS_DIR):
+        return set()
+    return {f[:-5] for f in os.listdir(STATUS_DIR) if f.endswith(".tres")}
+
+
 def parse_effect(raw, name):
-    """(stun, push_dir, push, bounce) from `stun N[, push <dir> N][, bounce N]`."""
+    """(stun, push_dir, push, bounce, statuses) from
+    `stun N[, <status> N...][, push <dir> N][, bounce N]`."""
     stun = None
     push_dir, push = "", 0
     bounce = None
+    statuses = {}
+    known = status_ids()
     for part in [p.strip() for p in (_clean(raw) or "").lower().split(",") if p.strip()]:
         m = re.fullmatch(r"stun\s+(\d+)", part)
         if m and stun is None:
@@ -154,11 +170,16 @@ def parse_effect(raw, name):
         if m and bounce is None:
             bounce = int(m.group(1))
             continue
-        raise ValueError("weapon %r: Effect %r — %r is not `stun N`, "
+        m = re.fullmatch(r"([a-z_]+)\s+(\d+)", part)
+        if m and m.group(1) in known and m.group(1) != "stun" \
+                and m.group(1) not in statuses and int(m.group(2)) > 0:
+            statuses[m.group(1)] = int(m.group(2))
+            continue
+        raise ValueError("weapon %r: Effect %r — %r is not `stun N`, `<status> N`, "
                          "`push right|left|up|down N` or `bounce N`" % (name, raw, part))
     if stun is None:
         raise ValueError("weapon %r: Effect %r has no `stun N`" % (name, raw))
-    return stun, push_dir, push, bounce
+    return stun, push_dir, push, bounce, statuses
 
 
 def parse_type(raw, name):
@@ -175,7 +196,7 @@ def weapon_tres(row) -> tuple:
     w, h = parse_size(row.get("Size"), name)
     aim, aim_col, aim_bounce = parse_aim(row.get("Aim"), name)
     area = check_area(row.get("Area"), name)
-    stun, push_dir, push, fx_bounce = parse_effect(row.get("Effect"), name)
+    stun, push_dir, push, fx_bounce, statuses = parse_effect(row.get("Effect"), name)
     if aim_bounce is not None and fx_bounce is not None and aim_bounce != fx_bounce:
         raise ValueError("weapon %r: bounce %d in Aim but bounce %d in Effect"
                          % (name, aim_bounce, fx_bounce))
@@ -223,6 +244,7 @@ def weapon_tres(row) -> tuple:
         "bounce = %d" % bounce,
         'area = "%s"' % items.gd_str(area),
         "stun = %d" % stun,
+    ] + (["statuses = %s" % gd(statuses)] if statuses else []) + [
         'push_dir = "%s"' % push_dir,
         "push = %d" % push,
         'weapon_type = "%s"' % wtype,

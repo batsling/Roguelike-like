@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Mewgenics' Bleed and Poison pieces (22 Nov 2026).** The owner: "Let's add
+  some mewgenics items that have to do with the bleed and poison statuses". Two
+  relics: Empty Syringe (syringe; +1 to every Bleed or Poison you lay, through
+  `GameLoop2.player_stun`, which now grows every status the player lays and not
+  only Stun, so potions, wands and a card's bounces ask it too) and Bee Stinger
+  (bug, bee; every enemy a weapon or an attack stuns gains 1 Poison, Envenom's
+  `enemy_stunned`). Two weapons, both one square of the front column: Rusty Razor
+  (1x1, 2 charges, `stun 1, poison 1, bleed 1`, "Defeat an enemy with a rusty
+  weapon") and Shard of Glass (glass, 1x1, 3 charges, `stun 1, bleed 1`, "Break
+  glass 5 times"). A weapon's Effect cell takes `<status> N` now. Rarities and art
+  from the Mewgenics wiki (its `ITEM_*.svg`, drawn at 800 px).
+
 - **The Silent's poison cards (22 Nov 2026).** The owner: "lets actually make
   poison work in game by adding some slay the spire cards". Poisoned Stab (Stun 1
   and 2 Poison; Upgrade Stun, Poison), Deadly Poison (3 Poison; Upgrade Poison),

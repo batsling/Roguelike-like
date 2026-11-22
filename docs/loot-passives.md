@@ -511,7 +511,7 @@ N draws over the debuffs you carry, each taking one stack off.
 
 A **weapon** sits in the pack like a trinket (it has a footprint and neighbours),
 is **aimed at the board like a thrown potion**, and **charges off its own goal**.
-Eleven, all from the `weapons` sheet (`tools/generate_weapon_tres.py` →
+Thirteen, all from the `weapons` sheet (`tools/generate_weapon_tres.py` →
 `data/weapons2.0/`, `WeaponData`; runtime in `scripts/runtime/WeaponSystem.gd`).
 
 **Charging.** A weapon is found **empty**. Its goal (the sheet's `Goal` column,
@@ -558,6 +558,22 @@ new words too). The generator refuses an Area or Aim it cannot read.
 `stun 2, push right 1`: after the Stun lands, every body it covered is shoved one
 square back — free (`GameLoop2.shove`, not the Push verb), farthest-first so a line
 moves together, as far as each fits. The **Type** column is `Melee` or `Ranged`.
+
+**A status in the Effect cell** (22 Nov 2026, Mewgenics' Rusty Razor and Shard of
+Glass) is `<status> N` with any id from `data/statuses2.0/`: `stun 1, poison 1,
+bleed 1`. It lands on every enemy covered, once each, after the Stun and its hooks
+(`weapon_stunned`, `enemy_stunned`) and before any push (`WeaponData.statuses`, in
+the sheet's order). An upgrade or a roll moves the Stun only. The swing's line says
+them beside the Stun ("1 Stun, 1 Poison and 1 Bleed to every enemy in a single
+square"), live like the Stun.
+
+**Empty Syringe** (a relic, `status_amplify: +1 bleed, +1 poison`) adds 1 to every
+Bleed or Poison the PLAYER lays on a body. It is read in the funnel Strength already
+used, `GameLoop2.player_stun`, which now grows every status and not only Stun, so
+a weapon's status, a card (its bounces each count), a thrown potion, a wand zap, a
+scroll and a relic's `apply_status` (Bee Stinger's Poison) all pick it up. The
+ground does not, and neither does anything an enemy lays. **Bee Stinger** is
+Envenom as a relic: `enemy_stunned: apply_status poison 1 target=enemy`.
 
 **What the board shows afterwards.** Every swing writes `GameLoop2.last_strike`
 — each strike's squares and the bodies it covered — and the board washes those

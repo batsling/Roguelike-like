@@ -52,7 +52,7 @@ rather than trusting them later.
 | **The map** | 1,000 real games (612 owned, 28 Oct), the influence graph between them, rifts that pull off-map games in, and an Atlas star chart of the whole catalogue |
 | **Characters** | 12, each with a level-up goal; Mysterious Mask adds a second |
 | **Enemies** | 66 goal-enemies and 50 bosses (some with phases) across four game types, 31 abilities, 7 statuses, tile effects and units on the board |
-| **Things you carry** | 77 relics, plus eight kinds of loot in a shaped pack: 9 scrolls, 10 pills and 15 potions (each identified per run), 37 cards, 12 wands, 22 trinkets, 5 bags, 11 weapons with 6 evolutions |
+| **Things you carry** | 77 relics, plus eight kinds of loot in a shaped pack: 9 scrolls, 10 pills and 15 potions (each identified per run), 37 cards, 12 wands, 22 trinkets, 5 bags, 13 weapons with 6 evolutions |
 | **Between games** | 16 events, 2 machines, 3 curse goals, shops opened off the shop bar with 4 shopkeepers, and the end-of-session Camp |
 | **Difficulty** | Amulet pressure, a tier ladder stepped by spawns, boss capstones, Fractures 1–10 and Fracture 10's Collapse (carry the Amulet home) |
 | **Across runs** | Profiles, game and character ranks, the Collection, a tier list, notes per goal, Run History, custom runs with seeds |

@@ -4520,9 +4520,16 @@ func stun(instance: int, stacks: int = 1, by_player: bool = true) -> bool:
 # a card's `_hit_enemies`, and an item's or a scroll's `apply_status` aimed at the
 # board. The ground does not (a Web's tile stun is the tile's, every turn, and +X
 # a turn would hold a body in place for good), and neither does the goal hit.
+#
+# EMPTY SYRINGE (22 Nov 2026) is the same funnel for every OTHER status: a relic's
+# `status_amplify` (+1 Bleed, +1 Poison) adds to each application the player lays
+# on a body, so a thrown potion, a wand zap, a card's bounce and a weapon's Poison
+# all ask here too (`GameState.status_amplify_bonus`).
 func player_stun(status_id: StringName, stacks: int) -> int:
-	if status_id != &"stun" or stacks <= 0:
+	if stacks <= 0:
 		return stacks
+	if status_id != &"stun":
+		return stacks + GameState.status_amplify_bonus(status_id)
 	return stacks + GameState.stun_dealt_bonus()
 
 # How many turns `entry` is going to sit out. The one place the number is read off

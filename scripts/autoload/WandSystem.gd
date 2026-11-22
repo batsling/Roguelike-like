@@ -525,6 +525,9 @@ func _zap_status(op: Dictionary, cell, out: Dictionary) -> bool:
 		out["logs"].append("You gain +%d %s%s." % [
 			applied, status.display_name, StatusData.clock_suffix(games)])
 		return true
+	# On a body it is the player's zap, so Empty Syringe adds to a Poison or a
+	# Bleed (GameLoop2.player_stun) — the player's own side above is left alone.
+	stacks = GameLoop2.player_stun(status.id, stacks)
 	var landed: int = 0
 	for inst in GameLoop2.area_instances(_cells_for(op, cell)):
 		if GameLoop2.apply_status_to(inst, status.id, stacks, games) > 0:
