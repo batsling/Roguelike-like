@@ -2333,7 +2333,7 @@ func test_a_borrowed_status_wears_the_clock_and_an_owned_one_does_not() -> void:
 func _timers_on(node: Node) -> int:
 	var found: int = 0
 	for tr in node.find_children("*", "TextureRect", true, false):
-		if (tr as TextureRect).texture == UITheme.TIMER_ART:
+		if (tr as TextureRect).has_meta(UITheme.TIMER_META):
 			found += 1
 	return found
 

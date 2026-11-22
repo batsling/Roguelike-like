@@ -697,6 +697,7 @@ const TIMER_ART: Texture2D = preload("res://images2.0/general/Timer.png")
 # recognisable with a bite out of one corner, and an unreadable badge is worth
 # nothing at any size.
 const TIMER_FRACTION: float = 0.5
+const TIMER_META := &"timer_badge"
 const TIMER_MIN: int = 14
 const TIMER_OVERHANG: float = 0.3
 
@@ -729,6 +730,9 @@ static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
 	if clock != null and not is_small_art(clock):
 		shown_clock = shrunk(clock, roundi(badge_side * main_scale()))
 	var badge := crisp_tex(shown_clock, badge_side, shown_clock != clock)
+	# Marked, because its texture is a shrunk copy (or a worn icon), not TIMER_ART:
+	# what finds a clock badge asks for this rather than comparing pictures.
+	badge.set_meta(TIMER_META, true)
 	var edge: float = badge.custom_minimum_size.x
 	# Bottom-right, hanging off by TIMER_OVERHANG of its own edge. Anchored rather
 	# than laid out: the clock is drawn OVER the art, and a container would push the
