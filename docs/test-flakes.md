@@ -287,3 +287,11 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     relics whose pickup effects heal. The test now asserts the FIRST
     `hp_changed` (the price, taken before the relic) instead of where Health
     ends up.
+  - `test_drawn_map.gd::test_every_rift_is_a_seam_between_its_two_games` failed
+    in CI (PR #371) at "bowed, so it never reads as an influence line" with
+    0.17 > 1.0. **A length in SCREEN pixels at the whole-map zoom**: the view
+    opens on the whole drawn map, where a rift between two close games is a few
+    pixels long, and the bow (at least `RIFT_BOWS[0]` of the chord) came to under
+    a pixel. A probe over 40 runs found a 206-unit chord drawn 6.9px long bowing
+    0.55px — the curve was right, the unit was wrong. The test now measures the
+    bow in MAP units against the chord's own length.
