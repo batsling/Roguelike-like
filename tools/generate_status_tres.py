@@ -71,6 +71,8 @@ the HUD tint and the collection filter, nothing more.
                  a successful coin flip would last twice as long as it reads.
   Each Turn      a stack goes at the end of every turn the body takes — Stun, which
                  is what "lasts for X turns" means.
+  Each Game      a stack goes at the end of every game the PLAYER holds it, and
+                 never on an enemy — Burn and Marked, "This lasts for X games".
 
 The last two are facts about the COMBAT side rather than the goal side, so they set
 `wear` instead of the sides' `decay`. ON THE PLAYER BOTH MEAN "PER GAME": the player
@@ -78,9 +80,9 @@ does not attack and does not take turns, the game is their turn, and that is wha
 "This lasts for X games" on Bleed's and Stun's player sides is saying.
 
 `Stackable` says how a second application combines — `Intensity` raises X — and
-may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. Burn
-needs one because its condition gets EASIER per stack (4-X), so an uncapped Burn
-would eventually cost nothing at all.
+may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. Burn's
+caps how many games it lasts (it was there because its enemy condition got EASIER
+per stack, 4-X, until 22 Nov 2026).
 
 Reward token DSL (one clause per effect):
   gain_chest [small|medium|large|huge] <n>   -> {type: gain_chest, value, choices}
@@ -428,6 +430,11 @@ DECREASE_RULES = {
     "on completion": (True, ""),
     "on trigger": (False, "attack"),
     "each turn": (False, "turn"),
+    # LASTS X GAMES, on the player only (the owner, 22 Nov 2026: every debuff lasts
+    # X games). A stack goes at the end of every game the PLAYER holds it, missed
+    # or answered; on an enemy it never wears away by itself (it leaves with the
+    # body). Burn and Marked, whose stacks used to go when the row was answered.
+    "each game": (False, "game"),
 }
 
 
@@ -728,6 +735,27 @@ def parse_reward_clause(clause):
         eff = {"type": "take_damage"}
         put(eff, "value", rest[0])
         return eff, "take %s Damage" % _amount_word(rest[0])
+
+    # A STATUS ON AN ENEMY, as a price (the owner, 22 Nov 2026: Marked's "or give
+    # a random enemy 3 Strength"). The item grammar's `apply_status`, so the same
+    # EffectSystem handler pays it: `apply_status strength 3 target=random` puts 3
+    # Strength on one body picked at random (GameLoop2.apply_enemy_status), and
+    # with nobody on the board it lands on nothing.
+    if verb == "apply_status":
+        bare = [t for t in rest if "=" not in t]
+        kv = dict(t.split("=", 1) for t in rest if "=" in t)
+        if len(bare) < 2:
+            raise ValueError("reward DSL: apply_status needs <status> <n> in %r" % clause)
+        target = kv.get("target", "random").lower()
+        if target not in ("random", "all", "current"):
+            raise ValueError("reward DSL: apply_status target=%r is not random, all or "
+                             "current in %r" % (target, clause))
+        status = bare[0].lower()
+        eff = {"type": "apply_status", "status": status, "target": target}
+        put(eff, "value", bare[1])
+        who = {"random": "a random enemy gains", "all": "every enemy gains",
+               "current": "the enemy gains"}[target]
+        return eff, "%s %s %s" % (who, _amount_word(bare[1]), status.capitalize())
 
     if verb == "lose_stat":
         if len(rest) < 2:

@@ -128,7 +128,7 @@ NEW_COLUMNS = ["Ticked", "Count"]
 # the same three shapes the consequence takes that the view script read.
 GAIN_WRAPPER = re.compile(r'^Gain\s+"(.*)"$', re.S)
 LEADING_MUST = re.compile(r"^(You must\s+)", re.I)
-CONSEQUENCE = [" or take ", ", Gain a ", ". This lasts for "]
+CONSEQUENCE = [" or take ", " or a random enemy ", ", Gain a ", ". This lasts for "]
 
 
 class Finding(Exception):

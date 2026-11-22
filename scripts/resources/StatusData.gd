@@ -89,9 +89,8 @@ const ENEMY := &"enemy"
 @export var stackable: String = "Intensity"
 
 # The stack CEILING the Stackable cell authored ("Max: 3"), or 0 for a status that
-# climbs forever. A cap exists for the statuses whose condition gets EASIER per
-# stack: Burn asks for 4-X items skipped, so an uncapped Burn would pay itself off
-# and then keep paying. Enforced where stacks are added — GameState.apply_status
+# climbs forever. Burn's caps how many games it lasts (it was there because its
+# enemy condition got EASIER per stack, 4-X, until 22 Nov 2026). Enforced where stacks are added — GameState.apply_status
 # for the player, GameLoop2._add_status_to for a body — so nothing can route
 # around it.
 @export var max_stacks: int = 0
@@ -111,6 +110,8 @@ const ENEMY := &"enemy"
 #             on a successful roll would last twice as long as it reads.
 #   "turn"    a stack goes at the end of every turn the body takes (Stun, "Each
 #             Turn"), which is what "lasts for X turns" means.
+#   "game"    a stack goes at the end of every game the PLAYER holds it, and never
+#             on an enemy ("Each Game": Burn and Marked, the owner, 22 Nov 2026).
 #
 # ON THE PLAYER BOTH OF THEM MEAN "PER GAME" (`wears_per_game`). The player does
 # not attack and does not take turns — the game IS their turn — and that is what
@@ -392,9 +393,14 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 # complete it" — or "" for one that never does. Built from `decays`, which the
 # sheet's Decrease column set, so the card and the tooltip quote the same rule.
 func decrease_note(which: StringName) -> String:
-	if not decays(which):
-		return ""
-	return "Loses a stack each game you complete it."
+	if decays(which):
+		return "Loses a stack each game you complete it."
+	# ON THE PLAYER, a status whose clock is the game (Each Game, and Bleed's and
+	# Stun's board modes, which read per game at the player's end) says so: every
+	# debuff lasts X games (the owner, 22 Nov 2026).
+	if which == PLAYER and wears_per_game() and has_side(PLAYER):
+		return "Loses a stack at the end of every game."
+	return ""
 
 # HOW A CLOCK READS, in the one place every surface takes it from
 # (docs/potions-design.md §5.3). A status is usually a thing you have until you

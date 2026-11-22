@@ -119,43 +119,50 @@ func test_buff_and_debuff_are_flavour_not_mechanics() -> void:
 	assert_true(Data.get_status(&"marked").is_debuff())
 
 func test_decay_is_authored_per_side() -> void:
-	# Strength's standing goal keeps paying — it IS the reward. Marked sheds a
-	# stack on either side, which is what makes it survivable.
+	# Strength's standing goal keeps paying — it IS the reward. Marked LASTS X
+	# GAMES now (the owner, 22 Nov 2026): answering it sheds nothing, the game does.
 	assert_false(Data.get_status(&"strength").decays(StatusData.PLAYER), "Strength persists")
-	assert_true(Data.get_status(&"marked").decays(StatusData.PLAYER), "Marked ticks down")
-	assert_true(Data.get_status(&"marked").decays(StatusData.ENEMY), "and so does its bonus")
+	var marked: StatusData = Data.get_status(&"marked")
+	assert_false(marked.decays(StatusData.PLAYER), "answering Marked sheds nothing")
+	assert_false(marked.decays(StatusData.ENEMY), "nor does claiming its bonus")
+	assert_true(marked.wears_per_game(), "a stack goes each game instead")
 
 func test_the_decrease_column_is_what_says_a_status_depletes() -> void:
 	# One column, two readers: the sentence the player is shown and the rule the
 	# engine runs. A status that never sheds says so in the same place.
 	var burn: StatusData = Data.get_status(&"burn")
-	assert_eq(burn.decrease, "On Completion", "Burn sheds when you pay it")
-	assert_true(burn.decays(StatusData.PLAYER), "on the player's side")
-	assert_true(burn.decays(StatusData.ENEMY), "and on an enemy's")
+	assert_eq(burn.decrease, "Each Game", "Burn lasts X games (the owner, 22 Nov 2026)")
+	assert_false(burn.decays(StatusData.PLAYER), "answering it sheds nothing")
+	assert_false(burn.wears_on_attack() or burn.wears_per_turn(),
+		"and nothing on the board wears it from an enemy")
+	assert_true(burn.wears_per_game(), "the game does, on the player")
 	assert_eq(burn.decrease_note(StatusData.PLAYER),
-		"Loses a stack each game you complete it.", "and says so in one line")
+		"Loses a stack at the end of every game.", "and says so in one line")
 	var strength: StatusData = Data.get_status(&"strength")
 	assert_eq(strength.decrease, "N/A", "Strength never does")
 	assert_eq(strength.decrease_note(StatusData.PLAYER), "", "so it says nothing")
 
-func test_a_flat_condition_scales_with_the_stack() -> void:
+# THE CONDITIONS ARE FIXED NOW (the owner, 22 Nov 2026): X is how long a debuff
+# lasts and how big a buff's chest is, never a number in the condition itself.
+func test_a_condition_reads_the_same_at_any_stack() -> void:
 	var marked: StatusData = Data.get_status(&"marked")
-	assert_eq(marked.condition_text(StatusData.ENEMY, 1), "you get 1 achievement",
-		"singular at one stack")
-	assert_eq(marked.condition_text(StatusData.ENEMY, 3), "you get 3 achievements")
+	assert_eq(marked.condition_text(StatusData.ENEMY, 1), "you get 2 achievements")
+	assert_eq(marked.condition_text(StatusData.ENEMY, 3), "you get 2 achievements")
 
-func test_speed_window_tightens_on_the_authored_curve() -> void:
+func test_speed_is_under_an_hour_at_any_stack() -> void:
 	# 1 + (1/2)^(X-2) hours, halving toward a floor of one hour. These are the
 	# numbers the sheet's formula promises, and the reason the {expr} holes exist
 	# at all — the ONLY status behaviour that isn't a straight multiple of X.
 	# This curve was Dexterity's before the combat side landed (§13.2); it kept
 	# the goal and took the name that describes it.
+	# The curve is gone (the owner, 22 Nov 2026: "under an hour", one number to
+	# remember); the stacks still size the chest.
 	var speed: StatusData = Data.get_status(&"speed")
-	assert_eq(speed.condition_text(StatusData.PLAYER, 1), "beaten in 3 hours or less")
-	assert_eq(speed.condition_text(StatusData.PLAYER, 2), "beaten in 2 hours or less")
-	assert_eq(speed.condition_text(StatusData.PLAYER, 3), "beaten in 1 hour 30 minutes or less")
-	assert_eq(speed.condition_text(StatusData.PLAYER, 4), "beaten in 1 hour 15 minutes or less")
-	assert_eq(speed.condition_text(StatusData.PLAYER, 5), "beaten in 1 hour 8 minutes or less")
+	for x in [1, 2, 5]:
+		assert_eq(speed.condition_text(StatusData.PLAYER, x), "beaten in under an hour")
+	assert_gt(int(speed.reward_effects(StatusData.PLAYER, 3)[0].get("value", 0)),
+		int(speed.reward_effects(StatusData.PLAYER, 1)[0].get("value", 0)),
+		"more stacks, a bigger chest")
 
 # --- a side worded per `Ticked` (§7.7) ---------------------------------------
 #
@@ -167,12 +174,9 @@ func test_speed_window_tightens_on_the_authored_curve() -> void:
 func test_speed_on_an_any_time_body_times_the_goal_not_the_game() -> void:
 	var speed: StatusData = Data.get_status(&"speed")
 	assert_eq(speed.clause_text(StatusData.ENEMY, 1),
-		"the game must be beaten in 3 hours or less", "the end-of-game wording")
+		"the game must be beaten in under an hour", "the end-of-game wording")
 	assert_eq(speed.clause_text(StatusData.ENEMY, 1, true),
-		"you must do it within 3 hours of starting the game", "the any-time wording")
-	assert_eq(speed.clause_text(StatusData.ENEMY, 3, true),
-		"you must do it within 1 hour 30 minutes of starting the game",
-		"and it keeps the curve")
+		"you must do it within an hour of starting the game", "the any-time wording")
 
 func test_bleed_on_an_any_time_body_asks_only_up_to_the_clear() -> void:
 	var bleed: StatusData = Data.get_status(&"bleed")
@@ -186,9 +190,9 @@ func test_dexterity_on_an_any_time_body_is_about_the_run() -> void:
 	# sense on a body cleared mid-game. It is about the run that goal is met in.
 	var dex: StatusData = Data.get_status(&"dexterity")
 	assert_eq(dex.clause_text(StatusData.ENEMY, 2),
-		"you must beat 2 or all bosses without getting hit", "the end-of-game wording")
+		"you must beat a boss without getting hit", "the end-of-game wording")
 	assert_eq(dex.clause_text(StatusData.ENEMY, 2, true),
-		"in a run where you beat 2 or all bosses without getting hit", "the any-time wording")
+		"in a run where you beat a boss without getting hit", "the any-time wording")
 
 func test_a_status_with_one_wording_reads_the_same_on_both() -> void:
 	for id in [&"strength", &"marked", &"burn"]:
@@ -201,8 +205,8 @@ func test_a_body_picks_the_wording_by_its_own_ticked() -> void:
 	var quick: GoalEnemyData = _enemy("Defeat 3 bugs")
 	var slow: GoalEnemyData = _enemy("Beat a game without using magic")
 	slow.ticked = GoalEnemyData.TICK_GAME_BEATEN
-	for pair in [[quick, "you must do it within 3 hours of starting the game"],
-			[slow, "the game must be beaten in 3 hours or less"]]:
+	for pair in [[quick, "you must do it within an hour of starting the game"],
+			[slow, "the game must be beaten in under an hour"]]:
 		GameLoop2.reset()
 		var inst: int = Fixtures.choose_solo(pair[0])
 		GameLoop2.apply_status_to(inst, &"speed", 1)
@@ -278,13 +282,13 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 	var objectives: Array = GameState.status_objectives()
 	assert_eq(objectives.size(), 1, "it shows up as a standing objective")
 	assert_eq((objectives[0]["status"] as StatusData).objective_text(StatusData.PLAYER, 2),
-		"If the difficulty is increased 2 times or as much as possible, gain +1 Medium Chest, +1 Bash")
+		"If beaten on a harder difficulty than normal, gain +1 Medium Chest, +1 Bash")
 
 func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
 	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
-		"Beat it and the difficulty must be increased 2 times or as much as possible")
+		"Beat it and you must be playing on a harder difficulty than normal")
 
 func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
 	_register_player_clause()
@@ -313,7 +317,7 @@ func test_clauses_stack_enemy_first_then_player() -> void:
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
 	GameState.apply_status(CLAUSE_ID, 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
-		"Beat it and the difficulty must be increased 1 time or as much as possible"
+		"Beat it and you must be playing on a harder difficulty than normal"
 		+ " and you must get 2 achievements",
 		"the enemy's own clause reads before the one every enemy carries")
 
@@ -379,7 +383,7 @@ func test_an_enemy_clause_survives_it_walking_onto_the_board() -> void:
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.stack[0]),
-		"Beat it and the difficulty must be increased 2 times or as much as possible")
+		"Beat it and you must be playing on a harder difficulty than normal")
 
 # ---------------------------------------------------------------------------
 # 2b. Decay and payout
@@ -454,8 +458,8 @@ func test_claiming_an_enemy_bonus_pays_and_ticks_that_enemy() -> void:
 		{"bonuses": [{"instance": inst, "status": &"marked"}]})
 	assert_eq(int(res.get("status_rewards", 0)), 1, "the claim resolved")
 	assert_eq(GameState.pending_chests, 1, "[chest reward] 2 is one Medium chest")
-	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 1,
-		"one stack spent on the claim")
+	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 2,
+		"and the claim spends no stack (Each Game, the owner, 22 Nov 2026)")
 
 func test_an_enemy_bonus_can_be_claimed_on_the_game_that_kills_it() -> void:
 	# The claim is resolved BEFORE the board is, so beating an enemy and claiming
@@ -490,8 +494,8 @@ func test_a_clause_side_cannot_be_claimed_as_a_player_objective() -> void:
 # side is an `instead`: a second way to clear a body, which the run must not
 # record as a beat, because the enemy's own condition was never set.
 #
-# And it is the first status with a ceiling. The condition gets EASIER per stack
-# (4-X), so `Max: 3` is what stops it paying itself off into nothing.
+# And it is the first status with a ceiling: `Max: 3`, which since 22 Nov 2026
+# caps how many games it lasts.
 # ---------------------------------------------------------------------------
 
 # A boss, for the one place the way out is refused.
@@ -502,29 +506,22 @@ func _boss(goal: String = "Beat the boss") -> GoalEnemyData:
 	e.boss = true
 	return e
 
-func test_burns_two_sides_run_opposite_curves() -> void:
-	# One rule, read from either end: Burn is bad for whoever is holding it. On the
-	# player it asks for X — deeper stacks, more given up. On an enemy it asks for
-	# 4-X, so the way out of its goal gets CHEAPER the more Burn is on it, which is
-	# what makes putting Burn on something worth doing.
+func test_burn_asks_for_three_on_either_side() -> void:
+	# The owner, 22 Nov 2026: "skip 3 or take 3". The curves (X on you, 4-X on a
+	# body) are gone; a stack is a game it lasts.
 	var burn: StatusData = Data.get_status(&"burn")
-	assert_eq(burn.condition_text(StatusData.PLAYER, 1),
-		"skip or trash 1 item/upgrade", "singular at one stack")
-	assert_eq(burn.condition_text(StatusData.PLAYER, 3),
-		"skip or trash 3 items/upgrades", "and it costs more the deeper it goes")
-	assert_eq(burn.condition_text(StatusData.ENEMY, 1),
-		"skip or trash 3 items/upgrades")
-	assert_eq(burn.condition_text(StatusData.ENEMY, 3),
-		"skip or trash 1 item/upgrade", "the other way about, on a body")
+	for x in [1, 3]:
+		assert_eq(burn.condition_text(StatusData.PLAYER, x), "skip or trash 3 items/upgrades")
+		assert_eq(burn.condition_text(StatusData.ENEMY, x), "skip or trash 3 items/upgrades")
 
 func test_a_demand_reads_as_an_obligation_with_a_price() -> void:
 	# Not "If you do this, gain": there is no version of the game where a demand
 	# goes unanswered — the answer is either the thing or the price.
 	var burn: StatusData = Data.get_status(&"burn")
 	assert_eq(burn.objective_text(StatusData.PLAYER, 2),
-		"You must skip or trash 2 items/upgrades, or take 3 Damage")
+		"You must skip or trash 3 items/upgrades, or take 3 Damage")
 	assert_eq(burn.penalty_at(StatusData.PLAYER, 2), "take 3 Damage",
-		"and the price is flat — the condition is what scales")
+		"and the price is flat")
 	assert_eq(burn.reward_at(StatusData.PLAYER, 1), "", "a demand pays nothing")
 
 func test_a_demand_is_a_row_the_player_answers() -> void:
@@ -765,15 +762,16 @@ func test_clearing_a_goal_the_other_way_hits_the_body_like_a_goal_does() -> void
 	assert_eq(GameLoop2.stack.size(), 0, "and the body is off the board")
 	assert_eq(int(res.get("drops", 0)), 1, "a full defeat: it dropped its item")
 
-func test_clearing_a_goal_the_other_way_sheds_a_stack() -> void:
-	# "On Completion" — the same rule on the enemy's side as on the player's.
+func test_taking_burns_way_out_spends_no_stack() -> void:
+	# Each Game (the owner, 22 Nov 2026): on an enemy, Burn never wears away by
+	# itself, and taking the way out costs it nothing — the body leaves with it.
 	var e: GoalEnemyData = _enemy("Beat it")
 	e.health = 2                       # survives the hit, so its stacks can be read
 	var inst: int = Fixtures.choose_solo(e)
 	GameLoop2.apply_enemy_status(&"burn", 2, "current")
 	GameLoop2.beat_game(false, [], {"instead": [{"instance": inst, "status": &"burn"}]})
-	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 1,
-		"one stack paid for the way out")
+	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 2,
+		"the way out spends nothing")
 
 func test_the_way_out_does_not_satisfy_a_player_clause() -> void:
 	# A player clause rides every enemy's GOAL. A goal cleared without its condition
@@ -784,7 +782,7 @@ func test_the_way_out_does_not_satisfy_a_player_clause() -> void:
 	var res: Dictionary = GameLoop2.beat_game(false, [],
 		{"instead": [{"instance": inst, "status": &"burn"}]})
 	assert_eq(res.get("statuses_ticked", []), [], "nothing ticked off")
-	assert_eq(GameState.status_stacks(&"marked"), 2, "and the clause is untouched")
+	assert_eq(GameState.status_stacks(&"marked"), 1, "only the game's own wear touched it")
 
 func test_a_way_out_cannot_be_claimed_off_a_body_that_is_not_burned() -> void:
 	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
@@ -824,7 +822,7 @@ func test_gecko_gi_takes_the_damage_of_a_missed_burn() -> void:
 	var bites: Array = res.get("status_penalties", [])
 	assert_eq(bites.size(), 1, "still reported, so the run can say why")
 	assert_eq(String((bites[0] as Dictionary).get("warded_by", "")), "Gecko Gi")
-	assert_eq(GameState.status_stacks(&"burn"), 1, "and the Burn is still on you")
+	assert_eq(GameState.status_stacks(&"burn"), 0, "and the game still wears it away")
 
 func test_gecko_gi_out_of_the_pack_wards_nothing() -> void:
 	Fixtures.trinket(self, &"gecko_gi", 0)
@@ -855,17 +853,40 @@ func test_the_last_stack_of_an_answered_demand_takes_the_status_with_it() -> voi
 	assert_false(GameState.has_status(&"burn"), "paid off and gone")
 	assert_eq(GameState.hp, before, "without a parting bite")
 
-func test_a_burn_bites_every_game_it_goes_unanswered() -> void:
-	# Nothing about missing it sheds a stack: it keeps asking, and keeps charging,
-	# until the game you actually pay it.
-	GameState.apply_status(&"burn", 1)
+func test_a_burn_bites_every_game_it_lasts_and_then_goes() -> void:
+	# LASTS X GAMES (the owner, 22 Nov 2026): two stacks are two games, each one
+	# missed bites, and then it is gone whether or not it was ever answered.
+	GameState.apply_status(&"burn", 2)
 	GameState.shields = 0
 	var before: int = GameState.hp
-	for i in range(2):
+	for i in range(3):
 		Fixtures.choose_solo(_enemy("Beat it"))
 		GameLoop2.beat_game(true)
-	assert_eq(before - GameState.hp, 6, "two games, two bites")
-	assert_eq(GameState.status_stacks(&"burn"), 1, "and it is still on you")
+	assert_eq(before - GameState.hp, 6, "two games, two bites, and none on the third")
+	assert_eq(GameState.status_stacks(&"burn"), 0, "and it has worn off")
+
+func test_answering_a_burn_does_not_end_it_early() -> void:
+	GameState.apply_status(&"burn", 2)
+	Fixtures.choose_solo(_enemy("Beat it"))
+	GameLoop2.beat_game(true, [], {"status_goals": [&"burn"]})
+	assert_eq(GameState.status_stacks(&"burn"), 1, "one game worn, the answer sheds nothing more")
+
+# MARKED's price (the owner, 22 Nov 2026): miss it and a random enemy on the board
+# gains 3 Strength.
+func test_a_missed_marked_strengthens_a_random_enemy() -> void:
+	GameState.apply_status(&"marked", 1)
+	var e: GoalEnemyData = _enemy("Beat it")
+	e.health = 3                       # stays on the board, so its statuses can be read
+	Fixtures.choose_solo(e)
+	var hp_before: int = GameState.hp
+	GameLoop2.beat_game(false)
+	var strength: int = 0
+	for body in GameLoop2.stack:
+		for row in GameLoop2.enemy_statuses(body):
+			if (row["status"] as StatusData).id == &"strength":
+				strength += int(row["stacks"])
+	assert_eq(strength, 3, "3 Strength on an enemy")
+	assert_eq(GameState.hp, hp_before, "and no damage to you")
 
 func test_the_shields_are_still_standing_when_a_burn_bites() -> void:
 	# It lands at the end of the game but BEFORE the shields go with it (§3), so
@@ -1096,7 +1117,7 @@ func test_a_status_pip_carries_the_full_hover_card() -> void:
 	assert_string_contains(String(card.get("subtitle", "")), "3 stacks",
 		"with the live stack count under it")
 	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
-		"1 hour 30 minutes", "and the line at that stack")
+		"under an hour", "and the line at that stack")
 	# The fallback text Godot needs before it will ask for a custom tooltip at all.
 	assert_string_contains(pip.tooltip_text, "Speed", "and the plain fallback still names it")
 
@@ -1116,11 +1137,11 @@ func test_the_tooltip_names_what_each_side_does() -> void:
 	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
 		"Every game", "the player side is an obligation, not an offer")
 	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
-		"take 3 Damage", "and it names what missing it costs")
+		"a random enemy gains 3 Strength", "and it names what missing it costs")
 	assert_string_contains(marked.tooltip_for(StatusData.ENEMY, 2),
 		"Bonus", "the enemy side pays out")
 	assert_string_contains(marked.tooltip_for(StatusData.PLAYER, 2),
-		"Loses a stack", "and a decaying side says so")
+		"Loses a stack at the end of every game", "and it says how long it lasts")
 
 func test_the_tooltip_says_what_a_burn_is_on_each_side() -> void:
 	var burn: StatusData = Data.get_status(&"burn")

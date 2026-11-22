@@ -2106,7 +2106,7 @@ the body is cleared:
 
 | Status | `game beaten` body | `any time` body |
 |---|---|---|
-| Speed (clause) | "the game must be beaten in 3 hours or less" | "you must do it within 3 hours of starting the game" |
+| Speed (clause) | "the game must be beaten in under an hour" | "you must do it within an hour of starting the game" |
 | Bleed (bonus) | "and if you didn't intentionally heal" | "and if you didn't intentionally heal before clearing it" |
 
 Strength, Dexterity and Marked read right on both and carry one wording. Burn's
@@ -2116,8 +2116,8 @@ Strength, Dexterity and Marked read right on both and carry one wording. Burn's
 
 | Status | Clause | Composed |
 |---|---|---|
-| Dexterity | "**you** must beat {X} or all bosses without getting hit" | "Become undetectable and you must beat 2 or all bosses without getting hit" |
-| Strength | "**the difficulty** must be increased {X} …" | "Defeat 3 bugs and the difficulty must be increased 2 times…" |
+| Dexterity | "**you** must beat a boss without getting hit" | "Become undetectable and you must beat a boss without getting hit" |
+| Strength | "**you** must be playing on a harder difficulty than normal" | "Defeat 3 bugs and you must be playing on a harder difficulty than normal" |
 
 Speed did not, and shipped as "must be beaten in {…} or less" — which composed
 into **"Become undetectable and must be beaten in 2 hours or less"**, reading as
@@ -3411,11 +3411,20 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
-| Strength | `goal "the difficulty is increased {X} times or as much as possible" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times or as much as possible"` |
-| Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "the game must be beaten in {1+(1/2)^(X-2):hours} or less" any_time "you must do it within {1+(1/2)^(X-2):hours} of starting the game"` |
-| Marked | `demand "get {X} achievements" else -> take_damage 3` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
-| Dexterity | `goal "{X} or all bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} or all bosses without getting hit"` |
-| Burn | `demand "skip or trash {X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
+| Strength | `goal "beaten on a harder difficulty than normal" -> gain_chest reward {X}; gain_stat bash 1` | `clause "you must be playing on a harder difficulty than normal"` |
+| Speed | `goal "beaten in under an hour" -> gain_chest reward {X}; gain_stat dash 1` | `clause "the game must be beaten in under an hour" any_time "you must do it within an hour of starting the game"` |
+| Marked | `demand "get 2 achievements" else -> apply_status strength 3 target=random` | `bonus "you get 2 achievements" -> gain_chest reward {X}` |
+| Dexterity | `goal "a boss was beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat a boss without getting hit"` |
+| Burn | `demand "skip or trash 3 items/upgrades" else -> take_damage 3` | `instead "skip or trash 3 items/upgrades"` |
+
+**SIMPLIFIED, 22 Nov 2026 (the owner).** No condition carries X any more: on a
+buff X is the chest's size, on a debuff it is how many games it lasts. Every
+debuff LASTS X GAMES — Burn and Marked moved from `On Completion` to the new
+`Each Game` (a stack goes at the end of every game the player holds it, missed or
+answered; never by itself on an enemy), Bleed already read that way. Marked's
+price is no longer damage: a random enemy on the board gains 3 Strength
+(`apply_status … target=random`). `tools/oneshots/_statuses_simplified_goals.py`
+wrote the cells.
 
 **One arrow per cell**, and which arrow it is says whether the payload is earned
 or owed: `->` is a reward, `else ->` is what missing it costs. A `clause` and an
@@ -3490,11 +3499,11 @@ would only make it a worse item.
 
 | Status | Type | From | Condition | Reward | In combat |
 |---|---|---|---|---|---|
-| **Strength** | Buff | Slay the Spire | the difficulty is increased X times or as much as possible | [chest reward X], +1 Bash | deals +X damage |
-| **Speed** | Buff | Mewgenics | beaten in 1+(1/2)^(X-2) hours or less | [chest reward X], +1 Dash | closes +X tiles per turn |
-| **Dexterity** | Buff | Slay the Spire | X or all bosses were beaten without getting hit | [chest reward X] | +X Shields |
-| **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] on an enemy; on the player it charges 3 Damage for being missed | takes double damage, ignoring Shields |
-| **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
+| **Strength** | Buff | Slay the Spire | beaten on a harder difficulty than normal | [chest reward X], +1 Bash | deals +X damage |
+| **Speed** | Buff | Mewgenics | beaten in under an hour | [chest reward X], +1 Dash | closes +X tiles per turn |
+| **Dexterity** | Buff | Slay the Spire | a boss was beaten without getting hit | [chest reward X] | +X Shields |
+| **Marked** | Debuff | Mewgenics | you get 2 achievements; lasts X games | [chest reward X] on an enemy; on the player, missing it gives a random enemy 3 Strength | takes double damage, ignoring Shields |
+| **Burn** | Debuff | Brutal Orchestra | skip or trash 3 items/upgrades; lasts X games | *nothing* — it charges 3 Damage for being missed | deals half damage |
 | **Bleed** | Debuff | Mewgenics | don't heal intentionally | *nothing* on the player — it charges 3 Damage for being missed; [chest reward X] on an enemy | X separate 50% rolls of 1 damage **to itself** when it attacks |
 | **Stun** | Debuff | Slay the Spire | *none — no goal side on either end* | *none* | loses its turn |
 
@@ -3563,12 +3572,9 @@ Slay the Spire relic's own reading of the word — a shield — with a
 boss-flawless goal of its own. Anything that referred to the old Dexterity means
 Speed.
 
-**Burn's two sides run opposite curves, and that is one rule rather than two:
-Burn is bad for whoever is carrying it.** On the player it asks for **X** items
-skipped, so it costs more the deeper it stacks, and `Max: 3` is the ceiling on
-that. On an enemy it asks for **4-X**, so a burned body's way out gets *cheaper*
-the more Burn is on it — which is what makes setting something alight worth
-doing. The same status, read from either end of the board.
+**Burn asks for three on either end** (the owner, 22 Nov 2026: "skip 3 or take
+3"). It used to run opposite curves, X items on the player and 4-X on an enemy;
+now a stack is a game it lasts, and `Max: 3` caps that at three games.
 
 The condition is honour-system like every other one on the checklist — it is
 about the **real game you are playing**, not about this project's own item
@@ -3581,11 +3587,10 @@ Its two sides bite in opposite directions, which is the point:
   row whose *unticked* state does something. The 3 Damage lands at the **end of
   the game, after the enemies have swung** — through the normal hit path, so one
   of that game's shields stops it outright before it reaches Health (§3.2), and a
-  run the enemies already ended is never billed. Answering it sheds a stack, which makes the next
-  game's asking price *lower*; missing it does not, so it keeps asking at the
-  same price until you pay.
+  run the enemies already ended is never billed. It lasts X games: a stack goes
+  at the end of every game, answered or not.
 - **On an enemy** it is an `instead`: that body's goal grows "or instead skip or
-  trash 4-X items/upgrades", and doing that clears the body — same hit, same
+  trash 3 items/upgrades", and doing that clears the body — same hit, same
   drop, same gold. What it does *not* do is go on the record. The enemy's own
   condition was never set, so nothing is banked against the game it happened at:
   no "beaten in \<game\>" tally, no note (its confirm does not ask for one, the
@@ -3595,13 +3600,11 @@ Its two sides bite in opposite directions, which is the point:
   `claim_enemy_alternative` refuses the claim behind it too.
 
 **MARKED IS BURN-SHAPED NOW, on the player's side.** It used to be a `clause` — a
-tax ANDed onto every enemy's goal — and it is a `demand`: get X achievements, or
-take 3 Damage. Its enemy side is untouched, so the status keeps the thing that
-made it interesting (a cost on your side, a payout on theirs) with the cost made
-of the same stuff Burn's is. The two demands differ in one place, and it is the
-place that matters: Burn is capped at 3 because its condition gets *easier* per
-stack on an enemy, while Marked's asks for more the deeper it goes on both sides
-and so needs no ceiling to stay honest.
+tax ANDed onto every enemy's goal — and it is a `demand`: get 2 achievements, or
+a random enemy on the board gains 3 Strength (the owner, 22 Nov 2026; it used to
+cost 3 Damage). It lasts X games, like every debuff. Its enemy side keeps its
+payout, so the status keeps the thing that made it interesting: a cost on your
+side, a payout on theirs.
 
 With that change, **nothing in the shipped roster has a player-side `clause`** any
 more. The mode is still real and still implemented — `status_clauses` and
