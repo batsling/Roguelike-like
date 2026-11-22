@@ -6,7 +6,7 @@ icons", and the game pictures they used to be become that game's unlocks. The
 rest of the basic set is one Noto glyph per thing, drawn in one colour (the
 shield, tools/build_shield_art.py; Hunger's 🍗, tools/build_hunger_art.py), so
 these are made the same way: the glyph the owner picked for each status, drawn
-once at 128 px, BUFFS in the UI's success green and DEBUFFS in its danger red
+once at 256 px and thickened, BUFFS in the UI's success green and DEBUFFS in its danger red
 (UITheme.SUCCESS / UITheme.DANGER — the owner's choice over a colour each).
 
 The game pictures live in images2.0/icons/Statuses/<Status>/<Name>_<Game>.png
@@ -27,11 +27,21 @@ import tarfile
 import tempfile
 import urllib.request
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(ROOT, "images2.0", "statuses")
-SIDE = 128
+# 256, NOT 128 (the owner, 22 Nov 2026: "make them look a little cleaner"). Art
+# at 128 px or under is PIXEL ART to the UI (UITheme.SMALL_ART_MAX) and is drawn
+# with nearest-neighbour sampling, which broke these thin outlines into dots at
+# the 18-22 px they stand at. Over 128 they are painted art, shrunk smoothly —
+# the reason the basic 🍗 is drawn at 256 too.
+SIDE = 256
+# …and a little BOLDER: Noto's outline strokes are under a screen pixel at 16 px,
+# so the glyph is thickened (a max filter this many pixels across) before it is
+# saved. 5 held best at 16 and 20 px of the weights tried (1, 3, 5, 7); 7 fused
+# the hand's fingers. The UI shrinks them to their screen size (UITheme.timed_art).
+BOLD = 5
 
 GREEN = (77, 199, 107, 255)   # UITheme.SUCCESS, Color(0.30, 0.78, 0.42)
 RED = (230, 84, 71, 255)      # UITheme.DANGER,  Color(0.90, 0.33, 0.28)
@@ -80,7 +90,9 @@ def draw(glyph, font_path, colour):
 	art = art.resize((round(art.width * scale), round(art.height * scale)), Image.LANCZOS)
 	out = Image.new("RGBA", (SIDE, SIDE), (0, 0, 0, 0))
 	out.alpha_composite(art, ((SIDE - art.width) // 2, (SIDE - art.height) // 2))
-	return out
+	solid = Image.new("RGBA", out.size, colour)
+	solid.putalpha(out.split()[3].filter(ImageFilter.MaxFilter(BOLD)))
+	return solid
 
 
 def main():

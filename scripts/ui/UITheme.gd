@@ -702,7 +702,17 @@ const TIMER_OVERHANG: float = 0.3
 # TextureRect otherwise, so an untimed icon costs exactly what it did before this
 # badge existed.
 static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
-	var art := crisp_tex(tex, size)
+	# A BIG PICTURE IS SHRUNK FIRST (the owner, 22 Nov 2026: the status icons should
+	# "look a little cleaner"). Mipmaps average a 256 px icon down in coarse steps,
+	# which fused the outlines of the basic status icons into blobs at the 16-22 px
+	# these stand at (and broke them into dots before that). Shrunk once with
+	# Lanczos to the exact SCREEN size and drawn 1:1 with NEAREST — what the Hunger
+	# pips do (`shrunk`) — it is as sharp as the picture allows. Small art (pixel
+	# art, the 128 px shield) is left as it was.
+	var shown: Texture2D = tex
+	if tex != null and not is_small_art(tex):
+		shown = shrunk(tex, roundi(size * main_scale()))
+	var art := crisp_tex(shown, size, shown != tex)
 	if not timed:
 		return art
 	var wrap := Control.new()
@@ -956,6 +966,14 @@ static var _shrunk: Dictionary = {}
 
 # How many screen pixels one canvas pixel is: the window's stretch of the fixed
 # 1280x720 canvas (project.godot, stretch/mode canvas_items).
+# The window's scale when no node is at hand yet (a widget is built before it is
+# in the tree): the root viewport's, which is what every page here is drawn by.
+static func main_scale() -> float:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return 1.0
+	return maxf(tree.root.get_final_transform().get_scale().x, 0.01)
+
 static func screen_scale(node: CanvasItem) -> float:
 	if node == null or not node.is_inside_tree():
 		return 1.0

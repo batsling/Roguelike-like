@@ -197,7 +197,10 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   Nov 2026): the kind is the status's id (`strength`, `burn`…). Its BASIC icon is
   one glyph drawn like the shield and the 🍗 — buffs in `UITheme.SUCCESS` green,
   debuffs in `UITheme.DANGER` red — by `tools/build_status_art.py` into
-  `images2.0/statuses/` (💪 Strength, ✋ Dexterity, 🪽 Speed, 🔥 Burn, 🩸 Bleed,
+  `images2.0/statuses/` at 256 px, its strokes thickened so they hold at 16 px
+  (under 128 px the UI would treat it as pixel art and break its outlines into
+  dots), and drawn through `UITheme.timed_art`, which shrinks any big picture
+  once with Lanczos to its exact screen size (💪 Strength, ✋ Dexterity, 🪽 Speed, 🔥 Burn, 🩸 Bleed,
   🎯 Marked, 💫 Stun, the owner's picks). The game picture each status used to be
   is that game's unlock in `images2.0/icons/Statuses/<Status>/` (Slay the Spire's
   Strength, Dexterity and Stun; Brutal Orchestra's Burn; Mewgenics' Speed, Bleed
