@@ -63,8 +63,18 @@ func test_picking_a_fight_costs_two_health_for_a_random_relic() -> void:
 	var ev: EventData2 = Data.get_event2(TEA)
 	_vitals(5, 7)
 	var before: int = GameState.inventory.size()
+	# THE FIRST CHANGE is the price. The relic is RANDOM, and a few heal on pickup
+	# (Blood Bag, Stigmata, Lunch…), so the Health it ENDS at is only usually 3 —
+	# which made this an intermittent (docs/test-flakes.md). What the choice costs
+	# is the -2 it lands before the relic, so that is what is asserted.
+	var seen: Array = []
+	var watch := func(hp: int, _max: int) -> void: seen.append(hp)
+	GameState.hp_changed.connect(watch)
 	EventSystem.resolve_choice(ev, _choice(ev, "pick_a_fight"), 0)
-	assert_eq(GameState.hp, 3)
+	GameState.hp_changed.disconnect(watch)
+	assert_false(seen.is_empty(), "the price was taken")
+	if not seen.is_empty():
+		assert_eq(int(seen[0]), 3, "2 Health, before the relic")
 	assert_eq(GameState.inventory.size(), before + 1, "one relic")
 	assert_false(GameState.has_item(POISON), "and not the poison")
 

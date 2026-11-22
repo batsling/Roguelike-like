@@ -279,3 +279,11 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     `SaveSystem.cancel_pending_resume()` in `test_card_system.gd`'s
     `after_each`. A test that loads a save cleans up the resume, or the next
     file pays.
+  - `test_round_tea_party.gd::test_picking_a_fight_costs_two_health_for_a_random_relic`
+    failed now and then at "[5] expected to equal [3]". **A random reward that
+    can undo the price**: the choice costs 2 Health and pays a RANDOM relic, and
+    a handful heal on pickup (Blood Bag, Stigmata, Lunch, Mango, Alien Baby), so
+    the Health it ended at was only usually 3. Found by listing the rollable
+    relics whose pickup effects heal. The test now asserts the FIRST
+    `hp_changed` (the price, taken before the relic) instead of where Health
+    ends up.
