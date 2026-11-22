@@ -2301,6 +2301,51 @@
 			"status": true
 		},
 		{
+			"id": "stun/stun_dead_cells",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_enter_the_gungeon",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_mewgenics",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "stun/stun_slay_the_spire",
 			"kind": "stun",
 			"name": "Stun",
