@@ -879,12 +879,17 @@ func test_the_staff_can_be_pointed_at_a_boss() -> void:
 		"and still has no way out of its goal")
 
 func test_the_staffs_burn_stops_at_the_status_cap() -> void:
+	# No status is capped since Burn lost its Max (22 Nov 2026); the RULE stays for
+	# any that authors one, so the cap is lent for the length of the test.
+	var burn_sd: StatusData = Data.get_status(&"burn")
+	burn_sd.max_stacks = 3
 	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
 	var inst: int = Fixtures.choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
 	GameLoop2.apply_status_to(inst, &"burn", 2)
 	assert_true(GameState.use_item(staff, inst))
 	assert_eq(int((GameLoop2.entry_for(inst)["statuses"] as Dictionary).get(&"burn", 0)), 3,
 		"2 + 3 is still Max: 3")
+	burn_sd.max_stacks = 0
 
 # --- the obtain-any picker (RewardScreen.setup_obtain) ---------------------
 #

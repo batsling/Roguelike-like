@@ -85,22 +85,29 @@ func test_two_borrowed_rows_report_the_soonest_clock() -> void:
 	assert_eq(GameState.status_stacks(&"dexterity"), 2)
 
 func test_a_borrowed_stack_cannot_push_a_status_past_its_ceiling() -> void:
-	# Burn is the one status the sheet caps (Max: 3, §13.1). The permanent path
-	# enforces that on the way in; the timed layer has to enforce it on the way out
-	# or a potion would be a way around an authored ceiling.
+	# An authored cap (`Max: N`, §13.1) holds both layers together: the permanent
+	# path enforces it on the way in, the timed layer on the way out, or a potion
+	# would be a way around it. No status authors one since Burn lost its own
+	# (22 Nov 2026), so the cap is lent for the test.
+	var burn_sd: StatusData = Data.get_status(&"burn")
+	burn_sd.max_stacks = 3
 	GameState.apply_status(&"burn", 3)
 	GameState.apply_status(&"burn", 3, 1)
 	assert_eq(GameState.status_stacks(&"burn"), 3, "capped, both layers together")
+	burn_sd.max_stacks = 0
 
 func test_the_ceiling_never_pulls_the_permanent_count_down() -> void:
 	# Stacks ALREADY over a cap tick down one at a time rather than being frozen
 	# there (§13.1, and test_statuses.gd owns that rule). Summing a timed layer on
 	# top must not turn a read into a clamp — the ceiling is about the way up.
+	var burn_sd: StatusData = Data.get_status(&"burn")
+	burn_sd.max_stacks = 3                     # lent: no status is capped since 22 Nov 2026
 	GameState.player_statuses[&"burn"] = 5
 	assert_eq(GameState.status_stacks(&"burn"), 5, "untouched with nothing borrowed")
 	GameState.apply_status(&"burn", 2, 1)
 	assert_eq(GameState.status_stacks(&"burn"), 5,
 		"and a borrowed stack cannot lift it past the cap, nor lower what is there")
+	burn_sd.max_stacks = 0
 
 func test_a_body_carries_the_two_layers_the_same_way() -> void:
 	var entry: Dictionary = _solo_entry()

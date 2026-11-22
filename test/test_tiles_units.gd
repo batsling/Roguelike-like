@@ -152,9 +152,8 @@ func test_standing_in_fire_burns_again_each_turn() -> void:
 	# Amulet's extra turns (§7.4), and there is no amulet in a headless run.
 	GameLoop2.attempt_turn()
 	GameLoop2.attempt_turn()
-	assert_eq(int(GameLoop2.entry_for(inst)["statuses"].get(&"burn", 0)),
-		mini(1 + 2, Data.get_status(&"burn").max_stacks),
-		"and one for every turn it started there, up to Burn's own ceiling")
+	assert_eq(int(GameLoop2.entry_for(inst)["statuses"].get(&"burn", 0)), 1 + 2,
+		"and one for every turn it started there (Burn has no ceiling since 22 Nov 2026)")
 
 func test_fire_burns_out_after_three_games() -> void:
 	GameLoop2.apply_tile(Vector2i(2, 0), &"fire")
