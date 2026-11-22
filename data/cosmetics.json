@@ -2106,6 +2106,36 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_darkest_dungeon_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_dead_cells",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_mewgenics",
 			"kind": "poison",
 			"name": "Poison",
@@ -2114,6 +2144,51 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_noita",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_risk_of_rain_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "risk_of_rain_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Risk_of_Rain_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_rogue_legacy_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Rogue_Legacy_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2144,6 +2219,36 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_spelunky_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_the_legend_of_bum_bo",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "the_legend_of_bum_bo",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_The_Legend_of_Bum-Bo.png",
 					"min": 0,
 					"max": 10
 				}
