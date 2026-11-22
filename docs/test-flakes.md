@@ -267,3 +267,15 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     error misled: stdout and stderr are buffered separately). Arrowheads are now
     built round the origin and moved there with `draw_set_transform`
     (`_polygon_at`), the lines' arrowheads too; 0 in 120 after.
+  - `test_character_log.gd::test_reporting_a_level_up_logs_it_against_the_game`
+    went Pending ("nothing was chosen — the offering did not reach this case")
+    in two full runs in a row, and never when run alone. **A resume left armed
+    by an earlier FILE**: `test_card_system.gd`'s Nightmare save test calls
+    `SaveSystem._apply_save_data`, which parks a resume for the next overworld
+    to claim, and that file's `after_each` did not cancel it (`test_bags.gd`'s
+    does). The next page built — this test's — resumed the parked run instead
+    of dealing one, and had no offering. Found by running the two files
+    together (`-gtest=a.gd,b.gd`): Pending every time, gone with
+    `SaveSystem.cancel_pending_resume()` in `test_card_system.gd`'s
+    `after_each`. A test that loads a save cleans up the resume, or the next
+    file pays.

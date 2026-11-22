@@ -22,6 +22,10 @@ func before_each() -> void:
 # test_overworld2 would quietly be about two cabinets instead of three.
 func after_each() -> void:
 	ObjectSystem.reset_run()
+	# A test that loads a save (Nightmare's) parks a RESUME for the next overworld
+	# to claim; left armed, the next file's page resumes it instead of dealing a
+	# run, and finds no offering to pick from (test_character_log, 21 Nov 2026).
+	SaveSystem.cancel_pending_resume()
 
 func _entry(id: StringName) -> Dictionary:
 	var c: CardData = Data.get_card(id)
