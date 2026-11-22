@@ -50,7 +50,7 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
     copy_item                   -> {op:copy_item}
     lose_hp <n>                 -> {op:lose_hp, value:n}       Health as a price
     stun <n> [area=row|board]   -> {op:stun, value:n, area?}
-    apply_status <id> <n> [area=row|board]
+    apply_status <id> <n> [area=row|board|random] [bounces=<n>]
                                 -> {op:apply_status, status, value:n, area?}
     destroy_row                 -> {op:destroy_row}    every OTHER piece in its pack row
     destroy_pick <n>            -> {op:destroy_pick, value:n}  the player picks n
@@ -189,7 +189,7 @@ DOUBLE_STATS = ("gold", "bombs", "keys", "hp")
 RANGE_RE = re.compile(r"^(\d+)\s*-\s*(\d+)$")
 
 PER_COUNTS = ("destroyed", "hit", "cards_used")
-AREAS = ("row", "board")
+AREAS = ("row", "board", "random")
 
 
 def _with_per(op: dict, kv: dict, s: str) -> dict:
@@ -207,6 +207,12 @@ def _with_area(op: dict, kv: dict, s: str) -> dict:
             raise ValueError("card effect DSL: area=%r is not one of %s in %r"
                              % (kv["area"], ", ".join(AREAS), s))
         op["area"] = kv["area"]
+        # `area=random bounces=N` (Bouncing Flask, 22 Nov 2026): N random bodies,
+        # the same one possibly more than once.
+        if kv["area"] == "random":
+            op["bounces"] = int(kv.get("bounces", "1"))
+    elif "bounces" in kv:
+        raise ValueError("card effect DSL: bounces= needs area=random in %r" % s)
     return op
 
 
@@ -339,6 +345,8 @@ UPGRADE_CLAUSES = {
     "potion": lambda e: _op(e) == "gain_loot" and e.get("kind") == "potion",
     "loot": lambda e: _op(e) == "gain_loot",
     "destroy": lambda e: _op(e) == "destroy_pick",
+    "poison": lambda e: _op(e) == "apply_status" and e.get("status") == "poison",
+    "bounce": lambda e: e.get("area") == "random",
 }
 
 

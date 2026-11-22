@@ -3587,7 +3587,7 @@ Speed.
 
 **Burn asks for three on either end** (the owner, 22 Nov 2026: "skip 3 or take
 3"). It used to run opposite curves, X items on the player and 4-X on an enemy;
-now a stack is a game it lasts, and `Max: 3` caps that at three games.
+now a stack is a game it lasts, and it has no cap (the owner, 22 Nov 2026: "no burn limit").
 
 The condition is honour-system like every other one on the checklist — it is
 about the **real game you are playing**, not about this project's own item

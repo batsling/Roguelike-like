@@ -1211,9 +1211,14 @@ func _status_row_tint(status: StatusData) -> Color:
 # The name comes back when a status has no art (`_status_mark` returns no icon):
 # an unlabelled row for a status with nothing to show would be a row that never
 # says what it is.
+#
+# THE COUNT RIDES THE ICON now (the owner, 22 Nov 2026: "put the number next to
+# the icon instead of a x2 to the side"): `_status_mark` draws it inside the chip,
+# beside the picture, as the board's pips do, so a row with art opens on its
+# sentence. The row builders trim the space this leaves.
 func _status_prefix(status: StatusData, stacks: int) -> String:
 	if status.image != null:
-		return "×%d —" % stacks
+		return ""
 	return "%s %d —" % [status.display_name, stacks]
 
 const STATUS_ICON_SIZE := 22
@@ -1240,7 +1245,20 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 	# Timed rows carry the clock, like the board's pips do — the row's text says how
 	# many games are left (clock_suffix) and the badge is what makes it findable
 	# without reading the sentence.
-	frame.add_child(UITheme.timed_art(Cosmetics.status_art(status), STATUS_ICON_SIZE, games > 0))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(row)
+	row.add_child(UITheme.timed_art(Cosmetics.status_art(status), STATUS_ICON_SIZE, games > 0))
+	# The stacks, beside the picture (see `_status_prefix`).
+	var count := Label.new()
+	count.name = "StackCount"
+	count.text = str(stacks)
+	count.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	count.add_theme_color_override("font_color", tint)
+	count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(count)
 	HoverCard.attach(frame, status.hover_card(which, stacks, nullified, games, any_time))
 	return frame
 
@@ -2184,6 +2202,7 @@ func _nullified_row(row: Dictionary, instance: int = 0) -> Control:
 # and not about the row.
 func _objective_row(text: String, color: Color, icon: Control = null,
 		instance: int = 0, mark: Control = null) -> Control:
+	text = text.strip_edges()
 	var wrap := PanelContainer.new()
 	# Quiet at rest, as verify_row's rows are: parchment on a hairline, the row's
 	# colour kept for the hover and for a warning (DANGER) or a faded row.
@@ -2495,6 +2514,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		enemy: GoalEnemyData = null, character: CharacterData = null,
 		instance: int = 0, mark: Control = null,
 		counter: Dictionary = {}) -> Dictionary:
+	text = text.strip_edges()
 	var wrap := PanelContainer.new()
 	# QUIET AT REST, LOUD WHEN IT MATTERS (the owner, 18 Nov 2026). Every row used
 	# to be gold text in a gold frame, so a list of six read as one gold block and

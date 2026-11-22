@@ -954,8 +954,8 @@ static func _ch_pack() -> Dictionary:
 				+ "is worth engaging."),
 			_kv("Burn", "It hits for half. On YOU it is a debt instead: every game, "
 				+ "beat the run while skipping or trashing 3 items — or take 3 "
-				+ "damage once the enemies have swung. It lasts a game per stack, "
-				+ "and stacks no higher than 3. On an ENEMY its goal grows a way "
+				+ "damage once the enemies have swung. It lasts a game per stack. "
+				+ "On an ENEMY its goal grows a way "
 				+ "out: beat the run while skipping or trashing 3 items. And it burns "
 				+ "PAPER: every time Burn lands on you there is a 1-in-4 chance "
 				+ "that one random scroll in your pack goes up with it. Pills "

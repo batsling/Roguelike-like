@@ -36,7 +36,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 40, "the sheet's 40 rows all generated")
+	assert_eq(cards.size(), 45, "the sheet's 45 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -149,12 +149,12 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # of five, and those are untouched.
 # The Slay the Spire set (18 Oct 2026) filled the Ironclad Rare deck and brought four
 # one-card decks of its own. Sorted the way GDScript sorts: capital T first.
+# The Silent's poison cards (22 Nov 2026) gave Prepared and Finisher company, so
+# the Silent Common and Uncommon decks no longer name their card face down.
 const LONELY_DECKS := [
 	"Isaac_MTG_Cards",                  # Ancient Recall
 	"Slay_The_Spire_Defect_Common",     # Stack
 	"Slay_The_Spire_Defect_Uncommon",   # Bullseye
-	"Slay_The_Spire_Silent_Common",     # Prepared
-	"Slay_The_Spire_Silent_Uncommon",   # Finisher
 	"Slay_the_Spire_Defect_Rare",       # Echo Form
 ]
 
@@ -764,3 +764,57 @@ func test_the_pile_and_the_count_go_with_the_run() -> void:
 	GameState.reset_run()
 	assert_true(GameState.destroyed_loot.is_empty())
 	assert_eq(GameState.cards_used_this_game, 0)
+
+# --- the Silent's poison cards (the owner, 22 Nov 2026) ---------------------------
+
+func _poison_on(instance: int) -> int:
+	return GameLoop2.entry_status_stacks(GameLoop2.entry_for(instance), &"poison")
+
+func test_poisoned_stab_stuns_and_poisons_the_body_it_is_aimed_at() -> void:
+	var a: int = _stand(9001, 1, 0)
+	var b: int = _stand(9002, 2, 0)
+	_play(&"poisoned_stab", {"target": Vector2i(2, 0)})
+	assert_eq(_stun_on(b), 1, "Stun 1")
+	assert_eq(_poison_on(b), 2, "and 2 Poison")
+	assert_eq(_poison_on(a), 0, "on the body aimed at only")
+	assert_eq(Array(Data.get_card(&"poisoned_stab").upgrade_types), ["stun", "poison"])
+
+func test_deadly_poison_lays_three_and_grows_with_an_upgrade() -> void:
+	var a: int = _stand(9001, 1, 0)
+	_play(&"deadly_poison", {"target": Vector2i(1, 0)})
+	assert_eq(_poison_on(a), 3)
+	var up: Dictionary = _entry(&"deadly_poison")
+	up[LootUpgrade.RUN_KEY] = 1
+	var b: int = _stand(9002, 2, 0)
+	CardSystem.play_card(up, {"rng": Fixtures.rng(), "target": Vector2i(2, 0)})
+	assert_eq(_poison_on(b), 4, "+1 Poison per upgrade")
+
+func test_bouncing_flask_bounces_three_times_and_an_upgrade_adds_one() -> void:
+	var a: int = _stand(9001, 1, 0)
+	var b: int = _stand(9002, 2, 0)
+	assert_eq(Data.get_card(&"bouncing_flask").aim(), "", "it picks its own targets")
+	_play(&"bouncing_flask")
+	assert_eq(_poison_on(a) + _poison_on(b), 6, "three bounces of 2, wherever they land")
+	var up: Dictionary = _entry(&"bouncing_flask")
+	up[LootUpgrade.RUN_KEY] = 1
+	CardSystem.play_card(up, {"rng": Fixtures.rng()})
+	assert_eq(_poison_on(a) + _poison_on(b), 6 + 8, "an upgrade is a fourth bounce")
+
+func test_envenom_poisons_what_an_attack_stuns_and_not_a_scroll() -> void:
+	Fixtures.card(self, &"envenom", 0)
+	var a: int = _stand(9001, 1, 0)
+	_play(&"pommel_strike", {"target": Vector2i(1, 0)})
+	assert_eq(_poison_on(a), 1, "an attack card's Stun brings 1 Poison")
+	var b: int = _stand(9002, 2, 0)
+	GameLoop2.stun(b, 1)
+	assert_eq(_poison_on(b), 0, "a Stun from anywhere else does not")
+
+func test_noxious_fumes_poisons_the_two_nearest_columns_each_turn() -> void:
+	Fixtures.card(self, &"noxious_fumes", 0)
+	var near: int = _stand(9001, 1, 0)
+	var next: int = _stand(9002, 2, 1)
+	var far: int = _stand(9003, 4, 2)
+	TriggerBus.enemy_turn_started.emit({"turn": 1})
+	assert_eq(_poison_on(near), 1, "column 1")
+	assert_eq(_poison_on(next), 1, "column 2")
+	assert_eq(_poison_on(far), 0, "not further back")

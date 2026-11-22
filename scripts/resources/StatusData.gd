@@ -89,8 +89,8 @@ const ENEMY := &"enemy"
 @export var stackable: String = "Intensity"
 
 # The stack CEILING the Stackable cell authored ("Max: 3"), or 0 for a status that
-# climbs forever. Burn's caps how many games it lasts (it was there because its
-# enemy condition got EASIER per stack, 4-X, until 22 Nov 2026). Enforced where stacks are added — GameState.apply_status
+# climbs forever. No status authors one today: Burn's (for the old 4-X condition)
+# was dropped on 22 Nov 2026. Enforced where stacks are added — GameState.apply_status
 # for the player, GameLoop2._add_status_to for a body — so nothing can route
 # around it.
 @export var max_stacks: int = 0
@@ -380,7 +380,10 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 		_:
 			lines.append("Does nothing on this side.")
 	if combat_applies(which):
-		lines.append("In combat: %s." % combat_line(stacks, which))
+		# A TRIGGER's combat side does nothing until its row is ticked (Poison), so
+		# the card says so rather than claiming an effect not yet in force.
+		lines.append(("In combat, once ticked: %s." if is_trigger(which)
+			else "In combat: %s.") % combat_line(stacks, which))
 	var clock: String = clock_note(games)
 	if clock != "":
 		lines.append(clock)
@@ -501,7 +504,8 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 	# one thing to the player, and "what is this doing to me" has to be answerable
 	# in one hover whether the answer is a goal, a number on the board, or both.
 	if combat_applies(which):
-		body += "\nIn combat: %s." % combat_line(stacks, which)
+		body += ("\nIn combat, once ticked: %s." if is_trigger(which)
+			else "\nIn combat: %s.") % combat_line(stacks, which)
 	elif which == PLAYER and combat_applies(ENEMY):
 		body += "\nIts combat effect is felt by enemies only."
 	# LAST LINE, and deliberately after the combat one: how long this lasts is the

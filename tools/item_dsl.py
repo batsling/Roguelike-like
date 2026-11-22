@@ -152,6 +152,11 @@ TRIGGER_SIGNALS = {
     # stunned or not, with the swinging weapon's slot. Bloody Tear's
     # `weapon_hit if_self: gain_hp 1`.
     "weapon_hit": "weapon_hit",
+    # A body YOUR WEAPON OR ATTACK CARD stunned (Envenom, 22 Nov 2026) — once per
+    # body, with ctx.target that body, so `apply_status … target=enemy` lands on it.
+    "enemy_stunned": "enemy_stunned",
+    # The start of every enemy turn, once its ground has fired (Noxious Fumes).
+    "enemy_turn_started": "enemy_turn_started",
     # A charge LANDED on a weapon in the pack (§12), from anything that charges
     # one — its goal, a penny, a Hairpin. Fired once per charging, whatever its
     # size, with the weapon's slot (Dumb Bell, Well-Done Steak).

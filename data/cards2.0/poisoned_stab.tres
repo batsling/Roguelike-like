@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_poisoned_stab"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"poisoned_stab"
+display_name = "Poisoned Stab"
+rarity = "Common"
+source_game = "Slay the Spire"
+set_name = "Silent Common"
+description = "Apply Stun 1 and 2 Poison to an Enemy"
+effect = [{"op": "stun", "value": 1}, {"op": "apply_status", "status": "poison", "value": 2}]
+file = "PoisonedStab"
+icon = "Slay_The_Spire_Silent_Common"
+loot_type = "Usable"
+tags = PackedStringArray("silent", "attack")
+upgrade_types = PackedStringArray("stun", "poison")

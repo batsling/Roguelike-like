@@ -96,6 +96,9 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	if card.is_passive():
 		return out
 	var rng: RandomNumberGenerator = ctx.get("rng")
+	# An ATTACK card's Stun is what Envenom answers (`enemy_stunned`), so the play
+	# carries whether this is one down to the clause that lands it.
+	ctx["attack"] = card.tags.has("attack")
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
@@ -274,6 +277,11 @@ func _hit_enemies(effect: Dictionary, out: Dictionary, ctx: Dictionary,
 	var sdata: StatusData = Data.get_status(status)
 	var area := String(effect.get("area", "cell"))
 	var cells: Array = []
+	# BOUNCING FLASK (the owner, 22 Nov 2026): `bounces` times, a body picked at
+	# random takes the clause, and the same body can be picked again.
+	if area == "random":
+		_bounce(status, stacks, maxi(1, int(effect.get("bounces", 1))), out, tally, rng_of(ctx))
+		return
 	if area == "board":
 		cells = GameLoop2.area_cells(Vector2i(1, 0), "board")
 	elif ctx.get("target") is Vector2i:
@@ -289,6 +297,9 @@ func _hit_enemies(effect: Dictionary, out: Dictionary, ctx: Dictionary,
 	for inst in bodies:
 		if GameLoop2.apply_status_to(int(inst), status, lands) > 0:
 			landed += 1
+			if status == &"stun" and bool(ctx.get("attack", false)):
+				TriggerBus.enemy_stunned.emit({"instance": int(inst),
+					"target": int(inst), "source": "attack"})
 	if landed <= 0:
 		out["logs"].append("No enemy is there to take it.")
 		return
@@ -297,6 +308,34 @@ func _hit_enemies(effect: Dictionary, out: Dictionary, ctx: Dictionary,
 	out["logs"].append("%d enem%s gain%s +%d %s." % [landed,
 		"y" if landed == 1 else "ies", "s" if landed == 1 else "", lands, word])
 
+
+func rng_of(ctx: Dictionary) -> RandomNumberGenerator:
+	var rng: RandomNumberGenerator = ctx.get("rng")
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
+	return rng
+
+# `bounces` random hits of `stacks` of `status`, each on any body on the board.
+func _bounce(status: StringName, stacks: int, bounces: int, out: Dictionary,
+		tally: Dictionary, rng: RandomNumberGenerator) -> void:
+	var sdata: StatusData = Data.get_status(status)
+	var word: String = sdata.display_name if sdata != null else String(status).capitalize()
+	var hits: int = 0
+	for _i in range(bounces):
+		var bodies: Array = GameLoop2.stack.filter(func(e):
+			return int(e.get("col", GameLoop2.offgrid_col())) <= GameLoop2.grid_cols())
+		if bodies.is_empty():
+			break
+		var inst: int = int(bodies[rng.randi_range(0, bodies.size() - 1)].get("instance", 0))
+		if GameLoop2.apply_status_to(inst, status, stacks) > 0:
+			hits += 1
+	if hits <= 0:
+		out["logs"].append("No enemy is there to take it.")
+		return
+	tally["hit"] = int(tally.get("hit", 0)) + hits
+	out["logs"].append("It bounces %d time%s: +%d %s each." % [hits,
+		"" if hits == 1 else "s", stacks, word])
 
 # Fiend Fire, Second Wind: "destroy all OTHER loot in this row" — every piece with
 # a cell in the pack row the card was played out of (the card has already left

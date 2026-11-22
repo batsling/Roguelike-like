@@ -909,18 +909,30 @@ func is_seen(kind: String, id) -> bool:
 
 # Record a sighting. Cheap when it is not new, and a new one is written on the
 # next frame rather than at once, so a board standing ten bodies up is one write.
-func mark_seen(kind: String, id) -> void:
+#
+# `announce` false records it QUIETLY and returns whether it was new: a chest's
+# choices are seen the moment they are offered, but announcing them would name
+# what is inside before the player picks (the owner, 22 Nov 2026). The chest
+# announces the one taken instead (`announce_seen`). Returns true for a new sighting.
+func mark_seen(kind: String, id, announce: bool = true) -> bool:
 	var key: String = String(id)
 	if seen_bypass or key == "" or not SEEN_KINDS.has(kind):
-		return
+		return false
 	if not seen.has(kind):
 		seen[kind] = {}
 	if (seen[kind] as Dictionary).has(key):
-		return
+		return false
 	seen[kind][key] = true
 	if not _seen_save_due:
 		_seen_save_due = true
 		_flush_seen.call_deferred()
+	if announce:
+		announce_seen(kind, id)
+	return true
+
+# The "New in the Collection" toast for one sighting.
+func announce_seen(kind: String, id) -> void:
+	var key: String = String(id)
 	# A FIRST SIGHTING IS NEWS (the owner, 18 Nov 2026): one of the few things
 	# that still pops up rather than only going to History (Notifications).
 	var res = _seen_resource(kind, StringName(key))

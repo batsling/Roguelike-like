@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_envenom"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"envenom"
+display_name = "Envenom"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Silent Rare"
+description = "Whenever a Weapon or an Attack Stuns an Enemy, apply 1 Poison to it"
+effect = []
+file = "Envenom"
+icon = "Slay_The_Spire_Silent_Rare"
+loot_type = "Passive"
+tags = PackedStringArray("silent")
+passive = true
+triggers = [{"on": "enemy_stunned", "effects": [{"type": "apply_status", "status": "poison", "value": 1, "target": "enemy"}]}]
+stat_bonuses = {}
+status_bonuses = {}

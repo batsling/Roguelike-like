@@ -3085,6 +3085,8 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 	#     also what stops standing still on burning ground being free.
 	if only.is_empty():
 		_fire_turn_start_cells()
+		# a0'. …and then the run's own turn-start hook (Noxious Fumes).
+		TriggerBus.enemy_turn_started.emit({"turn": turn})
 	# ONE ACTION PER BODY PER TURN, and that is the rule the whole beat is built
 	# around (§7.4). `spent` is who has already used this one — an intent, a swing,
 	# a stun sat out — so the step below cannot hand the same body a second go.
@@ -5908,6 +5910,14 @@ func _status_targets(target: String) -> Array:
 				if in_front(entry):
 					near.append(entry)
 			return near
+		"front2":
+			# The TWO columns nearest you (Noxious Fumes, the owner, 22 Nov 2026):
+			# any body with part of itself in column 1 or 2.
+			var close: Array = []
+			for entry in everyone:
+				if _front_col(entry) <= 2 and int(entry.get("col", offgrid_col())) <= grid_cols():
+					close.append(entry)
+			return close
 		_:
 			var landed: Dictionary = arrival()
 			return [] if landed.is_empty() else [landed]

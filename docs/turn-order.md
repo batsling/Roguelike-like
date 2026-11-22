@@ -185,7 +185,8 @@ everything in it is put back by Undo.
 3. **One enemy turn** (`attempt_turn` → `_resolve_enemy_turn`):
    - **a0. The ground first.** Every body standing on a tile fires its turn-start
      effect (fire adds Burn, so the halved damage is on it before it swings). A
-     body can die here → kill chain.
+     body can die here → kill chain. Then signal `enemy_turn_started` → items
+     (Noxious Fumes poisons the two columns nearest you).
    - **a. Each body in board order gets ONE action:** already dead → skipped;
      **stunned** → sits it out; (on an *extra* turn only, the **Censer** holds the
      front columns out); an **intent** (Ritual, Defensive Stance, a spawner, a
@@ -236,6 +237,7 @@ _check_stack("end of turn")
 ```order
 scripts/autoload/GameLoop2.gd :: _resolve_enemy_turn
 _fire_turn_start_cells()
+TriggerBus.enemy_turn_started.emit(
 _index_of(inst) < 0
 is_stunned(entry)
 censed_cols > 0

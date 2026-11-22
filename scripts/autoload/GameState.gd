@@ -711,6 +711,8 @@ func _connect_lifecycle_hooks() -> void:
 	# answers from the far end.
 	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned", "card_used",
 			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected",
+			# Envenom's and Noxious Fumes' hooks (22 Nov 2026).
+			"enemy_stunned", "enemy_turn_started",
 			# Pain, Decay and Regret's hooks (docs/loot-passives.md §18).
 			"action_taken", "game_ending"]:
 		var sig: Signal = TriggerBus.get(hook)
@@ -900,8 +902,11 @@ func _run_trigger(item: ItemData, trig: Dictionary, ctx_extras: Dictionary,
 		art = copier.image
 	if not bool(trig.get("silent", false)):
 		GameLog.add("(%s triggers)" % label, Color(0.85, 0.9, 0.7))
+	# A hook that names a BODY on the board (Envenom's `enemy_stunned`) hands it on
+	# as the effect's target, so `apply_status … target=enemy` lands on that body.
+	var hook_target = ctx_extras.get("target")
 	var fx_ctx := {
-		"source": null, "target": null, "scene": null,
+		"source": null, "target": hook_target if hook_target is int else null, "scene": null,
 		"card": ctx_extras.get("card"),
 		# The owning item — lets a self-referential effect (Unstable
 		# Genome's destroy_self) find and remove itself.

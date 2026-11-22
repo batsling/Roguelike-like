@@ -8,7 +8,7 @@ goals. The sheet's PROSE columns are carried through verbatim for tooltips; what
 the engine runs on is the two effect columns, one per side, authored
 independently so a status's two halves can do different things:
 
-  statuses2.0: Name | Type | Game | On Player | On Player Effect | On Enemy
+  statuses2.0: Name | Type | On Player | On Player Effect | On Enemy
                     | On Enemy Effect | Combat | Decrease | Enemy Combat Effect
                     | Player Combat | Player Combat Effect | Stackable | Image
 
@@ -84,9 +84,8 @@ does not attack and does not take turns, the game is their turn, and that is wha
 "This lasts for X games" on Bleed's and Stun's player sides is saying.
 
 `Stackable` says how a second application combines — `Intensity` raises X — and
-may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. Burn's
-caps how many games it lasts (it was there because its enemy condition got EASIER
-per stack, 4-X, until 22 Nov 2026).
+may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. No status
+authors one today (Burn's, for its old 4-X condition, went on 22 Nov 2026).
 
 Reward token DSL (one clause per effect):
   gain_chest [small|medium|large|huge] <n>   -> {type: gain_chest, value, choices}

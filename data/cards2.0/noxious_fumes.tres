@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_noxious_fumes"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"noxious_fumes"
+display_name = "Noxious Fumes"
+rarity = "Uncommon"
+source_game = "Slay the Spire"
+set_name = "Silent Uncommon"
+description = "At the start of every enemy turn, apply 1 Poison to every Enemy in the 2 columns nearest you"
+effect = []
+file = "NoxiousFumes"
+icon = "Slay_The_Spire_Silent_Uncommon"
+loot_type = "Passive"
+tags = PackedStringArray("silent")
+passive = true
+triggers = [{"on": "enemy_turn_started", "effects": [{"type": "apply_status", "status": "poison", "value": 1, "target": "front2"}]}]
+stat_bonuses = {}
+status_bonuses = {}

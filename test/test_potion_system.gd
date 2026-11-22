@@ -506,8 +506,8 @@ func test_a_wide_body_takes_the_DAMAGE_once_and_the_fire_every_turn() -> void:
 		assert_not_null(GameLoop2.tile_at(cell), "and all four of them are alight")
 
 	# Now the ground, per cell and per turn. A 1x1 standing in the same fire is the
-	# control: it pays for one square, the 2x2 pays for four — capped at Burn's own
-	# ceiling of 3, so read the 3 below as "more than one", not as "three cells".
+	# control: it pays for one square, the 2x2 pays for more (Burn has no ceiling
+	# since 22 Nov 2026, so the assertion is "more than the narrow one").
 	var small: GoalEnemyData = _enemy(9)
 	small.id = &"synthetic_small"
 	GameLoop2.spawn_to_stack(small)
@@ -524,8 +524,8 @@ func test_a_wide_body_takes_the_DAMAGE_once_and_the_fire_every_turn() -> void:
 	GameLoop2.attempt_turn()
 	assert_eq(GameLoop2.entry_status_stacks(GameLoop2.entry_for(narrow), &"burn"), 1,
 		"one square, one stack")
-	assert_eq(GameLoop2.entry_status_stacks(GameLoop2.entry_for(wide), &"burn"),
-		Data.get_status(&"burn").max_stacks,
+	assert_gt(GameLoop2.entry_status_stacks(GameLoop2.entry_for(wide), &"burn"),
+		GameLoop2.entry_status_stacks(GameLoop2.entry_for(narrow), &"burn"),
 		"and being wide costs more, every turn — which is where a big body pays "
 		+ "for being big, rather than on the impact")
 

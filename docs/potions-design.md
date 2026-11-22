@@ -813,7 +813,7 @@ Everything else about the Bark holds: it doubles the **Negative** rows too — a
 Barked Fire Potion is 6 damage to the drinker — because a relic that only doubled
 the upside would make drinking an unknown bottle a strictly better gamble than it
 is, and that is the one thing an identification minigame cannot afford (spec §4.1).
-Burn's `Max: 3` still caps on the way up, so the Barked Burn clause lands at 3.
+Burn has no cap since 22 Nov 2026 (the owner: "no burn limit"), so the Barked Burn clause lands at whatever it adds up to.
 
 ---
 

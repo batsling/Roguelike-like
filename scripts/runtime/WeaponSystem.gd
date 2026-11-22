@@ -632,6 +632,8 @@ static func swing(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 				if stun > 0 and GameLoop2.stun(int(inst), stun):
 					TriggerBus.weapon_stunned.emit({"slot": slot,
 						"instance": int(inst), "weapon": w.id})
+					TriggerBus.enemy_stunned.emit({"instance": int(inst),
+						"target": int(inst), "source": "weapon"})
 			if w.push > 0:
 				_push_all(hit, push_vector(w), w.push)
 			var strike := {"cells": cells, "instances": hit.duplicate()}

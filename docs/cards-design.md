@@ -379,6 +379,11 @@ Effect left blank as always; `tools/oneshots/_cards_slay_the_spire_set.py` wrote
 | Exhume | `exhume` |
 | Fiend Fire | `destroy_row; stun 1 per=destroyed` |
 | Finisher | `stun 1 per=cards_used` |
+| Bouncing Flask | `apply_status poison 2 area=random bounces=3` — a random body three times, the same one possibly twice; Upgrade **Bounce** adds one (22 Nov 2026) |
+| Deadly Poison | `apply_status poison 3`, Upgrade **Poison** |
+| Envenom | `enemy_stunned: apply_status poison 1 target=enemy` (passive): every body a WEAPON or an ATTACK card Stuns takes 1 Poison (`TriggerBus.enemy_stunned`) |
+| Noxious Fumes | `enemy_turn_started: apply_status poison 1 target=front2` (passive): at every enemy turn's start, the two columns nearest you |
+| Poisoned Stab | `stun 1; apply_status poison 2`, Upgrade **Stun, Poison** |
 | Nightmare | `nightmare 3` (added 21 Nov 2026, Upgrade Type N/A: Slay the Spire's upgrade only lowers its cost) |
 | Offering | `lose_hp 6; charge_pick 4; gain_loot card 3` |
 | Pommel Strike | `stun 1; gain_loot card 1` |

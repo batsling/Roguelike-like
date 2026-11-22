@@ -492,8 +492,8 @@ func test_a_clause_side_cannot_be_claimed_as_a_player_objective() -> void:
 # side is an `instead`: a second way to clear a body, which the run must not
 # record as a beat, because the enemy's own condition was never set.
 #
-# And it is the first status with a ceiling: `Max: 3`, which since 22 Nov 2026
-# caps how many games it lasts.
+# It was the first status with a ceiling (`Max: 3`), dropped 22 Nov 2026: it lasts
+# X games now, and the cap only shortened that.
 # ---------------------------------------------------------------------------
 
 # A boss, for the one place the way out is refused.
@@ -528,14 +528,24 @@ func test_a_demand_is_a_row_the_player_answers() -> void:
 	assert_eq(rows.size(), 1, "it stands on the checklist like a standing goal")
 	assert_eq((rows[0]["status"] as StatusData).id, &"burn")
 
-func test_burn_stops_climbing_at_its_authored_cap() -> void:
-	assert_eq(Data.get_status(&"burn").max_stacks, 3, "the sheet's Max: 3")
+func test_burn_has_no_cap() -> void:
+	# The owner, 22 Nov 2026: "no burn limit".
+	assert_eq(Data.get_status(&"burn").max_stacks, 0, "the sheet authors no Max")
+	GameState.apply_status(&"burn", 5)
+	assert_eq(GameState.status_stacks(&"burn"), 5)
+
+func test_an_authored_cap_stops_the_climb() -> void:
+	# The RULE, which stays for any status that authors a `Max: N`: no status does
+	# today, so this lends Burn one for the length of the test.
+	var burn: StatusData = Data.get_status(&"burn")
+	burn.max_stacks = 3
 	GameState.apply_status(&"burn", 5)
 	assert_eq(GameState.status_stacks(&"burn"), 3, "on the player")
 	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_status_to(inst, &"burn", 9)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 3,
 		"and on a body")
+	burn.max_stacks = 0
 
 # --- Burn eats the paper you are carrying (§13.1) ---------------------------
 #
@@ -589,12 +599,16 @@ func test_only_scrolls_burn() -> void:
 	assert_eq(GameState.loot_scrolls().size(), 0, "the scroll went")
 	assert_eq(GameState.loot_pills().size(), 1, "the pill did not")
 
-func test_a_burn_that_the_cap_eats_sets_nothing_alight() -> void:
-	# Burn stops at 3, and a fourth stack that never lands is not a fourth fire.
+func test_a_burn_that_a_cap_eats_sets_nothing_alight() -> void:
+	# A stack that never lands is not a fire. No status is capped since Burn lost
+	# its Max (22 Nov 2026), so the cap is lent for the test.
+	var burn: StatusData = Data.get_status(&"burn")
+	burn.max_stacks = 3
 	GameState.apply_status(&"burn", 3)
 	_pack_scrolls(2)
 	seed(_seed_that_burns())
 	GameState.apply_status(&"burn", 1)
+	burn.max_stacks = 0
 	assert_eq(GameState.loot_scrolls().size(), 2, "nothing was applied, so nothing burns")
 
 func test_burn_ticking_down_burns_nothing() -> void:
@@ -1146,7 +1160,8 @@ func test_the_tooltip_says_what_a_burn_is_on_each_side() -> void:
 	var on_me: String = burn.tooltip_for(StatusData.PLAYER, 1)
 	assert_string_contains(on_me, "Every game", "an obligation, not an offer")
 	assert_string_contains(on_me, "or take 3 Damage", "with its price on the line")
-	assert_string_contains(on_me, "Burn 1/3", "and the ceiling beside the count")
+	assert_false(on_me.contains("Burn 1/"), "no ceiling beside the count any more")
+	assert_string_contains(on_me, "Loses a stack at the end of every game", "it lasts X games")
 	assert_string_contains(burn.tooltip_for(StatusData.ENEMY, 1),
 		"can be met instead by", "the enemy side is a way out")
 
