@@ -156,13 +156,10 @@ func test_speed_is_under_an_hour_at_any_stack() -> void:
 	# This curve was Dexterity's before the combat side landed (§13.2); it kept
 	# the goal and took the name that describes it.
 	# The curve is gone (the owner, 22 Nov 2026: "under an hour", one number to
-	# remember); the stacks still size the chest.
+	# remember), and so is the chest: it pays the Dash.
 	var speed: StatusData = Data.get_status(&"speed")
 	for x in [1, 2, 5]:
 		assert_eq(speed.condition_text(StatusData.PLAYER, x), "beaten in under an hour")
-	assert_gt(int(speed.reward_effects(StatusData.PLAYER, 3)[0].get("value", 0)),
-		int(speed.reward_effects(StatusData.PLAYER, 1)[0].get("value", 0)),
-		"more stacks, a bigger chest")
 
 # --- a side worded per `Ticked` (§7.7) ---------------------------------------
 #
@@ -233,18 +230,17 @@ func test_whole_numbers_lose_their_decimal_tail() -> void:
 	assert_eq(StatusData.format_number(1.125), "1.125")
 
 func test_rewards_scale_with_the_stack() -> void:
-	var strength: StatusData = Data.get_status(&"strength")
-	var effects: Array = strength.reward_effects(StatusData.PLAYER, 3)
-	assert_eq(effects.size(), 2, "Strength pays a chest reward and a Bash")
+	# Dexterity's chest is what grows with the stack.
+	var dex: StatusData = Data.get_status(&"dexterity")
+	var effects: Array = dex.reward_effects(StatusData.PLAYER, 3)
 	assert_eq(String(effects[0].get("type", "")), "chest_reward")
 	assert_eq(int(effects[0].get("value", 0)), 3, "the chest reward scales to X")
 	assert_false(effects[0].has("scaled"), "the {expr} hole is resolved, not passed through")
-	# The VERB payout does not scale — the chest is what grows with the stack now,
-	# so the sheet writes `gain_stat bash 1` and means it at every X.
-	assert_eq(String(effects[1].get("type", "")), "gain_stat")
-	assert_eq(int(effects[1].get("value", 0)), 1, "a flat Bash at any stack")
-	assert_eq(int(Data.get_status(&"strength").reward_effects(StatusData.PLAYER, 1)[1]
-		.get("value", 0)), 1, "and the same one at one stack")
+	# Strength pays a flat Bash and nothing else (the owner, 22 Nov 2026: no chest).
+	var strength: Array = Data.get_status(&"strength").reward_effects(StatusData.PLAYER, 3)
+	assert_eq(strength.size(), 1, "Strength pays only its Bash")
+	assert_eq(String(strength[0].get("type", "")), "gain_stat")
+	assert_eq(int(strength[0].get("value", 0)), 1, "a flat Bash at any stack")
 
 func test_a_clause_side_pays_nothing() -> void:
 	# A `clause` is a requirement, not a payout — the generator rejects a reward on
@@ -255,10 +251,14 @@ func test_a_clause_side_pays_nothing() -> void:
 func test_reward_text_reads_at_the_live_stack() -> void:
 	# The `[chest reward]` the sheet's prose writes, resolved to the chests it
 	# actually buys at this stack count (§8.2).
-	assert_eq(Data.get_status(&"strength").reward_at(StatusData.PLAYER, 2),
-		"+1 Medium Chest, +1 Bash")
-	assert_eq(Data.get_status(&"strength").reward_at(StatusData.PLAYER, 5),
-		"+1 Huge Chest and 1 Small Chest, +1 Bash")
+	assert_eq(Data.get_status(&"dexterity").reward_at(StatusData.PLAYER, 2),
+		"+1 Medium Chest")
+	assert_eq(Data.get_status(&"dexterity").reward_at(StatusData.PLAYER, 5),
+		"+1 Huge Chest and 1 Small Chest")
+	# Strength and Speed pay no chest (the owner, 22 Nov 2026: "dash and bash are
+	# fine enough"), at any stack.
+	assert_eq(Data.get_status(&"strength").reward_at(StatusData.PLAYER, 5), "+1 Bash")
+	assert_eq(Data.get_status(&"speed").reward_at(StatusData.PLAYER, 5), "+1 Dash")
 	assert_eq(Data.get_status(&"marked").reward_at(StatusData.ENEMY, 1), "+1 Small Chest")
 
 func test_every_status_has_art_and_does_something() -> void:
@@ -282,7 +282,7 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 	var objectives: Array = GameState.status_objectives()
 	assert_eq(objectives.size(), 1, "it shows up as a standing objective")
 	assert_eq((objectives[0]["status"] as StatusData).objective_text(StatusData.PLAYER, 2),
-		"If beaten on a harder difficulty than normal, gain +1 Medium Chest, +1 Bash")
+		"If beaten on a harder difficulty than normal, gain +1 Bash")
 
 func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
 	Fixtures.choose_solo(_enemy("Beat it"))
@@ -438,9 +438,7 @@ func test_a_player_objective_pays_out_and_stays() -> void:
 	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true, [], {"status_goals": [&"strength"]})
 	assert_eq(GameState.bash, 1, "a flat +1 Bash, whatever the stack")
-	# [chest reward] 2 is ONE Medium chest, not two Small ones (§8.2).
-	assert_eq(GameState.pending_chests, 1, "one chest")
-	assert_eq(GameState.pending_chest_choices, [2], "and it is a Medium")
+	assert_eq(GameState.pending_chests, 0, "and no chest (the owner, 22 Nov 2026)")
 	assert_eq(GameState.status_stacks(&"strength"), 2,
 		"the status persists — its side does not decay")
 

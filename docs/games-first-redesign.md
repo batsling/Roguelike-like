@@ -3411,14 +3411,15 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
-| Strength | `goal "beaten on a harder difficulty than normal" -> gain_chest reward {X}; gain_stat bash 1` | `clause "you must be playing on a harder difficulty than normal"` |
-| Speed | `goal "beaten in under an hour" -> gain_chest reward {X}; gain_stat dash 1` | `clause "the game must be beaten in under an hour" any_time "you must do it within an hour of starting the game"` |
+| Strength | `goal "beaten on a harder difficulty than normal" -> gain_stat bash 1` | `clause "you must be playing on a harder difficulty than normal"` |
+| Speed | `goal "beaten in under an hour" -> gain_stat dash 1` | `clause "the game must be beaten in under an hour" any_time "you must do it within an hour of starting the game"` |
 | Marked | `demand "get 2 achievements" else -> apply_status strength 3 target=random` | `bonus "you get 2 achievements" -> gain_chest reward {X}` |
 | Dexterity | `goal "a boss was beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat a boss without getting hit"` |
 | Burn | `demand "skip or trash 3 items/upgrades" else -> take_damage 3` | `instead "skip or trash 3 items/upgrades"` |
 
-**SIMPLIFIED, 22 Nov 2026 (the owner).** No condition carries X any more: on a
-buff X is the chest's size, on a debuff it is how many games it lasts. Every
+**SIMPLIFIED, 22 Nov 2026 (the owner).** No condition carries X any more: on
+Dexterity X is the chest's size (Strength and Speed pay only their Bash and
+Dash, no chest), on a debuff it is how many games it lasts. Every
 debuff LASTS X GAMES — Burn and Marked moved from `On Completion` to the new
 `Each Game` (a stack goes at the end of every game the player holds it, missed or
 answered; never by itself on an enemy), Bleed already read that way. Marked's
@@ -3499,8 +3500,8 @@ would only make it a worse item.
 
 | Status | Type | From | Condition | Reward | In combat |
 |---|---|---|---|---|---|
-| **Strength** | Buff | Slay the Spire | beaten on a harder difficulty than normal | [chest reward X], +1 Bash | deals +X damage |
-| **Speed** | Buff | Mewgenics | beaten in under an hour | [chest reward X], +1 Dash | closes +X tiles per turn |
+| **Strength** | Buff | Slay the Spire | beaten on a harder difficulty than normal | +1 Bash (no chest since 22 Nov 2026) | deals +X damage |
+| **Speed** | Buff | Mewgenics | beaten in under an hour | +1 Dash (no chest since 22 Nov 2026) | closes +X tiles per turn |
 | **Dexterity** | Buff | Slay the Spire | a boss was beaten without getting hit | [chest reward X] | +X Shields |
 | **Marked** | Debuff | Mewgenics | you get 2 achievements; lasts X games | [chest reward X] on an enemy; on the player, missing it gives a random enemy 3 Strength | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | skip or trash 3 items/upgrades; lasts X games | *nothing* — it charges 3 Damage for being missed | deals half damage |

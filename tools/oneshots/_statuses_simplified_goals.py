@@ -67,13 +67,14 @@ STATUSES = {
 	"G4": 'bonus "you get 2 achievements" -> gain_chest reward {X}',
 	"I4": "Each Game",
 	# Speed
-	"D5": 'Gain "If beaten in under an hour, Gain a [chest reward] and 1 Dash"',
-	"E5": 'goal "beaten in under an hour" -> gain_chest reward {X}; gain_stat dash 1',
+	# No chest (the owner, 22 Nov 2026: "dash and bash are fine enough").
+	"D5": 'Gain "If beaten in under an hour, Gain 1 Dash"',
+	"E5": 'goal "beaten in under an hour" -> gain_stat dash 1',
 	"F5": 'Gains "and the game must be beaten in under an hour" — on a goal you can do any time, "and you must do it within an hour of starting the game"',
 	"G5": 'clause "the game must be beaten in under an hour" any_time "you must do it within an hour of starting the game"',
 	# Strength
-	"D6": 'Gain "If beaten on a harder difficulty than normal, Gain a [chest reward] and 1 Bash"',
-	"E6": 'goal "beaten on a harder difficulty than normal" -> gain_chest reward {X}; gain_stat bash 1',
+	"D6": 'Gain "If beaten on a harder difficulty than normal, Gain 1 Bash"',
+	"E6": 'goal "beaten on a harder difficulty than normal" -> gain_stat bash 1',
 	# One wording, as before: it reads true at the end of a game and mid-game alike.
 	"F6": 'Gains "and you must be playing on a harder difficulty than normal in the run you complete the goal in"',
 	"G6": 'clause "you must be playing on a harder difficulty than normal"',
