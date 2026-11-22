@@ -96,9 +96,11 @@ _run_trigger(item, trig, ctx_extras, loot)
      everything this pick put down. That is the location this very pick dealt,
      or one dealt since the last pick (a game's end, a lost run), or the run's
      first, dealt by `start_run` before the start was picked. A Scramble does
-     not enter it. The popup
-     waits for the page's next quiet moment.
-5. The **difficulty step** is announced, if step 4 crossed one.
+     not enter it. Nothing pops up: the run's first location was shown on the
+     entrance screen, and a difficulty up's is step 5's card toast, with the
+     chip glowing until it is clicked.
+5. The **difficulty step** is announced, if step 4 crossed one: a card toast of
+   the new tier and the location it dealt, with its art.
 
 ```order
 scripts/redesign2/Overworld2.gd :: _begin_game

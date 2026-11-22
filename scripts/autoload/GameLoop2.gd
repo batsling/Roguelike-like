@@ -465,9 +465,11 @@ var units: Dictionary = {}
 var location_id: StringName = &""
 var location_tier: int = -1
 var location_uses: Array = []
-# Dealt and not yet SHOWN: the page opens the arrival popup off this at its next
-# quiet moment, and clears it. Saved, so a location dealt by the spawn that ended
-# a session is still announced when the run is picked up again.
+# Dealt by a DIFFICULTY UP and not yet opened: the page's location chip glows off
+# this until the player clicks it (the owner, 22 Nov 2026), and opening the
+# location clears it. The run's first location is never flagged: the entrance
+# screen previews it instead (StartPicker). Saved, so a location dealt by the
+# spawn that ended a session still glows when the run is picked up again.
 var location_unseen: bool = false
 # Dealt, and its "when entered" not yet run: a location's ARRIVE effects wait for
 # the next game the player picks (the owner, 23 Oct 2026), so a difficulty up
@@ -4541,22 +4543,25 @@ func _location_if_due() -> void:
 		return
 	if tier <= location_tier:
 		return
+	# The run's FIRST deal (start_run, tier -1 before it) is previewed on the
+	# entrance screen, so it is not flagged for the chip to glow.
+	var opening: bool = location_tier < 0
 	location_tier = tier
 	var loc: LocationData = Locations.deal(tier, null, location_id)
 	if loc == null:
 		return        # an empty roster: the run carries on with no floor
-	enter_location(loc)
+	enter_location(loc, not opening)
 
 # Stand the run in `loc`: it replaces whatever was there and its actions start
 # fresh at once, but its ARRIVE effects wait for the next game picked
 # (`location_arrival_due`). Public so the dev panel and the tests can put a run
-# anywhere.
-func enter_location(loc: LocationData) -> void:
+# anywhere. `flag` is whether the chip should glow for it (`location_unseen`).
+func enter_location(loc: LocationData, flag: bool = true) -> void:
 	if loc == null:
 		return
 	GameStats.mark_seen("location", loc.id)
 	location_id = loc.id
-	location_unseen = true
+	location_unseen = flag
 	location_arrival_due = not loc.arrive.is_empty()
 	location_uses = []
 	for _a in loc.actions:

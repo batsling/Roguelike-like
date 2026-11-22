@@ -90,6 +90,7 @@ func _ready() -> void:
 	_apply_bottom_inset()
 
 	Notifications.notified.connect(_on_notified)
+	Notifications.carded.connect(_on_carded)
 
 # Put the stack in a lane of its own: `left` px from the screen's left edge,
 # `width` px wide, still standing on the foot of the screen. Every toast is cut to
@@ -117,6 +118,7 @@ func set_bottom_inset(px: float) -> void:
 # open under notices about the run it replaced.
 func clear() -> void:
 	_by_key.clear()
+	_held.clear()
 	if _stack == null or not is_instance_valid(_stack):
 		return
 	for t in _stack.get_children():
@@ -142,6 +144,11 @@ const ICON_SIZE := 22
 var _by_key: Dictionary = {}
 
 func _on_notified(text: String, color: Color, icon: Texture2D = null, key: String = "") -> void:
+	# A CARD TOAST HAS THE LANE while it stands: a line arriving meanwhile waits
+	# for it to go (`_flush_held`), rather than pushing it out before it is read.
+	if _card_standing():
+		_held.append([text, color, icon, key])
+		return
 	if key != "" and _by_key.has(key) and is_instance_valid(_by_key[key]["toast"]):
 		_restack(_by_key[key], text)
 		return
@@ -207,17 +214,118 @@ func _on_notified(text: String, color: Color, icon: Texture2D = null, key: Strin
 				_by_key.erase(key))
 	rec["tween"] = _play(toast, true)
 
+# A CARD TOAST (Notifications.announce_card): the picture at a size you can see,
+# a headline over a line. It is TWO toasts tall, so it counts as both of the lane's
+# places (`_retire_overflow`) and the lane is never taller than it was; and it
+# holds longer, since there is a picture and two lines to take in.
+const CARD_ART := Vector2(104, 65)
+const CARD_HOLD := 5.0
+const CARD_WEIGHT := 2
+
+# Lines that arrived while a card toast stood, shown as it leaves.
+var _held: Array = []
+
+func _card_standing() -> bool:
+	if _stack == null or not is_instance_valid(_stack):
+		return false
+	for t in _stack.get_children():
+		if int((t as Node).get_meta(&"weight", 1)) > 1 \
+				and not bool((t as Node).get_meta(&"retiring", false)):
+			return true
+	return false
+
+func _flush_held() -> void:
+	if _card_standing():
+		return
+	var lines: Array = _held.duplicate()
+	_held.clear()
+	for h in lines:
+		_on_notified(h[0], h[1], h[2], h[3])
+
+func _on_carded(title: String, line: String, color: Color, image: Texture2D = null) -> void:
+	var toast := PanelContainer.new()
+	toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	toast.size_flags_horizontal = Control.SIZE_FILL
+	toast.modulate.a = 0.0
+	toast.set_meta(&"weight", CARD_WEIGHT)
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(UITheme.BG_DEEP, 0.96)
+	sb.border_color = color
+	sb.set_border_width_all(1)
+	sb.border_width_left = STRIPE_W
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = PAD_X
+	sb.content_margin_right = PAD_X
+	sb.content_margin_top = PAD_Y
+	sb.content_margin_bottom = PAD_Y
+	toast.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	toast.add_child(row)
+	var room: float = _lane_w - STRIPE_W - 1 - PAD_X * 2
+	if image != null:
+		var art := TextureRect.new()
+		art.texture = image
+		art.custom_minimum_size = CARD_ART
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.clip_contents = true
+		art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(art)
+		room -= CARD_ART.x + UITheme.GAP_WIDE
+	var col := VBoxContainer.new()
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(col)
+	var head := _card_line(title, color, UITheme.FONT_SUB, room)
+	col.add_child(head)
+	if line != "":
+		col.add_child(_card_line(line, Color(0.97, 0.97, 0.97), UITheme.FONT_TEXT, room))
+	_stack.add_child(toast)
+	_retire_overflow()
+	var tw := create_tween().bind_node(toast)
+	tw.tween_property(toast, "modulate:a", 1.0, FADE_IN)
+	tw.tween_interval(CARD_HOLD)
+	tw.tween_property(toast, "modulate:a", 0.0, FADE_OUT)
+	tw.tween_callback(toast.queue_free)
+	toast.tree_exited.connect(func(): call_deferred("_flush_held"))
+
+# One line of a card toast, cut to the lane like every toast's line.
+func _card_line(text: String, color: Color, size: int, room: float) -> Label:
+	var lbl := Label.new()
+	lbl.text = text
+	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	lbl.clip_text = true
+	lbl.custom_minimum_size = Vector2(room, 0)
+	lbl.add_theme_color_override("font_color", color)
+	lbl.add_theme_font_size_override("font_size", size)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return lbl
+
 # NEVER MORE THAN MAX_VISIBLE. The oldest standing toast (the top of the column)
 # is sent out now rather than at the end of its hold, so a burst of drops keeps
-# the column a fixed height instead of climbing the page.
+# the column a fixed height instead of climbing the page. A card toast counts as
+# CARD_WEIGHT of the places, so it never stands with another one above it.
 func _retire_overflow() -> void:
 	var live: Array = []
+	var used: int = 0
 	for t in _stack.get_children():
 		if not bool((t as Node).get_meta(&"retiring", false)):
 			live.append(t)
-	var extra: int = live.size() - MAX_VISIBLE
-	for i in range(maxi(0, extra)):
-		var old: Control = live[i]
+			used += int((t as Node).get_meta(&"weight", 1))
+	var retire: Array = []
+	for t in live:
+		if used <= MAX_VISIBLE or t == live[-1]:
+			break
+		retire.append(t)
+		used -= int((t as Node).get_meta(&"weight", 1))
+	for old in retire:
 		old.set_meta(&"retiring", true)
 		for rec in _by_key.values():
 			if rec.get("toast") == old:

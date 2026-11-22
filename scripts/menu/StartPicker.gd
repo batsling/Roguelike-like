@@ -189,7 +189,61 @@ func _amulet_banner() -> Control:
 		meta.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		facts.add_child(meta)
 
+	var where: Control = _location_preview()
+	if where != null:
+		row.add_child(where)
+
 	return wrap
+
+# WHERE THE RUN STARTS (the owner, 22 Nov 2026: "have the starting location
+# previewed somewhere in the starting screen instead of popping up"). The run's
+# first location is dealt before this screen opens (GameLoop2.start_run) and it
+# already leans the enemies waiting on the entrances below, so it is read HERE,
+# while the entrance is being chosen, and nothing pops up after Begin. It sits on
+# the Amulet banner's right, which was empty, so the screen grows no taller.
+const LOCATION_ART := Vector2(120, 75)
+const LOCATION_TEXT_W := 270.0
+
+func _location_preview() -> Control:
+	var loc: LocationData = Locations.current()
+	if loc == null:
+		return null
+	var box := HBoxContainer.new()
+	box.name = "StartLocation"
+	box.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	if loc.image != null:
+		var art := TextureRect.new()
+		art.texture = loc.image
+		art.custom_minimum_size = LOCATION_ART
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.clip_contents = true
+		art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		box.add_child(art)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(col)
+	col.add_child(_line("Starting location  ·  %s" % Locations.tier_name(loc),
+		UITheme.GOLD.lerp(UITheme.TEXT_DIM, 0.4), UITheme.FONT_SMALL))
+	col.add_child(_line(loc.display_name, UITheme.GOLD, UITheme.FONT_SUB))
+	col.add_child(_line(loc.description, UITheme.TEXT, UITheme.FONT_SMALL))
+	var lean: String = Locations.lean_text(loc)
+	if lean != "":
+		col.add_child(_line(lean, UITheme.TEXT_DIM, UITheme.FONT_SMALL))
+	return box
+
+
+func _line(text: String, color: Color, size: int) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.custom_minimum_size = Vector2(LOCATION_TEXT_W, 0)
+	l.add_theme_font_size_override("font_size", size)
+	l.add_theme_color_override("font_color", color)
+	return l
 
 # One line. The screen used to explain itself here in two (how many genres, that
 # the start is a real game rather than a free move); the cards already say it.

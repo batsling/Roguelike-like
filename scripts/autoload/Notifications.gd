@@ -16,6 +16,10 @@ extends Node
 # report — can stack into one toast instead of a column of identical ones; "" is
 # never merged.
 signal notified(text: String, color: Color, icon: Texture2D, key: String)
+# A CARD TOAST: a two-line notice with a picture at a size you can see, for the
+# few moments that deserve more than a line — a difficulty up and the location it
+# deals (the owner, 22 Nov 2026). NotificationToasts draws it in the same lane.
+signal carded(title: String, line: String, color: Color, image: Texture2D)
 
 const MAX_HISTORY := 300
 const DEFAULT_COLOR := Color(0.7, 0.85, 1.0)
@@ -41,6 +45,14 @@ func announce(text: String, color: Color = DEFAULT_COLOR, icon: Texture2D = null
 		key: String = "") -> void:
 	if _record(text, color, icon):
 		notified.emit(text, color, icon, key)
+
+# Record a line for History AND pop up a card toast: `title` over `line`, beside
+# `image` (drawn smoothed, cropped to fill). A null image is a card with no art.
+func announce_card(title: String, line: String, color: Color = DEFAULT_COLOR,
+		image: Texture2D = null) -> void:
+	var text: String = title if line == "" else "%s %s" % [title, line]
+	if _record(text, color, null):
+		carded.emit(title, line, color, image)
 
 func _record(text: String, color: Color, icon: Texture2D) -> bool:
 	if text == "":

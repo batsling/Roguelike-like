@@ -1085,10 +1085,11 @@ static func _ch_bosses() -> Dictionary:
 			_h("Locations"),
 			_p("The run is always SOMEWHERE. It starts in a Low location, and every "
 				+ "difficulty up moves it to a new one of the new tier — Burning "
-				+ "Basement, The Hive, the Dark Room. You do not choose it: it "
-				+ "arrives with a popup of its picture and what it does, and then "
-				+ "sits beside the difficulty on the strip over the board. Hover it "
-				+ "to read it again; click it to open it."),
+				+ "Basement, The Hive, the Dark Room. You do not choose it. The "
+				+ "one you start in is shown on the entrance screen; a new one "
+				+ "arrives with a toast of its picture and the new difficulty, and "
+				+ "sits beside the difficulty on the strip over the board, glowing "
+				+ "NEW until you click it. Hover it to read it; click it to open it."),
 			_b("Some do something WHEN YOU ENTER — once, with the first game you "
 				+ "pick there: bodies of their kind walk on, fire is lit, poops are "
 				+ "left on the board. A location dealt in the middle of a game waits "
@@ -1097,7 +1098,7 @@ static func _ch_bosses() -> Dictionary:
 			_b("Some change a rule for as long as you are there: damage you take "
 				+ "is doubled, or one game on every offering is a free rift."),
 			_b("Some have a TRADE you can make a few times while you are there — "
-				+ "the button is on the location's popup, greyed with the reason "
+				+ "the button is in the location's window, greyed with the reason "
 				+ "when you cannot pay."),
 			_b("Most LEAN the rolls: things carrying their tag — enemies, bosses, "
 				+ "relics, loot — turn up a little more often there. Burning "
