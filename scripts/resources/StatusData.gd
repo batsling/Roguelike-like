@@ -89,9 +89,8 @@ const ENEMY := &"enemy"
 @export var stackable: String = "Intensity"
 
 # The stack CEILING the Stackable cell authored ("Max: 3"), or 0 for a status that
-# climbs forever. A cap exists for the statuses whose condition gets EASIER per
-# stack: Burn asks for 4-X items skipped, so an uncapped Burn would pay itself off
-# and then keep paying. Enforced where stacks are added — GameState.apply_status
+# climbs forever. No status authors one today: Burn's (for the old 4-X condition)
+# was dropped on 22 Nov 2026. Enforced where stacks are added — GameState.apply_status
 # for the player, GameLoop2._add_status_to for a body — so nothing can route
 # around it.
 @export var max_stacks: int = 0
@@ -111,6 +110,8 @@ const ENEMY := &"enemy"
 #             on a successful roll would last twice as long as it reads.
 #   "turn"    a stack goes at the end of every turn the body takes (Stun, "Each
 #             Turn"), which is what "lasts for X turns" means.
+#   "game"    a stack goes at the end of every game the PLAYER holds it, and never
+#             on an enemy ("Each Game": Burn and Marked, the owner, 22 Nov 2026).
 #
 # ON THE PLAYER BOTH OF THEM MEAN "PER GAME" (`wears_per_game`). The player does
 # not attack and does not take turns — the game IS their turn — and that is what
@@ -218,6 +219,11 @@ func is_demand(which: StringName) -> bool:
 	return mode_for(which) == &"demand"
 
 # An alternative that satisfies the goal it hangs off (Burn on an enemy).
+# A row the player may tick any time on the ENEMY, which switches on this status's
+# combat side on that body (Poison). GameLoop2.set_triggered / is_triggered.
+func is_trigger(which: StringName) -> bool:
+	return mode_for(which) == &"trigger"
+
 func is_alternative(which: StringName) -> bool:
 	return mode_for(which) == &"instead"
 
@@ -304,6 +310,10 @@ func alternative_text(which: StringName, stacks: int, any_time: bool = false) ->
 # advertise what skipping it forfeits, and a row that charges has to advertise
 # what missing it costs.
 func objective_text(which: StringName, stacks: int, any_time: bool = false) -> String:
+	if is_trigger(which):
+		var does: String = combat_line(stacks, which)
+		return "Tick when %s%s" % [condition_text(which, stacks, any_time),
+			(": it %s" % does) if does != "" else ""]
 	if is_demand(which):
 		var owed: String = "You must %s" % condition_text(which, stacks, any_time)
 		var price: String = penalty_at(which, stacks)
@@ -346,12 +356,14 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 			sub = "Obligation  ·  " + sub
 		&"instead":
 			sub = "Way out  ·  " + sub
-	if source_game != "":
-		sub += "  ·  %s" % source_game
+		&"trigger":
+			sub = "Tick any time  ·  " + sub
+	# NO GAME CREDIT (the owner, 22 Nov 2026): a status is an icon now, and the
+	# games it comes from are the icons you can earn for it (docs/customization.md).
 
 	var lines: Array = []
 	match mode:
-		&"goal", &"bonus", &"demand":
+		&"goal", &"bonus", &"demand", &"trigger":
 			lines.append(objective_text(which, stacks, any_time))
 		&"clause":
 			lines.append(("Every enemy's goal also needs: %s" if which == PLAYER
@@ -368,7 +380,10 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 		_:
 			lines.append("Does nothing on this side.")
 	if combat_applies(which):
-		lines.append("In combat: %s." % combat_line(stacks, which))
+		# A TRIGGER's combat side does nothing until its row is ticked (Poison), so
+		# the card says so rather than claiming an effect not yet in force.
+		lines.append(("In combat, once ticked: %s." if is_trigger(which)
+			else "In combat: %s.") % combat_line(stacks, which))
 	var clock: String = clock_note(games)
 	if clock != "":
 		lines.append(clock)
@@ -382,7 +397,8 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 		# colour is the fastest thing on the card and it must not promise a way out
 		# that this body does not offer.
 		"accent": Color(1.0, 0.82, 0.30) if good and not nullified else Color(0.90, 0.26, 0.22),
-		"art": image,
+		# The icon WORN for this status, else its basic one (Cosmetics.status_art).
+		"art": Cosmetics.status_art(self),
 		"lines": lines,
 		"note": decrease_note(which),
 	}
@@ -391,9 +407,14 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 # complete it" — or "" for one that never does. Built from `decays`, which the
 # sheet's Decrease column set, so the card and the tooltip quote the same rule.
 func decrease_note(which: StringName) -> String:
-	if not decays(which):
-		return ""
-	return "Loses a stack each game you complete it."
+	if decays(which):
+		return "Loses a stack each game you complete it."
+	# ON THE PLAYER, a status whose clock is the game (Each Game, and Bleed's and
+	# Stun's board modes, which read per game at the player's end) says so: every
+	# debuff lasts X games (the owner, 22 Nov 2026).
+	if which == PLAYER and wears_per_game() and has_side(PLAYER):
+		return "Loses a stack at the end of every game."
+	return ""
 
 # HOW A CLOCK READS, in the one place every surface takes it from
 # (docs/potions-design.md §5.3). A status is usually a thing you have until you
@@ -452,8 +473,6 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 	var head: String = "%s %d" % [display_name, stacks]
 	if is_capped():
 		head += "/%d" % max_stacks
-	if source_game != "":
-		head += "   (%s)" % source_game
 	var body: String = ""
 	match mode_for(which):
 		&"goal":
@@ -465,6 +484,8 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 				else "This enemy's goal also needs: %s") % clause_text(which, stacks, any_time)
 		&"demand":
 			body = "Every game — %s" % objective_text(which, stacks, any_time)
+		&"trigger":
+			body = objective_text(which, stacks, any_time)
 		&"instead":
 			if nullified:
 				body = "Nullified — a boss comes off the board on its goal alone, " \
@@ -483,7 +504,8 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 	# one thing to the player, and "what is this doing to me" has to be answerable
 	# in one hover whether the answer is a goal, a number on the board, or both.
 	if combat_applies(which):
-		body += "\nIn combat: %s." % combat_line(stacks, which)
+		body += ("\nIn combat, once ticked: %s." if is_trigger(which)
+			else "\nIn combat: %s.") % combat_line(stacks, which)
 	elif which == PLAYER and combat_applies(ENEMY):
 		body += "\nIts combat effect is felt by enemies only."
 	# LAST LINE, and deliberately after the combat one: how long this lasts is the
@@ -671,8 +693,10 @@ func combat_line(stacks: int, which: StringName = ENEMY) -> String:
 		return ""
 	var parts: PackedStringArray = []
 	var dealt: int = combat_bonus(&"damage_dealt", stacks, which)
-	if dealt != 0:
+	if dealt > 0:
 		parts.append("deals %+d damage" % dealt)
+	elif dealt < 0:
+		parts.append("deals %d less damage" % -dealt)
 	var dealt_mult: float = combat_mult(&"damage_dealt", which)
 	if not is_equal_approx(dealt_mult, 1.0):
 		parts.append("deals %sx damage" % format_number(dealt_mult))

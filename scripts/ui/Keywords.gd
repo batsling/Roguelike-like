@@ -89,7 +89,7 @@ static func _catalog() -> Array:
 		out.append({
 			"id": status.id, "kind": &"status", "name": status.display_name,
 			"aliases": [status.display_name],
-			"icon": status.image,
+			"icon": Cosmetics.status_art(status),
 		})
 	for tile in Data.all_tiles():
 		out.append({

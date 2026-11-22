@@ -267,3 +267,31 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     error misled: stdout and stderr are buffered separately). Arrowheads are now
     built round the origin and moved there with `draw_set_transform`
     (`_polygon_at`), the lines' arrowheads too; 0 in 120 after.
+  - `test_character_log.gd::test_reporting_a_level_up_logs_it_against_the_game`
+    went Pending ("nothing was chosen — the offering did not reach this case")
+    in two full runs in a row, and never when run alone. **A resume left armed
+    by an earlier FILE**: `test_card_system.gd`'s Nightmare save test calls
+    `SaveSystem._apply_save_data`, which parks a resume for the next overworld
+    to claim, and that file's `after_each` did not cancel it (`test_bags.gd`'s
+    does). The next page built — this test's — resumed the parked run instead
+    of dealing one, and had no offering. Found by running the two files
+    together (`-gtest=a.gd,b.gd`): Pending every time, gone with
+    `SaveSystem.cancel_pending_resume()` in `test_card_system.gd`'s
+    `after_each`. A test that loads a save cleans up the resume, or the next
+    file pays.
+  - `test_round_tea_party.gd::test_picking_a_fight_costs_two_health_for_a_random_relic`
+    failed now and then at "[5] expected to equal [3]". **A random reward that
+    can undo the price**: the choice costs 2 Health and pays a RANDOM relic, and
+    a handful heal on pickup (Blood Bag, Stigmata, Lunch, Mango, Alien Baby), so
+    the Health it ended at was only usually 3. Found by listing the rollable
+    relics whose pickup effects heal. The test now asserts the FIRST
+    `hp_changed` (the price, taken before the relic) instead of where Health
+    ends up.
+  - `test_drawn_map.gd::test_every_rift_is_a_seam_between_its_two_games` failed
+    in CI (PR #371) at "bowed, so it never reads as an influence line" with
+    0.17 > 1.0. **A length in SCREEN pixels at the whole-map zoom**: the view
+    opens on the whole drawn map, where a rift between two close games is a few
+    pixels long, and the bow (at least `RIFT_BOWS[0]` of the chord) came to under
+    a pixel. A probe over 40 runs found a 206-unit chord drawn 6.9px long bowing
+    0.55px — the curve was right, the unit was wrong. The test now measures the
+    bow in MAP units against the chord's own length.

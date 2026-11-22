@@ -184,27 +184,38 @@ On the board:
   spawns to the next boss, the Amulet's distance with its pressure pips, and
   what ending this game costs. The panel keeps the pressure band's colour, and
   the boss warning still takes the second line's place while it is up.
-- **The arrival popup** (`scripts/redesign2/LocationPopup.gd`, loaded by path
-  so it stays out of the page's compile): "YOU ENTER", the name, tier and
-  source game, the art, the description, the lean in words, and the actions as
-  buttons, plus a gold line while its arrival is still waiting for the next
-  game. `GameLoop2.location_unseen` is the flag, saved with the run. The
-  page opens it at its next quiet moment: not over the start screen, the
-  board's playback, the haul screen, a reward or another popup. Each of those,
-  when it closes, asks again.
+- **Nothing pops up over the run** (the owner, 22 Nov 2026). It used to: an
+  arrival popup at the page's next quiet moment, which at the start of a run
+  landed on top of the starting gear's chest, and after a difficulty up came
+  after the location's bodies had already walked on.
+- **The run's first location is previewed on the entrance screen**
+  (`StartPicker._location_preview`, on the Amulet banner's right): art, name,
+  tier, description and lean. It is dealt before that screen opens and already
+  leans the enemies waiting on the entrances, so it is read while the entrance
+  is chosen. It is not flagged (`GameLoop2.enter_location(loc, false)`).
+- **A difficulty up is a card toast** (`Notifications.announce_card`, drawn by
+  `NotificationToasts`): the location's art beside "Difficulty up — Medium" and
+  "You enter The Hive." (or that the battlefield grew). It is two toasts tall and
+  holds for 5 s; plain toasts that arrive meanwhile wait for it.
+  `Overworld2._announce_difficulty_step` sends it, from every path that can
+  step the tier: picking a game, handing one in, and a lost run's spawn.
 - **The chip** (`LocationChip`) sits at the right of the DIFFICULTY strip's
   first line, after the tier and its pips, because the two change at the same
-  moment. It
-  shows a thumbnail and the name. Hovering shows the art at a readable size and
-  everything the popup says. A hover card cannot hold a button, so clicking
-  reopens the popup, and that is where the actions are used.
+  moment. It shows a thumbnail and the name. Hovering shows the art at a
+  readable size and everything the window says. **It glows** — a breathing gold
+  rim and a NEW tag — while a location a difficulty up dealt has not been opened
+  (`GameLoop2.location_unseen`, saved with the run), until it is clicked.
+- **The window** (`scripts/redesign2/LocationPopup.gd`, loaded by path so it
+  stays out of the page's compile) opens only from the chip: the name, tier and
+  source game, the art, the description, the lean in words, the actions as
+  buttons, and a gold line while its arrival is still waiting for the next game.
 - **The manual** has a Locations section under Bosses and difficulty, and the
   poops under The ground.
 
 ## 7. Saving
 
 `location_id`, `location_tier`, `location_uses` (per action), `location_unseen`
-and `location_arrival_due` are saved by `GameLoop2.serialize`. A location since
+(the chip's glow) and `location_arrival_due` are saved by `GameLoop2.serialize`. A location since
 deleted from the sheet loads as none. The art is 1920×1200, so `LocationData.image`
 loads lazily, like a game cover.
 

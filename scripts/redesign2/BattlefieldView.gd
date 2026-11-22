@@ -3354,7 +3354,7 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 		if status == null:
 			continue
 		pips.append({
-			"art": status.image,
+			"art": Cosmetics.status_art(status),
 			"text": "%s %d" % [status.display_name, int(row["stacks"])],
 			"good": status.is_bonus(StatusData.ENEMY) or status.is_goal(StatusData.ENEMY),
 		})
@@ -3681,7 +3681,7 @@ func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
 		# non-zero only for a row out of the timed layer, and that is the whole of
 		# what the badge says: this one is going away. The hover still carries the
 		# count — the corner is the flag, not the number.
-		var art := UITheme.timed_art(status.image, size, games > 0)
+		var art := UITheme.timed_art(Cosmetics.status_art(status), size, games > 0)
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(art)
 	var count := Label.new()

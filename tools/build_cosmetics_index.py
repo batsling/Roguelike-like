@@ -17,6 +17,9 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
   images2.0/icons/Gold/<Name>_<Game>.png                         a gold icon (the coin's)
   images2.0/icons/Shields/<Name>_<Game>.png                      a shield icon (the 🛡, written or drawn)
   images2.0/icons/Hunger/<Name>_<Game>.png                       a Hunger icon (the 🍗, drawn five to the bar)
+  images2.0/icons/Timer/<Name>_<Game>.png                        a TIMER icon (the ⏱ on anything temporary)
+  images2.0/icons/Statuses/<Status>/<Name>_<Game>.png            a STATUS's icon (one kind per status, the
+                                                                 status's id; worn in place of its basic one)
   images2.0/hats/<Name>_<Game>.png                               a HAT a player wears (docs/customization.md §7)
   images2.0/hats/Special/<Name>_<Game>.png                       a hat earned some other way than a rank
 
@@ -56,7 +59,7 @@ HAT_DIR = "images2.0/hats"
 SLOTS = {"Costumes Icon": "icon", "Costumes Full": "full", "Costumes Both": "both"}
 ICON_KINDS = {"Keys": "key", "Bombs": "bomb", "Difficulties": "difficulty", "Luck": "luck",
 	"Chests": "chest", "Health": "health", "Damage": "damage", "Gold": "gold",
-	"Shields": "shield", "Hunger": "hunger"}
+	"Shields": "shield", "Hunger": "hunger", "Timer": "timer"}
 
 # The game a costume is earned from, where its title does not say (the owner, 8 Nov
 # 2026: "any rebirth costumes should be from rebirth, and the isaac_Stray should be
@@ -120,6 +123,18 @@ def pngs(folder):
 	return sorted(f for f in os.listdir(p) if f.lower().endswith(".png"))
 
 
+def status_kinds():
+	"""{"Statuses/<Status>": "<status id>"} for every status folder (the owner,
+	22 Nov 2026: each status's game picture is an unlock of its own). The kind is
+	the folder's name in snake case, which is the status's id (Strength ->
+	strength), and every entry carries "status": true."""
+	base = os.path.join(ROOT, ICON_DIR, "Statuses")
+	if not os.path.isdir(base):
+		return {}
+	return {f"Statuses/{d}": norm(d) for d in sorted(os.listdir(base))
+		if os.path.isdir(os.path.join(base, d))}
+
+
 def build():
 	games = game_ids()
 	chars = characters()
@@ -154,7 +169,8 @@ def build():
 				"path": f"res://{CHAR_DIR}/{folder}/{f}",
 			})
 	icons = []
-	for folder, kind in ICON_KINDS.items():
+	statuses = status_kinds()
+	for folder, kind in {**ICON_KINDS, **statuses}.items():
 		sets = {}
 		for f in pngs(f"{ICON_DIR}/{folder}"):
 			stem = f[:-4]
@@ -173,6 +189,8 @@ def build():
 			if entry is None:
 				entry = {"id": f"{kind}/{key}", "kind": kind, "name": name.strip(),
 					"game": game, "images": []}
+				if folder in statuses:
+					entry["status"] = True
 				sets[key] = entry
 			entry["images"].append({"name": name.strip(), "path": f"res://{ICON_DIR}/{folder}/{f}",
 				"min": lo, "max": hi})

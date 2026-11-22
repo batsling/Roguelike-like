@@ -5534,6 +5534,15 @@
   "loot": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
  },
+ "Panzer Deck": {
+  "characters": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io page and the developer's Reddit and Steam forum posts, which name no characters",
+  "connections": "2026-11-21",
+  "events": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io page and the developer's Reddit and Steam forum posts, which name no events",
+  "goals": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io page and the developer's Reddit and Steam forum posts; no enemy unit or mission boss is named",
+  "locations": "2026-11-21: 1 row (Sherman, a units row), no wiki; worked from the Steam page, the itch.io page and the developer's Reddit and Steam forum posts; terrain types are never named",
+  "loot": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io page and the developer's Reddit and Steam forum posts; its cards are geometric patterns described only by category (Resources, Unit Recruitment, Tactical Operations, Maneuvers), and none is named; no weapons or evolutions (the Sherman is a unit, written as one)",
+  "statuses": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io page and the developer's Reddit and Steam forum posts, which name no statuses"
+ },
  "Paper Animal Adventure": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -7477,6 +7486,15 @@
   "locations": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "loot": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
+ },
+ "Sticker/Ball": {
+  "characters": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io demo and three reviews (Outrun, Kyusai, The Geekly Grind), which name no characters",
+  "connections": "2026-11-21",
+  "events": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io demo and three reviews (Outrun, Kyusai, The Geekly Grind), which name no events",
+  "goals": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io demo and three reviews (Outrun, Kyusai, The Geekly Grind); its 36 opponents go unnamed anywhere (a sentient teapot, a kettle and a flying fish are described, not named)",
+  "locations": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io demo and three reviews (Outrun, Kyusai, The Geekly Grind), which name no locations",
+  "loot": "2026-11-21: 2 rows (Multiverse card, Jigsaw Piece trinket), no wiki; worked from the Steam page, the itch.io demo and three reviews (Outrun, Kyusai, The Geekly Grind); the poop/fly/spider-web chain repeats Isaac's Poop and Web tiles and the flies already live; no weapons or evolutions (balls are fired, not wielded)",
+  "statuses": "2026-11-21: nothing usable: no wiki; worked from the Steam page, the itch.io demo and three reviews (Outrun, Kyusai, The Geekly Grind), which name no statuses"
  },
  "Stolen Realm Survivors": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_nightmare"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"nightmare"
+display_name = "Nightmare"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Silent Rare"
+description = "Destroy 1 Loot. At the start of your next game, Gain 3 copies of it"
+effect = [{"op": "nightmare", "value": 3}]
+file = "Nightmare"
+icon = "Slay_The_Spire_Silent_Rare"
+loot_type = "Usable"
+tags = PackedStringArray("silent")

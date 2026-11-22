@@ -104,6 +104,13 @@ static func grows(type: String, clause: Dictionary) -> String:
 			return "count" if op == "gain_loot" else ""
 		"destroy":
 			return "value" if op == "destroy_pick" else ""
+		# Poisoned Stab, Deadly Poison (22 Nov 2026): +1 Poison.
+		"poison":
+			return "value" if op == "apply_status" \
+				and String(clause.get("status", "")) == "poison" else ""
+		# Bouncing Flask: +1 bounce.
+		"bounce":
+			return "bounces" if String(clause.get("area", "")) == "random" else ""
 	return ""
 
 # Every point a card's clauses move by right now: its upgrades, and its Retro Bat

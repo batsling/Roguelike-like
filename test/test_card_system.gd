@@ -22,6 +22,10 @@ func before_each() -> void:
 # test_overworld2 would quietly be about two cabinets instead of three.
 func after_each() -> void:
 	ObjectSystem.reset_run()
+	# A test that loads a save (Nightmare's) parks a RESUME for the next overworld
+	# to claim; left armed, the next file's page resumes it instead of dealing a
+	# run, and finds no offering to pick from (test_character_log, 21 Nov 2026).
+	SaveSystem.cancel_pending_resume()
 
 func _entry(id: StringName) -> Dictionary:
 	var c: CardData = Data.get_card(id)
@@ -32,7 +36,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 39, "the sheet's 39 rows all generated")
+	assert_eq(cards.size(), 45, "the sheet's 45 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -145,12 +149,12 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # of five, and those are untouched.
 # The Slay the Spire set (18 Oct 2026) filled the Ironclad Rare deck and brought four
 # one-card decks of its own. Sorted the way GDScript sorts: capital T first.
+# The Silent's poison cards (22 Nov 2026) gave Prepared and Finisher company, so
+# the Silent Common and Uncommon decks no longer name their card face down.
 const LONELY_DECKS := [
 	"Isaac_MTG_Cards",                  # Ancient Recall
 	"Slay_The_Spire_Defect_Common",     # Stack
 	"Slay_The_Spire_Defect_Uncommon",   # Bullseye
-	"Slay_The_Spire_Silent_Common",     # Prepared
-	"Slay_The_Spire_Silent_Uncommon",   # Finisher
 	"Slay_the_Spire_Defect_Rare",       # Echo Form
 ]
 
@@ -625,6 +629,63 @@ func test_prepared_asks_for_one_and_destroys_exactly_that() -> void:
 	CardSystem.destroy_chosen([GameState.loot_items[0]])
 	assert_eq(GameState.loot_items.size(), 2)
 
+# NIGHTMARE (the owner, 21 Nov 2026): destroy any one piece, and EXACT copies of it
+# arrive at the start of the next game. Prepared's pick, with copies owed.
+func test_nightmare_asks_to_destroy_one_and_owes_three() -> void:
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.add_card_loot(&"v_the_hierophant")
+	var out: Dictionary = _play(&"nightmare")
+	assert_eq((out["requests"] as Array).size(), 1)
+	var req: Dictionary = (out["requests"] as Array)[0]
+	assert_eq(String(req["kind"]), "destroy_loot", "the destroy picker Prepared uses")
+	assert_eq(int(req["count"]), 1)
+	assert_eq(int(req["copies"]), 3)
+	assert_eq(GameState.loot_items.size(), 2, "nothing destroyed before the pick")
+	var line: String = CardSystem.destroy_chosen([GameState.loot_items[0]], int(req["copies"]))
+	assert_string_contains(line, "3 copies")
+	assert_eq(GameState.loot_items.size(), 1, "the piece is destroyed now")
+	assert_eq(GameState.destroyed_loot.size(), 1, "and on the pile, as any destroyed piece is")
+	assert_eq(GameState.nightmare_copies.size(), 3, "owed, not handed over yet")
+	for c in GameState.nightmare_copies:
+		assert_eq(c["id"], &"vi_the_lovers")
+
+func test_nightmare_copies_are_exact() -> void:
+	var w: WeaponData = Data.all_weapons()[0]
+	var entry: Dictionary = WeaponSystem.new_entry(w, false)
+	entry["charges"] = 1
+	entry[LootUpgrade.RUN_KEY] = 2
+	GameState.loot_items.append(entry)
+	GameState.loot_items[0]["pack_slot"] = 4
+	CardSystem.destroy_chosen([GameState.loot_items[0]], 3)
+	assert_eq(GameState.nightmare_copies.size(), 3)
+	for c in GameState.nightmare_copies:
+		assert_eq(c["id"], entry["id"], "the same piece")
+		assert_eq(int(c["charges"]), 1, "with the charges it had")
+		assert_eq(int(c[LootUpgrade.RUN_KEY]), 2, "and its upgrades")
+		assert_false(c.has("pack_slot"), "but no slot: it lands wherever there is room")
+	GameState.nightmare_copies[0]["charges"] = 0
+	assert_eq(int(GameState.nightmare_copies[1]["charges"]), 1, "three copies, not one shared")
+
+func test_nightmare_pays_once() -> void:
+	GameState.owe_nightmare_copies(_entry(&"vi_the_lovers"), 3)
+	assert_eq(GameState.take_nightmare_copies().size(), 3)
+	assert_true(GameState.take_nightmare_copies().is_empty(), "the next game gets none")
+
+func test_a_piece_that_cannot_be_destroyed_owes_nothing() -> void:
+	GameState.owe_nightmare_copies({}, 3)
+	assert_true(GameState.nightmare_copies.is_empty())
+	CardSystem.destroy_chosen([{"type": "card", "id": &"vi_the_lovers"}], 3)
+	assert_true(GameState.nightmare_copies.is_empty(), "not in the pack, so not destroyed")
+
+func test_nightmare_copies_survive_a_save() -> void:
+	GameState.owe_nightmare_copies(_entry(&"vi_the_lovers"), 3)
+	var data: Dictionary = JSON.parse_string(JSON.stringify(SaveSystem._build_payload()))
+	GameState.reset_run()
+	assert_true(GameState.nightmare_copies.is_empty(), "a new run owes nothing")
+	SaveSystem._apply_save_data(data)
+	assert_eq(GameState.nightmare_copies.size(), 3)
+	assert_eq(StringName(GameState.nightmare_copies[0]["id"]), &"vi_the_lovers")
+
 func test_bloodletting_costs_health_and_asks_what_to_charge() -> void:
 	GameState.hp = 5
 	var out: Dictionary = _play(&"bloodletting")
@@ -703,3 +764,57 @@ func test_the_pile_and_the_count_go_with_the_run() -> void:
 	GameState.reset_run()
 	assert_true(GameState.destroyed_loot.is_empty())
 	assert_eq(GameState.cards_used_this_game, 0)
+
+# --- the Silent's poison cards (the owner, 22 Nov 2026) ---------------------------
+
+func _poison_on(instance: int) -> int:
+	return GameLoop2.entry_status_stacks(GameLoop2.entry_for(instance), &"poison")
+
+func test_poisoned_stab_stuns_and_poisons_the_body_it_is_aimed_at() -> void:
+	var a: int = _stand(9001, 1, 0)
+	var b: int = _stand(9002, 2, 0)
+	_play(&"poisoned_stab", {"target": Vector2i(2, 0)})
+	assert_eq(_stun_on(b), 1, "Stun 1")
+	assert_eq(_poison_on(b), 2, "and 2 Poison")
+	assert_eq(_poison_on(a), 0, "on the body aimed at only")
+	assert_eq(Array(Data.get_card(&"poisoned_stab").upgrade_types), ["stun", "poison"])
+
+func test_deadly_poison_lays_three_and_grows_with_an_upgrade() -> void:
+	var a: int = _stand(9001, 1, 0)
+	_play(&"deadly_poison", {"target": Vector2i(1, 0)})
+	assert_eq(_poison_on(a), 3)
+	var up: Dictionary = _entry(&"deadly_poison")
+	up[LootUpgrade.RUN_KEY] = 1
+	var b: int = _stand(9002, 2, 0)
+	CardSystem.play_card(up, {"rng": Fixtures.rng(), "target": Vector2i(2, 0)})
+	assert_eq(_poison_on(b), 4, "+1 Poison per upgrade")
+
+func test_bouncing_flask_bounces_three_times_and_an_upgrade_adds_one() -> void:
+	var a: int = _stand(9001, 1, 0)
+	var b: int = _stand(9002, 2, 0)
+	assert_eq(Data.get_card(&"bouncing_flask").aim(), "", "it picks its own targets")
+	_play(&"bouncing_flask")
+	assert_eq(_poison_on(a) + _poison_on(b), 6, "three bounces of 2, wherever they land")
+	var up: Dictionary = _entry(&"bouncing_flask")
+	up[LootUpgrade.RUN_KEY] = 1
+	CardSystem.play_card(up, {"rng": Fixtures.rng()})
+	assert_eq(_poison_on(a) + _poison_on(b), 6 + 8, "an upgrade is a fourth bounce")
+
+func test_envenom_poisons_what_an_attack_stuns_and_not_a_scroll() -> void:
+	Fixtures.card(self, &"envenom", 0)
+	var a: int = _stand(9001, 1, 0)
+	_play(&"pommel_strike", {"target": Vector2i(1, 0)})
+	assert_eq(_poison_on(a), 1, "an attack card's Stun brings 1 Poison")
+	var b: int = _stand(9002, 2, 0)
+	GameLoop2.stun(b, 1)
+	assert_eq(_poison_on(b), 0, "a Stun from anywhere else does not")
+
+func test_noxious_fumes_poisons_the_two_nearest_columns_each_turn() -> void:
+	Fixtures.card(self, &"noxious_fumes", 0)
+	var near: int = _stand(9001, 1, 0)
+	var next: int = _stand(9002, 2, 1)
+	var far: int = _stand(9003, 4, 2)
+	TriggerBus.enemy_turn_started.emit({"turn": 1})
+	assert_eq(_poison_on(near), 1, "column 1")
+	assert_eq(_poison_on(next), 1, "column 2")
+	assert_eq(_poison_on(far), 0, "not further back")

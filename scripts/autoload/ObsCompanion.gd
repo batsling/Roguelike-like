@@ -390,7 +390,7 @@ func _run_state() -> String:
 # by construction.
 func _shared_art() -> Dictionary:
 	return {
-		"timer": _texture_url(UITheme.TIMER_ART),
+		"timer": _texture_url(Cosmetics.timer_art()),
 		# One sprite per shield, at the same 22px as a status pip — the board sizes
 		# them alike on purpose, so the two rows are read in one glance and a
 		# shield never claims a rank over a status it does not have.
@@ -901,7 +901,7 @@ func _statuses() -> Array:
 			"stacks": int(row.get("stacks", 0)),
 			# An opportunity (gold) or a tax (red) — see the note above.
 			"good": sd.is_bonus(StatusData.PLAYER) or sd.is_goal(StatusData.PLAYER),
-			"icon": _texture_url(sd.image),
+			"icon": _texture_url(Cosmetics.status_art(sd)),
 			# What the pip shows when a status ships without art. The board's own
 			# comment already promises "the name's first letter" for that case;
 			# here it is, so a new status is legible the day it is authored and

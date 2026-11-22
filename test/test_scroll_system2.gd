@@ -294,9 +294,12 @@ func test_fire_burns_the_reader_and_the_front_column() -> void:
 	GameState.hp = 20
 	Fixtures.choose_solo(Fixtures.enemy(2)) ; GameLoop2.beat_game(false)
 	_march_to_the_front()
+	var had: int = int((GameLoop2.stack[0]["statuses"] as Dictionary).get(&"burn", 0))
 	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.status_stacks(&"burn"), 3, "the reader catches fire")
-	assert_eq(int((GameLoop2.stack[0]["statuses"] as Dictionary).get(&"burn", 0)), 3,
+	# +3 from the scroll and +1 from the fire it lights under them — which Burn's
+	# old cap of 3 used to hide (no cap since 22 Nov 2026).
+	assert_eq(int((GameLoop2.stack[0]["statuses"] as Dictionary).get(&"burn", 0)), had + 4,
 		"and so does what is standing in front of them")
 
 func test_fire_leaves_the_back_of_the_board_alone() -> void:
@@ -308,10 +311,11 @@ func test_fire_leaves_the_back_of_the_board_alone() -> void:
 	var near: int = int(GameLoop2.stack[0]["instance"])
 	var far: int = Fixtures.choose_solo(Fixtures.enemy(2))       # fresh, out at the spawn column
 	GameLoop2.beat_game(false)                   # released; nothing moves out here
+	var had: int = int((GameLoop2.entry_for(near).get("statuses", {}) as Dictionary).get(&"burn", 0))
 	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": Fixtures.rng()})
 	assert_true(GameLoop2.in_front(GameLoop2.entry_for(near)), "the near body is in front")
-	assert_eq(int((GameLoop2.entry_for(near)["statuses"] as Dictionary).get(&"burn", 0)), 3,
-		"which is what burned")
+	assert_eq(int((GameLoop2.entry_for(near)["statuses"] as Dictionary).get(&"burn", 0)), had + 4,
+		"which is what burned (3 from the scroll, 1 from the fire it lights)")
 	assert_false(GameLoop2.in_front(GameLoop2.entry_for(far)), "the far one is not")
 	assert_eq(int((GameLoop2.entry_for(far).get("statuses", {}) as Dictionary).get(&"burn", 0)), 0,
 		"and it did not")
@@ -330,12 +334,17 @@ func test_fire_read_into_an_empty_room_still_burns_you() -> void:
 		"and the empty room is not narrated")
 
 func test_a_second_reading_cannot_push_burn_past_its_cap() -> void:
+	# No status is capped since Burn lost its Max (22 Nov 2026); the RULE stays for
+	# any that authors one, so the cap is lent for the length of the test.
+	var burn_sd: StatusData = Data.get_status(&"burn")
+	burn_sd.max_stacks = 3
 	GameState.apply_status(&"burn", 2)
 	var out: Dictionary = ScrollSystem.read_scroll(
 		Data.get_scroll(&"scroll_of_fire"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.status_stacks(&"burn"), 3, "Max: 3 (§13)")
 	assert_true(str(out["logs"]).contains("+1 Burn"),
 		"and the log quotes what actually landed, not what was asked for")
+	burn_sd.max_stacks = 0
 
 func test_the_fire_scrolls_wording_names_all_three_halves() -> void:
 	# Three clauses in one cell since the ground learned to burn (§17): you, the

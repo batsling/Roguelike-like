@@ -213,7 +213,7 @@ func reoffer(items: Array) -> void:
 	_items = fresh
 	_selected = _items[0]
 	for it in _items:
-		GameStats.mark_seen("item", (it as ItemData).id)
+		_see_quietly(it)
 	if _open_tween != null and _open_tween.is_valid():
 		_open_tween.kill()
 	var at: int = -1
@@ -249,7 +249,7 @@ func _start(host: Node, offer) -> void:
 	for entry in (offer if offer is Array else [offer]):
 		if entry is ItemData:
 			_items.append(entry)
-			GameStats.mark_seen("item", entry.id)
+			_see_quietly(entry)
 	_layer = CanvasLayer.new()
 	_layer.layer = UITheme.Layer.DROP
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -906,10 +906,22 @@ func take() -> void:
 func leave() -> void:
 	_answer(false)
 
+# A CHEST'S CHOICES ARE SEEN, NOT NEWS, until one is taken (the owner, 22 Nov
+# 2026): offered, they go into the Collection quietly, since a toast naming each
+# would give away what is inside before the pick. The one TAKEN is announced, if
+# this chest is where it was first seen.
+var _first_seen: Dictionary = {}   # item id -> true, first seen in this chest
+
+func _see_quietly(it) -> void:
+	if it is ItemData and GameStats.mark_seen("item", (it as ItemData).id, false):
+		_first_seen[(it as ItemData).id] = true
+
 func _answer(taken: bool) -> void:
 	if _answered:
 		return
 	_answered = true
+	if taken and _selected is ItemData and _first_seen.has((_selected as ItemData).id):
+		GameStats.announce_seen("item", (_selected as ItemData).id)
 	answered.emit(taken, _selected if taken else null)
 	finished.emit()
 	# Take down whatever this chest actually put on screen: its own layer as a

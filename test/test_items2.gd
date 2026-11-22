@@ -879,12 +879,17 @@ func test_the_staff_can_be_pointed_at_a_boss() -> void:
 		"and still has no way out of its goal")
 
 func test_the_staffs_burn_stops_at_the_status_cap() -> void:
+	# No status is capped since Burn lost its Max (22 Nov 2026); the RULE stays for
+	# any that authors one, so the cap is lent for the length of the test.
+	var burn_sd: StatusData = Data.get_status(&"burn")
+	burn_sd.max_stacks = 3
 	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
 	var inst: int = Fixtures.choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
 	GameLoop2.apply_status_to(inst, &"burn", 2)
 	assert_true(GameState.use_item(staff, inst))
 	assert_eq(int((GameLoop2.entry_for(inst)["statuses"] as Dictionary).get(&"burn", 0)), 3,
 		"2 + 3 is still Max: 3")
+	burn_sd.max_stacks = 0
 
 # --- the obtain-any picker (RewardScreen.setup_obtain) ---------------------
 #
@@ -1600,3 +1605,32 @@ func test_spawn_boss_walks_a_boss_onto_the_board() -> void:
 	var after: int = GameLoop2.stack.filter(
 		func(e): return (e["enemy"] as GoalEnemyData).is_boss()).size()
 	assert_eq(after, before + 1)
+
+# A CHEST'S CHOICES ARE NOT NEWS UNTIL ONE IS TAKEN (the owner, 22 Nov 2026): the
+# "New in the Collection" toast used to name every choice the moment the chest
+# opened. They still go into the Collection, quietly; the one taken is announced.
+func test_a_chest_announces_only_the_item_taken() -> void:
+	var saved_bypass: bool = GameStats.seen_bypass
+	var saved_seen: Dictionary = GameStats.seen.duplicate(true)
+	GameStats.seen_bypass = false
+	GameStats.seen.erase("item")
+	var said: Array = []
+	var catch := func(text, _c, _i, _k): said.append(String(text))
+	Notifications.notified.connect(catch)
+	var host := Control.new()
+	add_child_autofree(host)
+	var pool: Array = Data.reward_item2_pool()
+	var chest := ItemDropModal.open(host, [pool[0], pool[1]])
+	await wait_frames(2)
+	assert_true(said.filter(func(t): return t.contains("New in the Collection")).is_empty(),
+		"opening the chest names nothing")
+	assert_true(GameStats.is_seen("item", (pool[1] as ItemData).id), "but both are in the Collection")
+	chest.take()
+	await wait_frames(2)
+	var news: Array = said.filter(func(t): return t.contains("New in the Collection"))
+	assert_eq(news.size(), 1, "the one taken is announced")
+	if news.size() == 1:
+		assert_string_contains(String(news[0]), (pool[0] as ItemData).display_name)
+	Notifications.notified.disconnect(catch)
+	GameStats.seen = saved_seen
+	GameStats.seen_bypass = saved_bypass

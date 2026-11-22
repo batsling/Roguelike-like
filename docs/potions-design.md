@@ -378,10 +378,9 @@ rather than vanishing between one look at the HUD and the next.
 
 Decision #1, and it is the decision that makes this whole feature small. A status
 already has a player side (§13): it hands its holder a **standing goal**. Dexterity
-on you is *"if X or all bosses were beaten without getting hit, gain a chest
-reward"*; Strength is *"if the difficulty is increased X times or as much as
-possible, gain a chest reward and +1 Bash"*; Speed is *"if beaten in ⟨time⟩ or
-less, gain a chest reward and +1 Dash"*.
+on you is *"if a boss was beaten without getting hit, gain a chest reward"*;
+Strength is *"if beaten on a harder difficulty than normal, gain +1 Bash"*;
+Speed is *"if beaten in under an hour, gain +1 Dash"*.
 **A potion grants that goal for one game.** The bottle contributes the clock, not a
 new meaning.
 
@@ -410,9 +409,11 @@ mean the four rows that move real numbers — Block, Fruit Juice, and the two he
 potions — are the roster's reliable half, and the status rows are its swingy half.
 
 **Not everything a potion applies is timed.** Fire Potion's `+3 Burn` on the drinker
-carries **no** clock: Burn is a debt (§13), and a debt that expires by itself is a
-suggestion. Only the rows whose prose says *"until the end of the next combat"* are
-authored with `games=1`.
+carries **no** potion clock: the stacks are OWNED, not borrowed for a game. Since 22
+Nov 2026 every debuff lasts X games, so they wear down one a game on Burn's own
+clock (`Each Game`) rather than all at once when the potion's game ends. Only the
+rows whose prose says *"until the end of the next combat"* are authored with
+`games=1`.
 
 ### 5.3 A clause with a clock has to read that way
 
@@ -812,7 +813,7 @@ Everything else about the Bark holds: it doubles the **Negative** rows too — a
 Barked Fire Potion is 6 damage to the drinker — because a relic that only doubled
 the upside would make drinking an unknown bottle a strictly better gamble than it
 is, and that is the one thing an identification minigame cannot afford (spec §4.1).
-Burn's `Max: 3` still caps on the way up, so the Barked Burn clause lands at 3.
+Burn has no cap since 22 Nov 2026 (the owner: "no burn limit"), so the Barked Burn clause lands at whatever it adds up to.
 
 ---
 

@@ -317,6 +317,9 @@ const BODY_KEYS := {
 	"stolen": true, "fleeing": true, "tags": true,
 	"corpse": true, "corpse_revive": true, "progress": true,
 	"rift": true,
+	# Poison's TRIGGER rows ticked against this body: {status id (String): true}.
+	# Its combat side counts only once ticked (`set_triggered`, `enemy_combat`).
+	"triggered": true,
 }
 
 # The keys every body has from birth. The rest are the ability fields (§7.6),
@@ -465,9 +468,11 @@ var units: Dictionary = {}
 var location_id: StringName = &""
 var location_tier: int = -1
 var location_uses: Array = []
-# Dealt and not yet SHOWN: the page opens the arrival popup off this at its next
-# quiet moment, and clears it. Saved, so a location dealt by the spawn that ended
-# a session is still announced when the run is picked up again.
+# Dealt by a DIFFICULTY UP and not yet opened: the page's location chip glows off
+# this until the player clicks it (the owner, 22 Nov 2026), and opening the
+# location clears it. The run's first location is never flagged: the entrance
+# screen previews it instead (StartPicker). Saved, so a location dealt by the
+# spawn that ended a session still glows when the run is picked up again.
 var location_unseen: bool = false
 # Dealt, and its "when entered" not yet run: a location's ARRIVE effects wait for
 # the next game the player picks (the owner, 23 Oct 2026), so a difficulty up
@@ -3080,6 +3085,8 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 	#     also what stops standing still on burning ground being free.
 	if only.is_empty():
 		_fire_turn_start_cells()
+		# a0'. …and then the run's own turn-start hook (Noxious Fumes).
+		TriggerBus.enemy_turn_started.emit({"turn": turn})
 	# ONE ACTION PER BODY PER TURN, and that is the rule the whole beat is built
 	# around (§7.4). `spent` is who has already used this one — an intent, a swing,
 	# a stun sat out — so the step below cannot hand the same body a second go.
@@ -4541,22 +4548,25 @@ func _location_if_due() -> void:
 		return
 	if tier <= location_tier:
 		return
+	# The run's FIRST deal (start_run, tier -1 before it) is previewed on the
+	# entrance screen, so it is not flagged for the chip to glow.
+	var opening: bool = location_tier < 0
 	location_tier = tier
 	var loc: LocationData = Locations.deal(tier, null, location_id)
 	if loc == null:
 		return        # an empty roster: the run carries on with no floor
-	enter_location(loc)
+	enter_location(loc, not opening)
 
 # Stand the run in `loc`: it replaces whatever was there and its actions start
 # fresh at once, but its ARRIVE effects wait for the next game picked
 # (`location_arrival_due`). Public so the dev panel and the tests can put a run
-# anywhere.
-func enter_location(loc: LocationData) -> void:
+# anywhere. `flag` is whether the chip should glow for it (`location_unseen`).
+func enter_location(loc: LocationData, flag: bool = true) -> void:
 	if loc == null:
 		return
 	GameStats.mark_seen("location", loc.id)
 	location_id = loc.id
-	location_unseen = true
+	location_unseen = flag
 	location_arrival_due = not loc.arrive.is_empty()
 	location_uses = []
 	for _a in loc.actions:
@@ -5900,6 +5910,14 @@ func _status_targets(target: String) -> Array:
 				if in_front(entry):
 					near.append(entry)
 			return near
+		"front2":
+			# The TWO columns nearest you (Noxious Fumes, the owner, 22 Nov 2026):
+			# any body with part of itself in column 1 or 2.
+			var close: Array = []
+			for entry in everyone:
+				if _front_col(entry) <= 2 and int(entry.get("col", offgrid_col())) <= grid_cols():
+					close.append(entry)
+			return close
 		_:
 			var landed: Dictionary = arrival()
 			return [] if landed.is_empty() else [landed]
@@ -5936,6 +5954,8 @@ func _add_status_to(entry: Dictionary, status_id: StringName, stacks: int,
 			total = maxi(int(held.get(status_id, 0)), status.cap_stacks(total))
 		if total <= 0:
 			held.erase(status_id)
+			# Worn off: a fresh application has to be ticked again.
+			(entry.get("triggered", {}) as Dictionary).erase(String(status_id))
 		else:
 			held[status_id] = total
 		entry["statuses"] = held
@@ -6212,6 +6232,15 @@ func goal_addons_for(entry: Dictionary) -> Array:
 			"text": "%s%s" % [asd.alternative_text(StatusData.ENEMY, int(alt["stacks"]), any_time),
 				StatusData.clock_suffix(int(alt.get("games", 0)))],
 		})
+	for trig in trigger_objectives_for(entry):
+		var tsd: StatusData = trig["status"]
+		out.append({
+			"status": tsd, "stacks": int(trig["stacks"]),
+			"games": int(trig.get("games", 0)),
+			"kind": "trigger", "source": "enemy", "required": false,
+			"joiner": "",
+			"text": tsd.objective_text(StatusData.ENEMY, int(trig["stacks"]), any_time),
+		})
 	for bonus in bonus_objectives_for(entry):
 		var bsd: StatusData = bonus["status"]
 		out.append({
@@ -6247,7 +6276,49 @@ func goal_addons_for(entry: Dictionary) -> Array:
 
 # What every status on `entry` adds up to in combat.
 func enemy_combat(entry: Dictionary) -> Dictionary:
-	return StatusData.combat_totals(entry_statuses_effective(entry), StatusData.ENEMY)
+	var held: Dictionary = entry_statuses_effective(entry)
+	# A TRIGGER status (Poison) does nothing on the board until its row is ticked
+	# against this body (the owner, 22 Nov 2026).
+	var untriggered: Array = []
+	for id in held:
+		var sd: StatusData = Data.get_status(StringName(id))
+		if sd != null and sd.is_trigger(StatusData.ENEMY) and not is_triggered(entry, sd.id):
+			untriggered.append(id)
+	if not untriggered.is_empty():
+		held = held.duplicate()
+		for id in untriggered:
+			held.erase(id)
+	return StatusData.combat_totals(held, StatusData.ENEMY)
+
+# --- trigger rows (Poison, the owner, 22 Nov 2026) --------------------------
+#
+# A `trigger` side is a row on an ENEMY's goal the player may tick ANY TIME, the
+# body still standing: "Tick when you defeat an enemy using a status effect: it
+# deals X less damage". Ticking switches the status's combat side on for that body
+# (`enemy_combat`); unticking switches it off; the status wearing away clears it.
+
+func trigger_objectives_for(entry: Dictionary) -> Array:
+	var out: Array = []
+	for row in enemy_statuses(entry):
+		if (row["status"] as StatusData).is_trigger(StatusData.ENEMY):
+			out.append(row)
+	return out
+
+func is_triggered(entry: Dictionary, status_id: StringName) -> bool:
+	return bool((entry.get("triggered", {}) as Dictionary).get(String(status_id), false))
+
+func set_triggered(instance: int, status_id: StringName, on: bool = true) -> bool:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty() or int((entry.get("statuses", {}) as Dictionary).get(status_id, 0)) <= 0:
+		return false
+	var done: Dictionary = entry.get("triggered", {})
+	if on:
+		done[String(status_id)] = true
+	else:
+		done.erase(String(status_id))
+	entry["triggered"] = done
+	loop_changed.emit()
+	return true
 
 # --- Stun (§13.2, §13.4) --------------------------------------------------
 

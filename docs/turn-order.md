@@ -72,7 +72,9 @@ _run_trigger(item, trig, ctx_extras, loot)
    usually swept it already (§ the screens after); this catches a game that
    ended without one, or a piece put down between games.
 1. The game's and the character's **rank bars** are noted, for the end screen.
-2. **Starting gear**, first game of the run only.
+2. **Starting gear**, first game of the run only. Then **Nightmare's copies**,
+   if a Nightmare was played since the last game: the exact copies of the piece
+   it destroyed go into the pack, and what does not fit is offered.
 3. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
    Fractures. *Then* signal `game_selected` → items (Anchor's +1 lands on top), the
    speedrun clock starts, the overlay updates. Before the board, so a body that
@@ -94,15 +96,18 @@ _run_trigger(item, trig, ctx_extras, loot)
      everything this pick put down. That is the location this very pick dealt,
      or one dealt since the last pick (a game's end, a lost run), or the run's
      first, dealt by `start_run` before the start was picked. A Scramble does
-     not enter it. The popup
-     waits for the page's next quiet moment.
-5. The **difficulty step** is announced, if step 4 crossed one.
+     not enter it. Nothing pops up: the run's first location was shown on the
+     entrance screen, and a difficulty up's is step 5's card toast, with the
+     chip glowing until it is clicked.
+5. The **difficulty step** is announced, if step 4 crossed one: a card toast of
+   the new tier and the location it dealt, with its art.
 
 ```order
 scripts/redesign2/Overworld2.gd :: _begin_game
 _drops.clear_floor()
 GameLoop2.rank_start =
 _grant_start_gear_once(game)
+_grant_nightmare_copies()
 GameLoop2.grant_selection_shields(game)
 _commit_board(game, enemy, tier)
 _announce_difficulty_step(tier_before, board_before)
@@ -180,7 +185,8 @@ everything in it is put back by Undo.
 3. **One enemy turn** (`attempt_turn` → `_resolve_enemy_turn`):
    - **a0. The ground first.** Every body standing on a tile fires its turn-start
      effect (fire adds Burn, so the halved damage is on it before it swings). A
-     body can die here → kill chain.
+     body can die here → kill chain. Then signal `enemy_turn_started` → items
+     (Noxious Fumes poisons the two columns nearest you).
    - **a. Each body in board order gets ONE action:** already dead → skipped;
      **stunned** → sits it out; (on an *extra* turn only, the **Censer** holds the
      front columns out); an **intent** (Ritual, Defensive Stance, a spawner, a
@@ -231,6 +237,7 @@ _check_stack("end of turn")
 ```order
 scripts/autoload/GameLoop2.gd :: _resolve_enemy_turn
 _fire_turn_start_cells()
+TriggerBus.enemy_turn_started.emit(
 _index_of(inst) < 0
 is_stunned(entry)
 censed_cols > 0

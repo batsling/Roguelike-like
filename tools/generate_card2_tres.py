@@ -50,10 +50,13 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
     copy_item                   -> {op:copy_item}
     lose_hp <n>                 -> {op:lose_hp, value:n}       Health as a price
     stun <n> [area=row|board]   -> {op:stun, value:n, area?}
-    apply_status <id> <n> [area=row|board]
+    apply_status <id> <n> [area=row|board|random] [bounces=<n>]
                                 -> {op:apply_status, status, value:n, area?}
     destroy_row                 -> {op:destroy_row}    every OTHER piece in its pack row
     destroy_pick <n>            -> {op:destroy_pick, value:n}  the player picks n
+    nightmare <n>               -> {op:nightmare, value:n}     the player picks 1 to
+                                   destroy; n exact copies of it arrive at the
+                                   start of the next game (Nightmare)
     charge_pick <n>             -> {op:charge_pick, value:n}   n charges into one thing
     exhume                      -> {op:exhume}         a destroyed piece back
     none                        -> nothing
@@ -186,7 +189,7 @@ DOUBLE_STATS = ("gold", "bombs", "keys", "hp")
 RANGE_RE = re.compile(r"^(\d+)\s*-\s*(\d+)$")
 
 PER_COUNTS = ("destroyed", "hit", "cards_used")
-AREAS = ("row", "board")
+AREAS = ("row", "board", "random")
 
 
 def _with_per(op: dict, kv: dict, s: str) -> dict:
@@ -204,6 +207,12 @@ def _with_area(op: dict, kv: dict, s: str) -> dict:
             raise ValueError("card effect DSL: area=%r is not one of %s in %r"
                              % (kv["area"], ", ".join(AREAS), s))
         op["area"] = kv["area"]
+        # `area=random bounces=N` (Bouncing Flask, 22 Nov 2026): N random bodies,
+        # the same one possibly more than once.
+        if kv["area"] == "random":
+            op["bounces"] = int(kv.get("bounces", "1"))
+    elif "bounces" in kv:
+        raise ValueError("card effect DSL: bounces= needs area=random in %r" % s)
     return op
 
 
@@ -233,7 +242,7 @@ def parse_clause(s: str) -> list:
             raise ValueError("card effect DSL: gain_stat needs a stat and an amount in %r" % s)
         return [_with_per({"op": "gain_stat", "stat": bare[0], "value": int(bare[1])}, kv, s)]
 
-    if verb in ("lose_hp", "destroy_pick", "charge_pick"):
+    if verb in ("lose_hp", "destroy_pick", "charge_pick", "nightmare"):
         if not bare:
             raise ValueError("card effect DSL: %s needs an amount in %r" % (verb, s))
         return [{"op": verb, "value": int(bare[0])}]
@@ -336,6 +345,8 @@ UPGRADE_CLAUSES = {
     "potion": lambda e: _op(e) == "gain_loot" and e.get("kind") == "potion",
     "loot": lambda e: _op(e) == "gain_loot",
     "destroy": lambda e: _op(e) == "destroy_pick",
+    "poison": lambda e: _op(e) == "apply_status" and e.get("status") == "poison",
+    "bounce": lambda e: e.get("area") == "random",
 }
 
 

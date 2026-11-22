@@ -683,20 +683,29 @@ func test_key_roads_are_drawn_only_while_a_key_is_held() -> void:
 			"no key, no key roads on card %d" % i)
 		modal._close()
 		await wait_frames(2)
+	# ARRANGED, NOT HOPED FOR: about one random run in eight deals an opening with
+	# no route past a game with an empty slot, and this test used to go Pending on
+	# it. A run without one is dealt again until one has it.
+	var saved_rifts: bool = Settings.rifts_enabled
+	Settings.rifts_enabled = true
 	GameState.keys = 1
 	var found := false
-	for i in range(_ui._choices.size()):
-		var modal = _ui.open_choice(i)
-		var roads: Dictionary = modal._ladder_cfg()["key_rifts"]
-		for from_id in roads:
-			found = true
-			for dest in roads[from_id]:
-				assert_true(RunGraph.rift_key_destinations(from_id).has(dest),
-					"%s is two hops from %s" % [dest, from_id])
-		modal._close()
-		await wait_frames(2)
+	for attempt in range(25):
+		for i in range(_ui._choices.size()):
+			var modal = _ui.open_choice(i)
+			var roads: Dictionary = modal._ladder_cfg()["key_rifts"]
+			for from_id in roads:
+				found = true
+				for dest in roads[from_id]:
+					assert_true(RunGraph.rift_key_destinations(from_id).has(dest),
+						"%s is two hops from %s" % [dest, from_id])
+			modal._close()
+			await wait_frames(2)
+		if found:
+			break
+		_ui = Page.build(self)
+		Page.play_opening(_ui)
+		GameState.keys = 1
 	GameState.keys = 0
-	if not found:
-		pending("no route from this offering passes a game with an empty slot")
-		return
-	assert_true(found)
+	Settings.rifts_enabled = saved_rifts
+	assert_true(found, "a run with a key road was dealt within 25 tries")

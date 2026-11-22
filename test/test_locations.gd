@@ -70,7 +70,9 @@ func test_the_art_loads_lazily_and_is_there() -> void:
 
 # --- the deal --------------------------------------------------------------------
 
-func test_a_run_starts_in_a_low_location_and_flags_it_unseen() -> void:
+# The owner, 22 Nov 2026: the first location is previewed on the entrance screen,
+# so it is not flagged — only a difficulty up's location makes the chip glow.
+func test_a_run_starts_in_a_low_location_not_flagged() -> void:
 	_roster()
 	var ch: CharacterData = Data.get_character2(Data._characters2.keys()[0])
 	GameLoop2.start_run(ch)
@@ -78,7 +80,7 @@ func test_a_run_starts_in_a_low_location_and_flags_it_unseen() -> void:
 	assert_not_null(loc, "the run has a floor from its first moment")
 	if loc != null:
 		assert_eq(loc.tier, 0, "and it is a Low one")
-	assert_true(GameLoop2.location_unseen, "waiting for the page to show it")
+	assert_false(GameLoop2.location_unseen, "the entrance screen shows it, so the chip need not")
 
 func test_a_difficulty_up_deals_a_location_of_the_new_tier() -> void:
 	_enter(&"burning_basement")
@@ -87,6 +89,7 @@ func test_a_difficulty_up_deals_a_location_of_the_new_tier() -> void:
 	GameLoop2.note_spawn_event()
 	assert_eq(RunDifficulty.current_tier(), 1, "the spawn stepped the tier")
 	assert_eq(GameLoop2.location_id, &"the_hive", "and the run moved to the Medium floor")
+	assert_true(GameLoop2.location_unseen, "flagged, so its chip glows until opened")
 
 func test_no_new_location_between_steps() -> void:
 	_enter(&"burning_basement")
@@ -355,77 +358,99 @@ func test_the_location_survives_a_save() -> void:
 	GameLoop2.restore(data)
 	assert_eq(GameLoop2.location_id, &"dark_room")
 	assert_eq(GameLoop2.location_action_used(0), 1, "and what was spent of it")
-	assert_true(GameLoop2.location_unseen, "still to be shown, since nothing showed it")
+	assert_true(GameLoop2.location_unseen, "still glowing, since nothing opened it")
 
 
 # --- the page -----------------------------------------------------------------------
 
-func test_the_page_shows_a_dealt_location_and_the_chip_beside_the_difficulty() -> void:
+# THE OWNER, 22 Nov 2026: nothing pops up over the run. A difficulty up's location
+# is a card toast, and its chip glows until it is clicked; the click opens it.
+func test_a_dealt_location_glows_on_the_chip_and_pops_nothing_up() -> void:
 	var ui = Page.build(self)
 	ui.choose_start(0)
 	_enter(&"dark_room")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var popup = ui._location_popup
-	assert_not_null(popup, "the arrival popup opened")
-	if popup != null and is_instance_valid(popup):
-		assert_true(popup.is_arrival())
-		assert_eq(popup.location().id, &"dark_room")
-		assert_eq(popup.action_buttons().size(), 1, "Dark Room's trade is a button on it")
-		popup.close()
-	assert_false(GameLoop2.location_unseen, "shown once")
+	assert_null(ui._location_popup, "no popup opened by itself")
+	assert_true(GameLoop2.location_unseen, "it is waiting to be read")
 	ui._board.refresh()
 	var chip = ui._board._location_chip
 	assert_true(chip.visible, "the chip is on the strip")
+	assert_true(chip.is_glowing(), "and it glows")
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	chip._gui_input(ev)
+	var popup = ui._location_popup
+	assert_not_null(popup, "a click opens it")
+	if popup != null and is_instance_valid(popup):
+		assert_eq(popup.location().id, &"dark_room")
+		assert_eq(popup.action_buttons().size(), 1, "Dark Room's trade is a button on it")
+	assert_false(GameLoop2.location_unseen, "read now")
+	assert_false(chip.is_glowing(), "so the chip stops glowing at once")
+	if popup != null and is_instance_valid(popup):
+		popup.close()
 	var card: Control = LocationChip.card(Locations.current())
 	assert_string_contains(Page.labels_text(card), "doubled", "its card says what the place does")
 	card.free()
 
-# AFTER THE EVENT (the owner, 23 Oct): a location dealt while an event is up waits
-# for it, and an arrival popup already up gives way to one.
-func test_the_location_waits_for_the_event_screen() -> void:
-	var ui = Page.build(self)
-	ui.choose_start(0)
-	var ev: EventData2 = Data.all_events2()[0] if not Data.all_events2().is_empty() else null
-	if ev == null:
-		pending("no event authored")
-		return
-	if ui._event_modal != null and is_instance_valid(ui._event_modal):
-		ui._event_modal.dismiss()
-		ui._event_modal = null
-	assert_true(ui.open_event(ev), "an event is up")
+# …and the glow is saved with the run, so a location dealt by the spawn that ended
+# a session still asks to be read when it is picked up again.
+func test_the_glow_survives_a_save() -> void:
 	_enter(&"dark_room")
-	await get_tree().process_frame
-	await get_tree().process_frame
-	assert_null(ui._location_popup, "not over the event")
-	assert_true(GameLoop2.location_unseen, "still owed")
-	ui._event_modal.dismiss()
-	ui._on_event_finished({})
-	await get_tree().process_frame
-	await get_tree().process_frame
-	assert_not_null(ui._location_popup, "shown once the event has gone")
-	if ui._location_popup != null:
-		ui._location_popup.close()
+	var data: Dictionary = JSON.parse_string(JSON.stringify(GameLoop2.serialize()))
+	GameLoop2.reset()
+	GameLoop2.restore(data)
+	assert_true(GameLoop2.location_unseen)
 
-func test_an_arrival_popup_gives_way_to_an_event() -> void:
+# A difficulty up is a CARD TOAST: the new tier over the location it dealt, with
+# the location's art.
+func test_a_difficulty_up_is_a_card_toast_with_the_location() -> void:
 	var ui = Page.build(self)
 	ui.choose_start(0)
-	var ev: EventData2 = Data.all_events2()[0] if not Data.all_events2().is_empty() else null
-	if ev == null:
-		pending("no event authored")
+	var got: Array = []
+	var catch := func(title, line, _color, image): got.append([title, line, image])
+	Notifications.carded.connect(catch)
+	var board := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
+	var tier_before: int = RunDifficulty.current_tier()
+	_roster()
+	GameLoop2.location_tier = tier_before
+	GameState.spawn_events = RunDifficulty.games_per_tier() * (tier_before + 1) - 1
+	GameLoop2.note_spawn_event()
+	ui._announce_difficulty_step(tier_before, board)
+	Notifications.carded.disconnect(catch)
+	assert_eq(got.size(), 1, "one card toast")
+	if got.size() == 1:
+		assert_string_contains(String(got[0][0]), "Difficulty up")
+		assert_string_contains(String(got[0][0]), RunDifficulty.tier_name(RunDifficulty.current_tier()))
+		var loc: LocationData = Locations.current()
+		if loc != null:
+			assert_string_contains(String(got[0][1]), loc.display_name)
+			assert_eq(got[0][2], loc.image, "with the location's art")
+	assert_null(ui._location_popup, "and nothing pops up")
+
+# The run's first location is read on the entrance screen instead (StartPicker).
+func test_the_entrance_screen_previews_the_starting_location() -> void:
+	_roster()
+	var ui = Page.build(self)
+	var loc: LocationData = Locations.current()
+	if loc == null:
+		pending("the run dealt no location")
 		return
-	if ui._event_modal != null and is_instance_valid(ui._event_modal):
-		ui._event_modal.dismiss()
-		ui._event_modal = null
-	_enter(&"dark_room")
+	var picker = ui._start_picker
+	assert_not_null(picker, "the entrance screen is up")
+	if picker == null:
+		return
+	var box: Node = picker.find_child("StartLocation", true, false)
+	assert_not_null(box, "it previews the location")
+	if box != null:
+		var text: String = Page.labels_text(box)
+		assert_string_contains(text, loc.display_name)
+		assert_string_contains(text, loc.description)
+	ui.choose_start(0)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	assert_not_null(ui._location_popup, "the arrival is up")
-	assert_true(ui.open_event(ev))
-	assert_null(ui._location_popup, "and closes for the event")
-	assert_true(GameLoop2.location_unseen, "to be shown again after it")
-	ui._event_modal.dismiss()
-	ui._on_event_finished({})
+	assert_null(ui._location_popup, "and nothing pops up after Begin")
 
 func test_the_void_puts_a_free_rift_card_in_the_offering() -> void:
 	var ui = Page.build(self)

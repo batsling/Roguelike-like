@@ -8,7 +8,7 @@ goals. The sheet's PROSE columns are carried through verbatim for tooltips; what
 the engine runs on is the two effect columns, one per side, authored
 independently so a status's two halves can do different things:
 
-  statuses2.0: Name | Type | Game | On Player | On Player Effect | On Enemy
+  statuses2.0: Name | Type | On Player | On Player Effect | On Enemy
                     | On Enemy Effect | Combat | Decrease | Enemy Combat Effect
                     | Player Combat | Player Combat Effect | Stackable | Image
 
@@ -39,6 +39,10 @@ Side effect DSL — one clause per cell:
            must <condition>, or <penalty>". The one verb whose payload is what
            you pay rather than what you earn, so it is written after `else ->`.
            Burn's player side.
+  trigger  an ENEMY's row the player may tick ANY TIME, the body still standing:
+           ticking it switches on the status's COMBAT side on that body (Poison:
+           "deals X less damage"). Until it is ticked the combat side does
+           nothing. No reward of its own; never on the player.
   instead  an ALTERNATIVE way to satisfy the goal it hangs off — "<goal> or
            instead <condition>". The goal counts as cleared without its own
            condition ever being set, so the engine banks no record of the beat.
@@ -71,6 +75,8 @@ the HUD tint and the collection filter, nothing more.
                  a successful coin flip would last twice as long as it reads.
   Each Turn      a stack goes at the end of every turn the body takes — Stun, which
                  is what "lasts for X turns" means.
+  Each Game      a stack goes at the end of every game the PLAYER holds it, and
+                 never on an enemy — Burn and Marked, "This lasts for X games".
 
 The last two are facts about the COMBAT side rather than the goal side, so they set
 `wear` instead of the sides' `decay`. ON THE PLAYER BOTH MEAN "PER GAME": the player
@@ -78,9 +84,8 @@ does not attack and does not take turns, the game is their turn, and that is wha
 "This lasts for X games" on Bleed's and Stun's player sides is saying.
 
 `Stackable` says how a second application combines — `Intensity` raises X — and
-may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. Burn
-needs one because its condition gets EASIER per stack (4-X), so an uncapped Burn
-would eventually cost nothing at all.
+may carry a CAP: `Max: 3` is a status that stops climbing at three stacks. No status
+authors one today (Burn's, for its old 4-X condition, went on 22 Nov 2026).
 
 Reward token DSL (one clause per effect):
   gain_chest [small|medium|large|huge] <n>   -> {type: gain_chest, value, choices}
@@ -101,8 +106,11 @@ as a duration ("1 hour 30 minutes") rather than a bare number, so a fractional
 window reads as a time instead of as "1.5", and `{X:chests}` renders a count of
 chest POINTS as the chests it buys ("1 Huge Chest and 1 Small Chest").
 
-Art: Image -> res://images2.0/statuses/<Image>.png, referenced eagerly (three
-files, unlike the 818 game covers that forced GameData's lazy path).
+Art: Image -> res://images2.0/statuses/<Image>.png, referenced eagerly (seven
+small files, unlike the 818 game covers that forced GameData's lazy path). That
+is each status's BASIC icon, drawn by tools/build_status_art.py; the game
+pictures they used to be are unlocks in images2.0/icons/Statuses/<Status>/, and
+what is drawn is Cosmetics.status_art (22 Nov 2026).
 
   python3 tools/generate_status_tres.py           # regenerate every status
   python3 tools/generate_status_tres.py --list    # print the parse, write nothing
@@ -317,11 +325,11 @@ def _amount(tok: str):
 
 # --- a side's effect cell -------------------------------------------------
 
-MODES = ("goal", "clause", "bonus", "demand", "instead")
+MODES = ("goal", "clause", "bonus", "demand", "instead", "trigger")
 # The verbs that name a REQUIREMENT rather than an offer: nothing is handed over
 # for meeting one, so a `-> reward` on either is an authoring mistake rather than
 # a payout to be silently dropped.
-UNPAID_MODES = ("clause", "instead")
+UNPAID_MODES = ("clause", "instead", "trigger")
 # The modes whose side rides an enemy's GOAL and so can be worded per `Ticked`.
 GOAL_RIDING_MODES = ("clause", "bonus", "instead")
 SIDE_RE = re.compile(
@@ -359,6 +367,14 @@ def parse_side(raw, where):
     pays = (m.group("arrow") or "").startswith("else")
     reward, reward_text = parse_reward(None if pays else m.group("payload"))
     penalty, penalty_text = parse_reward(m.group("payload") if pays else None)
+    # A TRIGGER (Poison, the owner, 22 Nov 2026) is an ENEMY's row the player can
+    # tick ANY TIME, the body still standing: ticking it switches on the status's
+    # combat side on that body. What it pays is that combat side, so it carries no
+    # reward of its own, and the player has no body for it to switch on.
+    if mode == "trigger" and "On Player" in where:
+        raise ValueError("statuses2.0 %s: a `trigger` switches on a status's combat "
+                         "side on the ENEMY it is ticked against — the player side "
+                         "has no body to switch on" % where)
     if mode in UNPAID_MODES and reward:
         raise ValueError("statuses2.0 %s: a `%s` is a requirement, not a "
                          "payout — move the reward to a `bonus` or a `goal`"
@@ -425,6 +441,11 @@ DECREASE_RULES = {
     "on completion": (True, ""),
     "on trigger": (False, "attack"),
     "each turn": (False, "turn"),
+    # LASTS X GAMES, on the player only (the owner, 22 Nov 2026: every debuff lasts
+    # X games). A stack goes at the end of every game the PLAYER holds it, missed
+    # or answered; on an enemy it never wears away by itself (it leaves with the
+    # body). Burn and Marked, whose stacks used to go when the row was answered.
+    "each game": (False, "game"),
 }
 
 
@@ -603,8 +624,10 @@ def parse_combat(raw, where, player=False):
                 raise ValueError("statuses2.0 %s: %r is not a multiplier (%r)"
                                  % (where, amount, clause))
             continue
-        if not amount.startswith("+"):
-            raise ValueError("statuses2.0 %s: combat amount %r needs a leading + "
+        # `-N` LOWERS the field (Poison's `damage_dealt -{X}`, the owner, 22 Nov
+        # 2026): the same expression, negated.
+        if not amount.startswith(("+", "-")):
+            raise ValueError("statuses2.0 %s: combat amount %r needs a leading +, - "
                              "or x (%r)" % (where, amount, clause))
         if field not in add_fields:
             raise ValueError("statuses2.0 %s: unknown combat field %r (known: %s)"
@@ -612,7 +635,7 @@ def parse_combat(raw, where, player=False):
         kind, val = _amount(amount[1:])
         # Literal or hole, it is stored as an expression string: one evaluator at
         # runtime rather than two code paths that have to agree.
-        out[field] = str(val)
+        out[field] = str(val) if amount.startswith("+") else "-(%s)" % val
     return out
 
 
@@ -725,6 +748,27 @@ def parse_reward_clause(clause):
         eff = {"type": "take_damage"}
         put(eff, "value", rest[0])
         return eff, "take %s Damage" % _amount_word(rest[0])
+
+    # A STATUS ON AN ENEMY, as a price (the owner, 22 Nov 2026: Marked's "or give
+    # a random enemy 3 Strength"). The item grammar's `apply_status`, so the same
+    # EffectSystem handler pays it: `apply_status strength 3 target=random` puts 3
+    # Strength on one body picked at random (GameLoop2.apply_enemy_status), and
+    # with nobody on the board it lands on nothing.
+    if verb == "apply_status":
+        bare = [t for t in rest if "=" not in t]
+        kv = dict(t.split("=", 1) for t in rest if "=" in t)
+        if len(bare) < 2:
+            raise ValueError("reward DSL: apply_status needs <status> <n> in %r" % clause)
+        target = kv.get("target", "random").lower()
+        if target not in ("random", "all", "current"):
+            raise ValueError("reward DSL: apply_status target=%r is not random, all or "
+                             "current in %r" % (target, clause))
+        status = bare[0].lower()
+        eff = {"type": "apply_status", "status": status, "target": target}
+        put(eff, "value", bare[1])
+        who = {"random": "a random enemy gains", "all": "every enemy gains",
+               "current": "the enemy gains"}[target]
+        return eff, "%s %s %s" % (who, _amount_word(bare[1]), status.capitalize())
 
     if verb == "lose_stat":
         if len(rest) < 2:
@@ -1179,7 +1223,8 @@ def status_tres(row) -> tuple:
     lines.append('id = &"%s"' % sid)
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('kind = &"%s"' % kind)
-    lines.append('source_game = "%s"' % gd_str(_clean(row.get("Game"))))
+    # No game credit (the owner, 22 Nov 2026): a status is an icon now, and its
+    # games are the icons you can earn for it. The sheet's Game column is unread.
     lines.append('stackable = "%s"' % gd_str(_clean(row.get("Stackable")) or "Intensity"))
     lines.append("max_stacks = %d" % max_stacks)
     lines.append('decrease = "%s"' % gd_str(decrease))

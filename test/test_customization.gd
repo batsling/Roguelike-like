@@ -637,3 +637,56 @@ func test_choosing_in_the_picker_changes_the_portrait() -> void:
 	await get_tree().process_frame
 	assert_string_contains(isaac.shown_portrait().resource_path, "Isaac_Rebirth")
 	p.queue_free()
+
+# STATUSES (the owner, 22 Nov 2026): each status's basic icon is a glyph drawn like
+# the rest of the basic set, and the game picture it used to be is that game's
+# unlock — worn, it is drawn wherever the status is.
+func test_every_status_has_its_old_picture_as_its_games_unlock() -> void:
+	var want := {"strength": "slay_the_spire", "dexterity": "slay_the_spire",
+		"stun": "slay_the_spire", "burn": "brutal_orchestra", "marked": "mewgenics",
+		"speed": "mewgenics", "bleed": "mewgenics"}
+	for kind in want:
+		var looks: Array = CosmeticCatalog.icons_of(kind)
+		var games: Array = looks.map(func(e): return String(e["game"]))
+		assert_true(games.has(want[kind]), "%s's old picture is %s's" % [kind, want[kind]])
+		for e in looks:
+			assert_true(bool(e.get("status", false)), "and is marked a status icon")
+	# …and Slay the Spire 2's own Strength and Dexterity (the owner, 22 Nov 2026).
+	for kind in ["strength", "dexterity"]:
+		assert_true(CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
+			.has("slay_the_spire_2"), "%s has Slay the Spire 2's too" % kind)
+		var st: StatusData = Data.get_status(StringName(kind))
+		assert_not_null(st, "%s is a status" % kind)
+		if st != null:
+			assert_not_null(st.image, "%s has a basic icon" % kind)
+
+func test_a_status_is_its_basic_icon_until_its_games_is_worn() -> void:
+	var st: StatusData = Data.get_status(&"burn")
+	var key := "burn/burn_brutal_orchestra"
+	assert_eq(Cosmetics.status_art(st), st.image, "the basic flame, unworn")
+	Cosmetics.set_icon("burn", key)
+	assert_eq(Cosmetics.status_art(st), st.image, "worn but locked: still the basic one")
+	Cosmetics._unlocked[key] = "game:brutal_orchestra"
+	assert_string_contains(Cosmetics.status_art(st).resource_path, "Burn_Brutal_Orchestra")
+	assert_eq(st.hover_card(StatusData.PLAYER, 1)["art"], Cosmetics.status_art(st),
+		"its hover card draws the worn one too")
+	Cosmetics.set_icon("burn", "")
+
+func test_the_icons_tab_has_a_row_for_every_status() -> void:
+	var screen := CustomizeScreen.open(self, 2)
+	await wait_frames(2)
+	for st in Data.all_statuses():
+		var row: Node = screen.find_child("Kind_%s" % String((st as StatusData).id), true, false)
+		assert_not_null(row, "%s has a row" % (st as StatusData).display_name)
+	screen.queue_free()
+
+# THE TIMER (the owner, 22 Nov 2026): the basic ⏱ until Mewgenics' stopwatch is
+# earned and worn, on every temporary badge.
+func test_the_timer_is_the_glyph_until_mewgenics_is_worn() -> void:
+	var key := "timer/timer_mewgenics"
+	assert_eq(String(CosmeticCatalog.entry(key).get("game", "")), "mewgenics")
+	assert_eq(Cosmetics.timer_art(), UITheme.TIMER_ART, "the basic ⏱, unworn")
+	Cosmetics.set_icon("timer", key)
+	Cosmetics._unlocked[key] = "game:mewgenics"
+	assert_string_contains(Cosmetics.timer_art().resource_path, "Timer_Mewgenics")
+	Cosmetics.set_icon("timer", "")

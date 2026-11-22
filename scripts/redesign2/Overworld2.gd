@@ -696,8 +696,8 @@ func _ready() -> void:
 	# than banking a RewardScreen chest.
 	if not GameLoop2.enemy_defeated.is_connected(_on_enemy_defeated):
 		GameLoop2.enemy_defeated.connect(_on_enemy_defeated)
-	# A location was dealt (docs/locations-design.md): its popup, at the page's
-	# next quiet moment (_show_location_if_unseen).
+	# A location was dealt (docs/locations-design.md): the strip and its chip
+	# repaint; a difficulty up's card toast is `_announce_difficulty_step`'s.
 	if not GameLoop2.location_changed.is_connected(_on_location_changed):
 		GameLoop2.location_changed.connect(_on_location_changed)
 	_warm_screens.call_deferred()
@@ -875,7 +875,6 @@ func _close_start_picker() -> void:
 		_start_picker.close()
 	_start_picker = null
 	_set_run_page_visible(true)
-	call_deferred("_show_location_if_unseen")
 
 # The pinned header stands down while the start screen is up: at that moment the
 # bar is reporting a Health pool, a purse, a character and a road walked that no
@@ -1073,7 +1072,6 @@ func choose_start(index: int) -> void:
 # capture_view_state() stored; an empty one (a save written outside the overworld,
 # or a pre-2.0 save) falls back to a fresh offering at the saved position.
 func resume_run(view: Dictionary) -> void:
-	call_deferred("_show_location_if_unseen")
 	if view.is_empty():
 		_phase = Phase.OVER if GameLoop2.run_over else Phase.SELECT
 		_start_options.clear()
@@ -1659,6 +1657,9 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	# The run's FIRST game hands over its genre's kit (GameState.START_GEAR) —
 	# from the panel or, on a custom run with none, from whatever card opened it.
 	_grant_start_gear_once(game)
+	# NIGHTMARE's copies, owed since the card was played: "next turn" is the next
+	# game, so they arrive as it starts, the way starting gear does.
+	_grant_nightmare_copies()
 	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	# BEFORE THE BOARD IS SET UP, not after (owner, 6 Nov 2026: bodies "pushed into
@@ -1709,6 +1710,28 @@ func _grant_start_gear_once(game: GameData) -> void:
 				genre, items.size()], UITheme.GOLD)
 			_drops.queue.append(_drops.rolled_drop(items))
 			_drops.pump()
+	_refresh_items()
+
+# NIGHTMARE (Slay the Spire): the exact copies of the piece it destroyed, handed
+# over as the next game starts. Into the pack where they fit; the rest are asked
+# about on the drop screen, as starting gear's leftovers are, never lost.
+func _grant_nightmare_copies() -> void:
+	var copies: Array = GameState.take_nightmare_copies()
+	if copies.is_empty():
+		return
+	var leftover: Array = []
+	var counts: Dictionary = {}   # name -> copies, so two Nightmares read as two
+	for entry in copies:
+		var name: String = LootSystem.display_name(entry)
+		counts[name] = int(counts.get(name, 0)) + 1
+		if not GameState.take_loot_entry(entry):
+			leftover.append(entry)
+	var parts := PackedStringArray()
+	for name in counts:
+		parts.append("%d x %s" % [counts[name], name])
+	GameLog.add("Nightmare: %s." % ", ".join(parts), UITheme.GOLD)
+	if not leftover.is_empty():
+		_drops.on_loot_offered(leftover)
 	_refresh_items()
 
 # WHAT STANDS ON THE BOARD, which is the node's kind and nothing else (§19.1).
@@ -1828,6 +1851,10 @@ func log_attempt() -> String:
 	# …and the armour standing in front of it, so a blow the playback shows being
 	# blocked can show the shield breaking (BattlefieldView.animate_resolve).
 	var shields_before := Vector2i(GameState.shields, GameState.bonus_shields)
+	# A lost run's spawn is a spawn event, so it can step the tier (and deal a
+	# location) like any other: said the same way (_announce_difficulty_step).
+	var tier_before: int = _current_tier()
+	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	_resolving = true
 	_attempt_resolve = true
 	_hold_loop_refresh = true
@@ -1840,6 +1867,8 @@ func log_attempt() -> String:
 	var game: GameData = _chosen.get("game")
 	_announce_attempt_turn(game.display_name if game != null else "this game",
 		GameLoop2.last_attempt_turn)
+	if not GameLoop2.run_over:
+		_announce_difficulty_step(tier_before, board_before)
 	if GameLoop2.run_over:
 		_phase = Phase.OVER
 	_refresh()
@@ -3065,8 +3094,22 @@ func _announce_difficulty_step(tier_before: int, board_before: Vector2i) -> void
 	var msg: String = "Difficulty up — %s." % RunDifficulty.tier_name(tier_now)
 	if board_now != board_before:
 		msg += " The battlefield grows to %d×%d." % [board_now.x, board_now.y]
-	Notifications.notify(msg, UITheme.GOLD)
 	GameLog.add(msg, UITheme.GOLD)
+	# THE CARD TOAST (the owner, 22 Nov 2026): the new tier, and the location it
+	# dealt with its art. The chip on the strip glows until clicked, and that is
+	# where the location is read — so the toast points there.
+	var loc: LocationData = Locations.current()
+	var title: String = "Difficulty up — %s" % RunDifficulty.tier_name(tier_now)
+	if loc != null and GameLoop2.location_unseen:
+		var line: String = "You enter %s. Click it on the strip to see what changed." \
+			% loc.display_name
+		if board_now != board_before:
+			line = "You enter %s. The battlefield grows to %d×%d." \
+				% [loc.display_name, board_now.x, board_now.y]
+		Notifications.announce_card(title, line, UITheme.GOLD, loc.image)
+	else:
+		Notifications.announce_card(title, msg.trim_prefix(title + ".").strip_edges(),
+			UITheme.GOLD)
 
 # --- waiting out the board's playback --------------------------------------
 #
@@ -3095,7 +3138,6 @@ func _end_resolve() -> void:
 	if not _resolving:
 		return
 	_resolving = false
-	call_deferred("_show_location_if_unseen")
 	_refresh_stage()
 	# The tracker's buttons go dead for the length of a playback (a second tick
 	# mid-animation would be resolving a turn onto a board still sliding through
@@ -3237,7 +3279,6 @@ func _open_post_game() -> void:
 # `_pending_shop` is still set and `_open_pending_shop` mounts it in its turn.
 func _on_post_game_finished(haul: PostCombatScreen) -> void:
 	_post_screen = null
-	call_deferred("_show_location_if_unseen")
 	# Its exit named the shop, so the shop is where it leads (_open_pending_shop).
 	_shop_from_haul = haul != null and is_instance_valid(haul) and haul.shop_id() != &""
 	_refresh()
@@ -3305,12 +3346,6 @@ func _open_pending_event() -> void:
 
 # Put `ev` on the screen, spending `node`'s event if it names one.
 func _raise_event(ev: EventData2, node: StringName) -> void:
-	# An arrival popup already up gives way to the event and comes back after it
-	# (_show_location_if_unseen), so the location is always read second.
-	if _location_popup != null and is_instance_valid(_location_popup) \
-			and _location_popup.get("_arrival") == true:
-		_location_popup.close()
-		GameLoop2.location_unseen = true
 	_event_modal = load(EVENT_MODAL2_SCRIPT).open(self, ev, node)
 	_event_modal.finished.connect(_on_event_finished)
 
@@ -3335,7 +3370,6 @@ func open_event(ev: EventData2) -> bool:
 
 func _on_event_finished(play_request: Dictionary) -> void:
 	_event_modal = null
-	call_deferred("_show_location_if_unseen")
 	# Machines an event put in front of you belong to that event, and the modal
 	# has already taken them away (EventModal2._end_objects) — precisely the ones
 	# it spawned, where this used to clear the board outright and take a machine
@@ -6019,11 +6053,11 @@ func _add_rift_key_cards(tier: int) -> void:
 # --- the location (docs/locations-design.md §6) ------------------------------
 #
 # A location is DEALT by the loop (the run's start, a difficulty up) and SHOWN by
-# the page: its popup — art, name, what it does — at the next moment nothing else
-# is on screen for the player to read. Not over the start screen, the board's
-# playback or the haul screen, and not over a reward or another popup; each of
-# those, when it goes, asks again. `GameLoop2.location_unseen` is the flag, so a
-# location dealt just before a save is still announced when the run comes back.
+# the page WITHOUT TAKING THE SCREEN (the owner, 22 Nov 2026): nothing pops up
+# over the run. The run's first location is previewed on the entrance screen
+# (StartPicker). A difficulty up's is a CARD TOAST — its art and the new tier
+# (`_announce_difficulty_step`) — and its chip on the DIFFICULTY strip glows until
+# it is clicked (`GameLoop2.location_unseen`, saved), which opens the popup.
 
 const LOCATION_POPUP := "res://scripts/redesign2/LocationPopup.gd"
 var _location_popup: Control = null
@@ -6031,27 +6065,9 @@ var _location_popup: Control = null
 func _on_location_changed(_id: StringName) -> void:
 	if _board != null:
 		_board.refresh()
-	call_deferred("_show_location_if_unseen")
 
-func _show_location_if_unseen() -> void:
-	if not is_inside_tree() or not GameLoop2.location_unseen or GameLoop2.run_over:
-		return
-	if _resolving or _reward_open or _phase == Phase.START_SELECT:
-		return
-	if _start_picker != null and is_instance_valid(_start_picker):
-		return
-	if _post_screen != null and is_instance_valid(_post_screen):
-		return
-	if _location_popup != null and is_instance_valid(_location_popup):
-		return
-	# AFTER THE EVENT, never over it (the owner, 23 Oct): an event open or queued
-	# owns the screen, and `_on_event_finished` asks again once it has gone.
-	if (_event_modal != null and is_instance_valid(_event_modal)) or _pending_event != null:
-		return
-	show_location(true)
-
-# Open the location's popup — the arrival (`arrival`) or the chip's click. Public
-# for the chip, the tests and the driver. Null with no location.
+# Open the location's popup — the chip's click (nothing opens it by itself any
+# more). Public for the chip, the tests and the driver. Null with no location.
 func show_location(arrival: bool = false) -> Control:
 	var loc: LocationData = Locations.current()
 	if loc == null:
@@ -6059,6 +6075,9 @@ func show_location(arrival: bool = false) -> Control:
 	if _location_popup != null and is_instance_valid(_location_popup):
 		_location_popup.close()
 	GameLoop2.location_unseen = false
+	# The chip stops glowing the moment it is opened, not when the window shuts.
+	if _board != null:
+		_board.refresh()
 	_location_popup = load(LOCATION_POPUP).new()
 	_location_popup.setup(self, loc, arrival)
 	_location_popup.finished.connect(func():

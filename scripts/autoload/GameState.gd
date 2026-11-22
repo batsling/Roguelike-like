@@ -450,6 +450,31 @@ var actions_this_game: int = 0
 # a slot, so a piece comes back the way it dropped.
 var destroyed_loot: Array = []
 
+# NIGHTMARE'S COPIES, owed at the start of the next game (Slay the Spire's "next
+# turn"). Each is an EXACT copy of the piece the card destroyed — upgrades,
+# charges, identified or not (the owner, 21 Nov 2026) — kept without a slot, as
+# the destroyed pile keeps its pieces. `Overworld2._begin_game` hands them over
+# right after starting gear and empties this; saved with the run.
+var nightmare_copies: Array = []
+
+# Owe `count` exact copies of `entry` at the start of the next game. A curse is
+# never copied (it could not have been destroyed to get here anyway).
+func owe_nightmare_copies(entry: Dictionary, count: int) -> void:
+	if entry.is_empty() or count <= 0 or is_curse_entry(entry):
+		return
+	var kept: Dictionary = entry.duplicate(true)
+	kept.erase("pack_slot")
+	kept.erase("pack_cells")
+	kept.erase("rot")
+	for i in range(count):
+		nightmare_copies.append(kept.duplicate(true))
+
+# Hand over every copy Nightmare owes: the list, emptied here so it pays once.
+func take_nightmare_copies() -> Array:
+	var out: Array = nightmare_copies.duplicate(true)
+	nightmare_copies.clear()
+	return out
+
 # How many EXTRA copies of the piece being used are owed right now. Its own reader
 # so the loot path never touches the pack directly — the same shape
 # `banks_shields()` gives Barricade.
@@ -686,6 +711,8 @@ func _connect_lifecycle_hooks() -> void:
 	# answers from the far end.
 	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned", "card_used",
 			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected",
+			# Envenom's and Noxious Fumes' hooks (22 Nov 2026).
+			"enemy_stunned", "enemy_turn_started",
 			# Pain, Decay and Regret's hooks (docs/loot-passives.md §18).
 			"action_taken", "game_ending"]:
 		var sig: Signal = TriggerBus.get(hook)
@@ -875,8 +902,11 @@ func _run_trigger(item: ItemData, trig: Dictionary, ctx_extras: Dictionary,
 		art = copier.image
 	if not bool(trig.get("silent", false)):
 		GameLog.add("(%s triggers)" % label, Color(0.85, 0.9, 0.7))
+	# A hook that names a BODY on the board (Envenom's `enemy_stunned`) hands it on
+	# as the effect's target, so `apply_status … target=enemy` lands on that body.
+	var hook_target = ctx_extras.get("target")
 	var fx_ctx := {
-		"source": null, "target": null, "scene": null,
+		"source": null, "target": hook_target if hook_target is int else null, "scene": null,
 		"card": ctx_extras.get("card"),
 		# The owning item — lets a self-referential effect (Unstable
 		# Genome's destroy_self) find and remove itself.
@@ -1668,6 +1698,7 @@ func reset_run() -> void:
 	pending_masks = 0
 	smelted_loot.clear()
 	destroyed_loot.clear()
+	nightmare_copies.clear()
 	smelt_target = null
 	Notifications.clear()
 	phase = Phase.MENU

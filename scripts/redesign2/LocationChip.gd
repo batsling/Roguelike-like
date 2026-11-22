@@ -6,8 +6,13 @@ extends PanelContainer
 # "Low difficulty", because the two change at the same moment.
 #
 # HOVER for the card: the art at a size you can see, and what the place does.
-# CLICK for the popup the arrival showed, which is where a location's actions are
-# (a hover card cannot hold a button). Hidden while the run has no location.
+# CLICK for the location's popup, which is where its actions are (a hover card
+# cannot hold a button). Hidden while the run has no location.
+#
+# IT GLOWS while a location a difficulty up dealt has not been opened yet (the
+# owner, 22 Nov 2026): nothing pops up over the run any more, so the chip is
+# where the new place is waiting to be read — a gold rim that breathes, and a NEW
+# tag, until it is clicked (`GameLoop2.location_unseen`).
 #
 # It owns its own hover, unlike the labels around it, which are mouse-transparent
 # so the strip's panel answers for them: a card about the location must not turn
@@ -22,11 +27,22 @@ signal opened
 
 var _thumb: TextureRect
 var _name: Label
+var _new: Label
+var _new_box: MarginContainer
+var _glow: StyleBoxFlat
+var _pulse: Tween = null
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_glow = StyleBoxFlat.new()
+	_glow.bg_color = Color(UITheme.GOLD, 0.16)
+	_glow.border_color = UITheme.GOLD
+	_glow.set_border_width_all(1)
+	_glow.set_corner_radius_all(4)
+	_glow.content_margin_left = UITheme.GAP_HAIR
+	_glow.content_margin_right = UITheme.GAP_HAIR
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -46,12 +62,26 @@ func _init() -> void:
 	_name.clip_text = true
 	_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(_name)
+	_new = Label.new()
+	_new.text = "NEW"
+	_new.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_new.add_theme_color_override("font_color", UITheme.GOLD)
+	_new.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# Set off from the name by more than the row's hairline, or it reads as part of
+	# it: the tag rides a margin, and the margin is what shows and hides.
+	_new_box = MarginContainer.new()
+	_new_box.add_theme_constant_override("margin_left", UITheme.GAP_TIGHT)
+	_new_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_new_box.visible = false
+	_new_box.add_child(_new)
+	row.add_child(_new_box)
 	visible = false
 
 # Repaint from the run. Called with the strip it sits on.
 func refresh() -> void:
 	var loc: LocationData = Locations.current()
 	visible = loc != null
+	_set_glow(loc != null and GameLoop2.location_unseen)
 	if loc == null:
 		tooltip_text = ""
 		return
@@ -66,6 +96,36 @@ func refresh() -> void:
 	# Godot only asks for a custom tooltip when tooltip_text is non-empty; this is
 	# also what a build without the override would show.
 	tooltip_text = "%s — %s" % [loc.display_name, loc.description]
+
+# Whether the chip is asking to be opened. Public for the tests.
+func is_glowing() -> bool:
+	return _new_box.visible
+
+func _set_glow(on: bool) -> void:
+	if on == _new_box.visible:
+		return
+	_new_box.visible = on
+	if _pulse != null and _pulse.is_valid():
+		_pulse.kill()
+	_pulse = null
+	if not on:
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		return
+	add_theme_stylebox_override("panel", _glow)
+	# The rim BREATHES, so it is noticed without being read: the fill swells and
+	# settles about once a second, until the chip is clicked.
+	if is_inside_tree():
+		_start_pulse()
+
+func _start_pulse() -> void:
+	_pulse = create_tween().set_loops()
+	_pulse.tween_property(_glow, "bg_color:a", 0.42, 0.6).set_trans(Tween.TRANS_SINE)
+	_pulse.tween_property(_glow, "bg_color:a", 0.10, 0.6).set_trans(Tween.TRANS_SINE)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_ENTER_TREE and _new_box != null and _new_box.visible \
+			and (_pulse == null or not _pulse.is_valid()):
+		_start_pulse()
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed \

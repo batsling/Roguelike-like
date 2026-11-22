@@ -681,7 +681,9 @@ const HUNGER_ART: Texture2D = preload("res://images2.0/general/Hunger.png")
 # THE CLOCK. Anything TEMPORARY carries it in its bottom-right corner — a status
 # borrowed for a game or two (docs/potions-design.md §5.3), a shield that expires
 # when this game is reported. It is one badge with one meaning: what it is on is
-# going away, and the tooltip says when.
+# going away, and the tooltip says when. This is the BASIC one, the ⏱ glyph drawn
+# by tools/build_timer_art.py; draw the badge with `Cosmetics.timer_art()`, which
+# swaps in a worn one (Mewgenics' stopwatch is the unlock).
 const TIMER_ART: Texture2D = preload("res://images2.0/general/Timer.png")
 
 # How much of the icon the clock takes, the floor it never goes under, and how
@@ -695,6 +697,7 @@ const TIMER_ART: Texture2D = preload("res://images2.0/general/Timer.png")
 # recognisable with a bite out of one corner, and an unreadable badge is worth
 # nothing at any size.
 const TIMER_FRACTION: float = 0.5
+const TIMER_META := &"timer_badge"
 const TIMER_MIN: int = 14
 const TIMER_OVERHANG: float = 0.3
 
@@ -702,7 +705,17 @@ const TIMER_OVERHANG: float = 0.3
 # TextureRect otherwise, so an untimed icon costs exactly what it did before this
 # badge existed.
 static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
-	var art := crisp_tex(tex, size)
+	# A BIG PICTURE IS SHRUNK FIRST (the owner, 22 Nov 2026: the status icons should
+	# "look a little cleaner"). Mipmaps average a 256 px icon down in coarse steps,
+	# which fused the outlines of the basic status icons into blobs at the 16-22 px
+	# these stand at (and broke them into dots before that). Shrunk once with
+	# Lanczos to the exact SCREEN size and drawn 1:1 with NEAREST — what the Hunger
+	# pips do (`shrunk`) — it is as sharp as the picture allows. Small art (pixel
+	# art, the 128 px shield) is left as it was.
+	var shown: Texture2D = tex
+	if tex != null and not is_small_art(tex):
+		shown = shrunk(tex, roundi(size * main_scale()))
+	var art := crisp_tex(shown, size, shown != tex)
 	if not timed:
 		return art
 	var wrap := Control.new()
@@ -710,7 +723,16 @@ static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrap.add_child(art)
-	var badge := crisp_tex(TIMER_ART, maxi(TIMER_MIN, int(round(size * TIMER_FRACTION))))
+	# The WORN timer (Cosmetics.timer_art), shrunk to its screen size like the art.
+	var badge_side: int = maxi(TIMER_MIN, int(round(size * TIMER_FRACTION)))
+	var clock: Texture2D = Cosmetics.timer_art()
+	var shown_clock: Texture2D = clock
+	if clock != null and not is_small_art(clock):
+		shown_clock = shrunk(clock, roundi(badge_side * main_scale()))
+	var badge := crisp_tex(shown_clock, badge_side, shown_clock != clock)
+	# Marked, because its texture is a shrunk copy (or a worn icon), not TIMER_ART:
+	# what finds a clock badge asks for this rather than comparing pictures.
+	badge.set_meta(TIMER_META, true)
 	var edge: float = badge.custom_minimum_size.x
 	# Bottom-right, hanging off by TIMER_OVERHANG of its own edge. Anchored rather
 	# than laid out: the clock is drawn OVER the art, and a container would push the
@@ -770,7 +792,7 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 		frame.add_theme_stylebox_override("panel",
 			flat(BG, 4, 2, 1, tint.lerp(BORDER, 0.35)))
 		frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		frame.add_child(timed_art(status.image, ADDON_ICON,
+		frame.add_child(timed_art(Cosmetics.status_art(status), ADDON_ICON,
 			int(addon.get("games", 0)) > 0))
 		row.add_child(frame)
 	var l := Label.new()
@@ -956,6 +978,14 @@ static var _shrunk: Dictionary = {}
 
 # How many screen pixels one canvas pixel is: the window's stretch of the fixed
 # 1280x720 canvas (project.godot, stretch/mode canvas_items).
+# The window's scale when no node is at hand yet (a widget is built before it is
+# in the tree): the root viewport's, which is what every page here is drawn by.
+static func main_scale() -> float:
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree == null or tree.root == null:
+		return 1.0
+	return maxf(tree.root.get_final_transform().get_scale().x, 0.01)
+
 static func screen_scale(node: CanvasItem) -> float:
 	if node == null or not node.is_inside_tree():
 		return 1.0

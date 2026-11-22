@@ -44,6 +44,7 @@ var fulfil_checks: Array = []        # [{check: CheckBox, instance: int}]
 # the key IS the bare id, so the name still reads true for the common case.
 var status_goal_checks: Array = []   # [{check: CheckBox, status: String}]
 var bonus_checks: Array = []         # [{check: CheckBox, instance: int, status: StringName}]
+var trigger_checks: Array = []       # the same, for Poison's tick-any-time rows
 var instead_checks: Array = []       # [{check: CheckBox, instance: int, status: StringName}]
 # Bindings for the event-goal section, cleared with the rest in reset_state.
 # Each entry is {check, index into GameState's array}.
@@ -600,6 +601,7 @@ func _add_body_rows(entry: Dictionary) -> void:
 	# condition would be reading it backwards.
 	_add_clause_rows(entry)
 	_add_instead_rows(entry)
+	_add_trigger_rows(entry)
 	_add_bonus_rows(entry)
 
 # The pennant a `game beaten` body's row leads with, sized and boxed like the
@@ -1074,6 +1076,39 @@ func _add_clause_rows(entry: Dictionary) -> void:
 			UITheme.addon_color(true), null, instance,
 			_status_mark(sd, stacks, which, false, games, any_time)), false, true)
 
+# A TRIGGER ROW (Poison, the owner, 22 Nov 2026) is ticked ANY TIME, the body
+# still standing, and takes effect AT ONCE: it switches the status's combat side
+# on for that body ("it deals X less damage"). Unticking switches it off again —
+# it has handed nothing over, so it is free to take back, like an armed bonus.
+func _add_trigger_rows(entry: Dictionary) -> void:
+	if entry.is_empty():
+		return
+	var instance: int = int(entry.get("instance", 0))
+	var any_time: bool = GameLoop2.answered_any_time(entry)
+	for row in GameLoop2.trigger_objectives_for(entry):
+		var sd: StatusData = row["status"]
+		var stacks: int = int(row["stacks"])
+		var games: int = int(row.get("games", 0))
+		var trow := verify_row(
+			"%s %s%s" % [_status_prefix(sd, stacks),
+				sd.objective_text(StatusData.ENEMY, stacks, any_time),
+				StatusData.clock_suffix(games)],
+			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
+			_status_mark(sd, stacks, StatusData.ENEMY, false, games, any_time))
+		_add_row(trow["row"], false, true)
+		var cb: CheckBox = trow["check"]
+		if cb == null:
+			continue
+		trigger_checks.append({"check": cb, "instance": instance, "status": sd.id})
+		if GameLoop2.is_triggered(entry, sd.id):
+			cb.set_pressed_no_signal(true)
+		cb.toggled.connect(func(on: bool) -> void:
+			if cb.disabled:
+				return
+			if GameLoop2.set_triggered(instance, sd.id, on) and on:
+				_announce("%s on %s: it deals %d less damage." % [sd.display_name,
+					enemy_name_of(instance), stacks], UITheme.GOLD))
+
 func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 	if entry.is_empty():
 		return
@@ -1176,9 +1211,14 @@ func _status_row_tint(status: StatusData) -> Color:
 # The name comes back when a status has no art (`_status_mark` returns no icon):
 # an unlabelled row for a status with nothing to show would be a row that never
 # says what it is.
+#
+# THE COUNT RIDES THE ICON now (the owner, 22 Nov 2026: "put the number next to
+# the icon instead of a x2 to the side"): `_status_mark` draws it inside the chip,
+# beside the picture, as the board's pips do, so a row with art opens on its
+# sentence. The row builders trim the space this leaves.
 func _status_prefix(status: StatusData, stacks: int) -> String:
 	if status.image != null:
-		return "×%d —" % stacks
+		return ""
 	return "%s %d —" % [status.display_name, stacks]
 
 const STATUS_ICON_SIZE := 22
@@ -1205,7 +1245,20 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 	# Timed rows carry the clock, like the board's pips do — the row's text says how
 	# many games are left (clock_suffix) and the badge is what makes it findable
 	# without reading the sentence.
-	frame.add_child(UITheme.timed_art(status.image, STATUS_ICON_SIZE, games > 0))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(row)
+	row.add_child(UITheme.timed_art(Cosmetics.status_art(status), STATUS_ICON_SIZE, games > 0))
+	# The stacks, beside the picture (see `_status_prefix`).
+	var count := Label.new()
+	count.name = "StackCount"
+	count.text = str(stacks)
+	count.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	count.add_theme_color_override("font_color", tint)
+	count.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(count)
 	HoverCard.attach(frame, status.hover_card(which, stacks, nullified, games, any_time))
 	return frame
 
@@ -1716,6 +1769,7 @@ func reset_state() -> void:
 	status_goal_checks.clear()
 	winning_rows.clear()
 	bonus_checks.clear()
+	trigger_checks.clear()
 	instead_checks.clear()
 	event_goal_checks.clear()
 	# Rows held back for the bottom belong to ONE build. A build that never reached
@@ -2148,6 +2202,7 @@ func _nullified_row(row: Dictionary, instance: int = 0) -> Control:
 # and not about the row.
 func _objective_row(text: String, color: Color, icon: Control = null,
 		instance: int = 0, mark: Control = null) -> Control:
+	text = text.strip_edges()
 	var wrap := PanelContainer.new()
 	# Quiet at rest, as verify_row's rows are: parchment on a hairline, the row's
 	# colour kept for the hover and for a warning (DANGER) or a faded row.
@@ -2304,7 +2359,7 @@ func _buff_strip(entry: Dictionary) -> Control:
 		var chip := PanelContainer.new()
 		chip.add_theme_stylebox_override("panel",
 			UITheme.flat(UITheme.BG, 3, 1, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.35)))
-		chip.add_child(UITheme.timed_art(sd.image, BUFF_ICON_SIZE,
+		chip.add_child(UITheme.timed_art(Cosmetics.status_art(sd), BUFF_ICON_SIZE,
 			int(row.get("games", 0)) > 0))
 		HoverCard.attach(chip, sd.hover_card(StatusData.ENEMY, int(row["stacks"]),
 			false, int(row.get("games", 0)), GameLoop2.answered_any_time(entry)))
@@ -2459,6 +2514,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		enemy: GoalEnemyData = null, character: CharacterData = null,
 		instance: int = 0, mark: Control = null,
 		counter: Dictionary = {}) -> Dictionary:
+	text = text.strip_edges()
 	var wrap := PanelContainer.new()
 	# QUIET AT REST, LOUD WHEN IT MATTERS (the owner, 18 Nov 2026). Every row used
 	# to be gold text in a gold frame, so a list of six read as one gold block and

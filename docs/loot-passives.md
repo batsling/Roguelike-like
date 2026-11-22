@@ -658,6 +658,13 @@ Toothpick counts every food piece.
 **King Bomber** pays through a new hook, `weapon_stunned` (once per body a swing
 stuns, with the swinging weapon's slot) and a new gate, `if_self`.
 
+**`enemy_stunned`** (22 Nov 2026, Envenom) is the wider hook: once per body a
+WEAPON or an ATTACK card stuns, with that body as `target`, so a held piece's
+`apply_status … target=enemy` lands on it (`GameState._run_trigger` passes a hook's
+`target` on when it names a body). A Stun from a scroll, a bomb or an item is not
+it. Its sibling **`enemy_turn_started`** fires at every enemy turn's start, after the
+ground (Noxious Fumes, `target=front2`: the two columns nearest you).
+
 **It stands outside the copies.** A swing is three games of goals, so Echo Form,
 Echo Chamber and Endless Nameless do not see it (`LootSystem.use_loot`), and a
 Blueprint pointed at a weapon copies its passive (a Hero sword's aura) but never

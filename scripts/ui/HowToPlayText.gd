@@ -927,11 +927,14 @@ static func _ch_pack() -> Dictionary:
 				+ "free to ignore."),
 			_kv("A demand", "An obligation with a price. It pays nothing for being "
 				+ "met, and charges you at the end of any game you did not meet it."),
+			_kv("A tick", "A row on an enemy you can tick ANY TIME, the enemy still "
+				+ "standing. Ticking it switches the status on for that enemy; "
+				+ "unticking switches it off."),
 			_kv("A way out", "An alternative to an enemy's goal — do this instead "
 				+ "and that enemy is cleared. It counts as a clear and not as a "
 				+ "win: nothing about it goes on the record, because you never did "
 				+ "what it asked. Never offered on a boss."),
-			_p("The five of them, and what they do in a fight:"),
+			_p("The six of them, and what they do in a fight:"),
 			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack. "
 				+ "On YOU, every Stun you deal lands 1 more per stack — a card, a "
 				+ "weapon, a scroll, a bomb, an item, each body it reaches. Not "
@@ -944,21 +947,25 @@ static func _ch_pack() -> Dictionary:
 				+ "Shields you get 1 more per stack — not the Shields for choosing "
 				+ "a game."),
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
-				+ "through Shields. On YOU it is a debt as well: every game, get as "
-				+ "many achievements in the game you are playing as you have stacks "
-				+ "of it — or take 3 damage. On an ENEMY the same condition pays a "
-				+ "chest instead, so a marked body is worth engaging."),
+				+ "through Shields. On YOU it is a debt as well: every game, get 2 "
+				+ "achievements in one run of the game you are playing — or a random enemy on "
+				+ "the board gains 3 Strength. It lasts a game per stack. On an "
+				+ "ENEMY the same condition pays a chest instead, so a marked body "
+				+ "is worth engaging."),
 			_kv("Burn", "It hits for half. On YOU it is a debt instead: every game, "
-				+ "skip or trash as many items in the game you are playing as you "
-				+ "have stacks of it — or take 3 damage once the enemies have "
-				+ "swung. Pay it and a stack comes off, which makes the next one "
-				+ "cheaper. It stacks no higher than 3. On an ENEMY the same deal "
-				+ "runs the other way: its goal grows a way out that costs 4 minus "
-				+ "its stacks, so a badly burned enemy is the cheapest one to be "
-				+ "rid of. Burn is bad for whoever is carrying it. And it burns "
+				+ "beat the run while skipping or trashing 3 items — or take 3 "
+				+ "damage once the enemies have swung. It lasts a game per stack. "
+				+ "On an ENEMY its goal grows a way "
+				+ "out: beat the run while skipping or trashing 3 items. And it burns "
 				+ "PAPER: every time Burn lands on you there is a 1-in-4 chance "
 				+ "that one random scroll in your pack goes up with it. Pills "
 				+ "and potions are safe."),
+			_kv("Poison", "On YOU it is a debt: every game, defeat an enemy using a "
+				+ "status effect — or take as much damage as you have stacks. It "
+				+ "lasts a game per stack. On an ENEMY it is a tick: once you "
+				+ "defeat an enemy using a status effect, tick it and that enemy "
+				+ "deals 1 less damage per stack, down to 0. It loses a stack every "
+				+ "turn it takes."),
 			_b("A piece's text shows its Stun and Shield numbers as they will land — "
 				+ "GREEN when Strength, Dexterity or an upgrade raised them, RED when a "
 				+ "downgrade lowered them. On a \"for each\" piece the bonus is on "
@@ -1085,10 +1092,11 @@ static func _ch_bosses() -> Dictionary:
 			_h("Locations"),
 			_p("The run is always SOMEWHERE. It starts in a Low location, and every "
 				+ "difficulty up moves it to a new one of the new tier — Burning "
-				+ "Basement, The Hive, the Dark Room. You do not choose it: it "
-				+ "arrives with a popup of its picture and what it does, and then "
-				+ "sits beside the difficulty on the strip over the board. Hover it "
-				+ "to read it again; click it to open it."),
+				+ "Basement, The Hive, the Dark Room. You do not choose it. The "
+				+ "one you start in is shown on the entrance screen; a new one "
+				+ "arrives with a toast of its picture and the new difficulty, and "
+				+ "sits beside the difficulty on the strip over the board, glowing "
+				+ "NEW until you click it. Hover it to read it; click it to open it."),
 			_b("Some do something WHEN YOU ENTER — once, with the first game you "
 				+ "pick there: bodies of their kind walk on, fire is lit, poops are "
 				+ "left on the board. A location dealt in the middle of a game waits "
@@ -1097,7 +1105,7 @@ static func _ch_bosses() -> Dictionary:
 			_b("Some change a rule for as long as you are there: damage you take "
 				+ "is doubled, or one game on every offering is a free rift."),
 			_b("Some have a TRADE you can make a few times while you are there — "
-				+ "the button is on the location's popup, greyed with the reason "
+				+ "the button is in the location's window, greyed with the reason "
 				+ "when you cannot pay."),
 			_b("Most LEAN the rolls: things carrying their tag — enemies, bosses, "
 				+ "relics, loot — turn up a little more often there. Burning "

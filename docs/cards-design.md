@@ -379,6 +379,12 @@ Effect left blank as always; `tools/oneshots/_cards_slay_the_spire_set.py` wrote
 | Exhume | `exhume` |
 | Fiend Fire | `destroy_row; stun 1 per=destroyed` |
 | Finisher | `stun 1 per=cards_used` |
+| Bouncing Flask | `apply_status poison 2 area=random bounces=3` — a random body three times, the same one possibly twice; Upgrade **Bounce** adds one (22 Nov 2026) |
+| Deadly Poison | `apply_status poison 3`, Upgrade **Poison** |
+| Envenom | `enemy_stunned: apply_status poison 1 target=enemy` (passive): every body a WEAPON or an ATTACK card Stuns takes 1 Poison (`TriggerBus.enemy_stunned`) |
+| Noxious Fumes | `enemy_turn_started: apply_status poison 1 target=front2` (passive): at every enemy turn's start, the two columns nearest you |
+| Poisoned Stab | `stun 1; apply_status poison 2`, Upgrade **Stun, Poison** |
+| Nightmare | `nightmare 3` (added 21 Nov 2026, Upgrade Type N/A: Slay the Spire's upgrade only lowers its cost) |
 | Offering | `lose_hp 6; charge_pick 4; gain_loot card 3` |
 | Pommel Strike | `stun 1; gain_loot card 1` |
 | Prepared | `destroy_pick 1; gain_loot card 1` (2 and 2 until 17 Nov 2026) |
@@ -435,6 +441,13 @@ in its own grid.
 - `destroy_loot` (Prepared): exactly 2, or every piece if the pack holds fewer, out
   of the pack as it stood when the card was played — so the two cards it hands
   over cannot be fed back into it.
+- `destroy_loot` with `copies` (Nightmare, the owner 21 Nov 2026): exactly one
+  piece, any loot Prepared could destroy. `CardSystem.destroy_chosen` destroys it
+  (onto the pile as usual) and owes `copies` EXACT copies of it — upgrades,
+  charges, identified or not — in `GameState.nightmare_copies`, saved with the
+  run. Slay the Spire's "next turn" is the next game: `Overworld2._begin_game`
+  hands them over right after starting gear (`docs/turn-order.md` §1), into the
+  pack where they fit, the rest offered.
 - `charge_loot` (Bloodletting, Offering): one thing from
   `GameState.chargeable_things` — a relic with a bar, a wand, a weapon or a food.
   It fills to its top and the rest is lost.

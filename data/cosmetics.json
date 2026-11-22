@@ -1895,6 +1895,200 @@
 					"max": 10
 				}
 			]
+		},
+		{
+			"id": "timer/timer_mewgenics",
+			"kind": "timer",
+			"name": "Timer",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Timer",
+					"path": "res://images2.0/icons/Timer/Timer_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bleed/bleed_mewgenics",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_brutal_orchestra",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "brutal_orchestra",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "dexterity/dexterity_slay_the_spire",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "dexterity/dexterity_slay_the_spire_2",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/marked_mewgenics",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_mewgenics",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_slay_the_spire",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_slay_the_spire_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_mewgenics",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_slay_the_spire",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_slay_the_spire_2",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_slay_the_spire",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
 		}
 	],
 	"hats": [

@@ -135,6 +135,12 @@ signal weapon_stunned(ctx: Dictionary)      # ctx.slot, ctx.instance, ctx.weapon
                                             # WEAPON's swing stunned one enemy
                                             # (WeaponSystem.swing), once per body.
                                             # King Bomber's `if_self` gold.
+# A BODY YOUR WEAPON OR ATTACK CARD STUNNED (the owner, 22 Nov 2026: Envenom,
+# "whenever dealing stun to an enemy" — weapons or attacks). ctx.instance and
+# ctx.target are the body, ctx.source "weapon" or "attack". One per body.
+signal enemy_stunned(ctx: Dictionary)
+# The start of an enemy turn, once its ground has fired (Noxious Fumes). ctx.turn.
+signal enemy_turn_started(ctx: Dictionary)
 signal weapon_hit(ctx: Dictionary)          # ctx.slot, ctx.instance, ctx.weapon — a
                                             # WEAPON's strike covered one enemy,
                                             # stunned or not (WeaponSystem.swing),

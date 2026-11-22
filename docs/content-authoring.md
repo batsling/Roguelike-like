@@ -40,7 +40,7 @@ To add or replace art:
    | `images2.0/characters/Full/`, `images2.0/characters/Icon/` | 2.0 character portrait + in-world token |
    | `images2.0/scrolls/` | Scroll art (identified art + `Unidentified.png`) |
    | `images2.0/pills/` | Pill capsules — 13 colours, each with a `<Colour>Horse.png` twin. Bound to pills by the RUN, not by a `.tres` (`PillSystem.COLORS`), so adding art means adding its name to that list too |
-   | `images2.0/statuses/` | Status art (`data/statuses2.0`) |
+   | `images2.0/statuses/` | Each status's BASIC icon, drawn by `tools/build_status_art.py` from one glyph; its game picture is an unlock in `images2.0/icons/Statuses/<Status>/` (`docs/customization.md`) |
    | `images2.0/tiles/` | Tile-effect art (`data/tiles2.0`) |
    | `images2.0/units/` | Unit art (`data/units2.0`) |
 

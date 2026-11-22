@@ -112,8 +112,10 @@ func _announce(key: String) -> void:
 		else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
 			"luck": "Luck icon", "chest": "chest icon", "health": "Health icon",
 			"damage": "damage icon", "gold": "gold icon", "shield": "shield icon",
-			"hunger": "Hunger icon"}.get(
+			"hunger": "Hunger icon", "timer": "timer icon"}.get(
 			String(e.get("kind", "")), "look")
+	if bool(e.get("status", false)):
+		what = "%s icon" % String(e.get("kind", "")).capitalize()
 	Notifications.announce("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
 		Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
 			(CosmeticCatalog.paths(e) + [""])[0]), "cosmetic")
@@ -326,7 +328,7 @@ func icon_of(ch: CharacterData) -> Texture2D:
 # when the default glyph is worn. `level` is the Fracture for a trophy and the
 # chest's size (0 Small … 3 Huge) for a gift.
 const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "luck", "🎁": "chest",
-	"♥": "health", "◉": "gold", "🛡": "shield"}
+	"♥": "health", "◉": "gold", "🛡": "shield", "⏱": "timer"}
 
 # A SHIELD IS ALSO DRAWN AS A PICTURE, not only written as 🛡: the pips over the
 # hero, the chip beside the Health, the Camp's Rest, the OBS overlay. Each asks
@@ -335,6 +337,28 @@ func shield_art() -> Texture2D:
 	var e := icon("shield")
 	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)) if not e.is_empty() else null
 	return t if t != null else UITheme.SHIELD_ART
+
+# A STATUS IS DRAWN, never written (the owner, 22 Nov 2026): its badge on a body,
+# its checklist row, its hover card, the OBS overlay's pip. Each asks here for the
+# icon worn for that status (the kind is the status's id: its game's picture, an
+# unlock — images2.0/icons/Statuses/), else its basic one, the glyph art
+# `tools/build_status_art.py` draws (StatusData.image). Null only for a status
+# with no art at all.
+func status_art(status: StatusData) -> Texture2D:
+	if status == null:
+		return null
+	var e := icon(String(status.id))
+	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)) if not e.is_empty() else null
+	return t if t != null else status.image
+
+# THE TIMER (the owner, 22 Nov 2026): the badge in the corner of anything
+# temporary (UITheme.timed_art) and the ⏱ written in "⏱ This game only." The worn
+# timer icon (Mewgenics' stopwatch), else the basic ⏱ as art
+# (tools/build_timer_art.py).
+func timer_art() -> Texture2D:
+	var e := icon("timer")
+	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)) if not e.is_empty() else null
+	return t if t != null else UITheme.TIMER_ART
 
 # HUNGER IS ONLY EVER DRAWN (docs/players-design.md §4): five of these stand in
 # the header for a player with Hunger. The worn Hunger icon, else the basic 🍗

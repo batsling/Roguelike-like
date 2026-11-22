@@ -7,9 +7,9 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | | games | results |
 |---|---|---|
 | 1. Confirm a suspected connection | 112 | 313 |
-| 2. Games with few connections | 187 | 610 |
+| 2. Games with few connections | 188 | 611 |
 
-Searched 568 of the 568 games that qualify; 269 had nothing that looked like the developer talking.
+Searched 571 of the 571 games that qualify; 271 had nothing that looked like the developer talking.
 
 ---
 
@@ -1031,6 +1031,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Kingsway - Interview with Andrew Morrish at PAX East 2017](https://www.youtube.com/watch?v=lA1oqXtYJs8) — Voxel Voice · 4:44 · 9y ago — interview, names the developer
 - [ ] video [Kingsway College School: Interview with Head of School Garth Nichols](https://www.youtube.com/watch?v=LNkGb1tT4eo) — Our Kids Guide to Private Schools · 16:48 · 1y ago — interview
 - [ ] video [Kingsway Financial Services (CEO Interview)](https://www.youtube.com/watch?v=oMDwjdTwi8I) — James Emanuel | Rock and Turner Investments · 1:07:00 · 8mo ago — interview
+
+### Korridor (2026) — 0 connections
+
+- [ ] video [Korridor - Voodoo Initiation 05 - Korridor - 2018](https://www.youtube.com/watch?v=kY7i9m8fWy0) — Formaviva · 1:31:44 · 5y ago — cue in the description
 
 ### Loot River (2022) — 0 connections
 

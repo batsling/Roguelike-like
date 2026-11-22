@@ -287,8 +287,17 @@ func test_every_rift_is_a_seam_between_its_two_games() -> void:
 	var pts: PackedVector2Array = view.rift_arc(two)
 	assert_true(view.screen_box(curves[two]["a"]).grow(0.5).has_point(pts[0]), "it leaves its first game's box")
 	assert_true(view.screen_box(curves[two]["b"]).grow(0.5).has_point(pts[-1]), "and enters the second's")
-	var mid: Vector2 = (pts[0] + pts[-1]) * 0.5
-	assert_gt(pts[pts.size() / 2].distance_to(mid), 1.0, "bowed, so it never reads as an influence line")
+	# BOWED, measured in MAP units against the chord's own length: the view opens on
+	# the whole map, where a short rift is a few pixels long, so a bow in SCREEN
+	# pixels was only usually over 1 (it failed in CI at 0.17px on a 2px chord).
+	# The shallowest bow tried is RIFT_BOWS[0] of the chord, which puts the curve's
+	# middle half that far off the straight line.
+	var c: Dictionary = curves[two]
+	var chord_mid: Vector2 = ((c["pa"] as Vector2) + (c["pb"] as Vector2)) * 0.5
+	var curve_mid: Vector2 = AtlasView.bezier(c["pa"], c["c"], c["pb"], 0.5)
+	var chord_len: float = ((c["pb"] as Vector2) - (c["pa"] as Vector2)).length()
+	assert_gt(curve_mid.distance_to(chord_mid), chord_len * AtlasView.RIFT_BOWS[0] * 0.25,
+		"bowed, so it never reads as an influence line")
 
 # THE CURVE GOES ROUND THE BOXES (the owner, 20 Nov 2026): of the bows tried, the
 # one drawn crosses no more boxes than any other would have, and stays on the paper.

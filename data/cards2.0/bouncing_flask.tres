@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_bouncing_flask"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"bouncing_flask"
+display_name = "Bouncing Flask"
+rarity = "Uncommon"
+source_game = "Slay the Spire"
+set_name = "Silent Uncommon"
+description = "Apply 2 Poison to a random Enemy 3 times"
+effect = [{"op": "apply_status", "status": "poison", "value": 2, "area": "random", "bounces": 3}]
+file = "BouncingFlask"
+icon = "Slay_The_Spire_Silent_Uncommon"
+loot_type = "Usable"
+tags = PackedStringArray("silent")
+upgrade_types = PackedStringArray("bounce")

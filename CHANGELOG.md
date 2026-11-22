@@ -11,6 +11,69 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Silent's poison cards (22 Nov 2026).** The owner: "lets actually make
+  poison work in game by adding some slay the spire cards". Poisoned Stab (Stun 1
+  and 2 Poison; Upgrade Stun, Poison), Deadly Poison (3 Poison; Upgrade Poison),
+  Bouncing Flask (2 Poison to a random enemy, three times, the same one possibly
+  twice; Upgrade Bounce, +1 bounce), and two passives: Envenom (every body a
+  WEAPON or ATTACK card Stuns takes 1 Poison — the new `enemy_stunned` hook) and
+  Noxious Fumes (at every enemy turn's start, 1 Poison to the two columns nearest
+  you — `enemy_turn_started`, `target=front2`). Slay the Spire's rarities and the
+  wiki's card art.
+
+- **Before the PR (22 Nov 2026).** A status's stack count rides its icon on the
+  checklist ("put the number next to the icon instead of a x2 to the side"); a
+  chest's choices go into the Collection quietly and only the one taken is
+  toasted (the toasts were naming what was inside before the pick); Poison's card
+  says "once ticked" until it is; "no burn limit" (Burn's `Max: 3` is gone); the
+  statuses sheet's `Game` column is deleted; and the key-roads test deals a new
+  run until it has a key road, rather than going Pending one run in eight.
+
+- **Poison (22 Nov 2026).** The owner: "Defeat an enemy using a status effect —
+  on the player it would need to be done or it would do damage equal to the
+  stack, it goes down every game; on an enemy if the player ticks it, it should
+  decrease the attack of the enemy by that stack, goes down every turn". On you a
+  demand billed at its stacks; on an enemy a new sixth side mode, `trigger`: a
+  row ticked ANY TIME, the body still standing, that switches the status's combat
+  side on for that body (deals X less damage, down to 0). Basic icon ☣; Slay the
+  Spire's, Slay the Spire 2's and Mewgenics' poison icons are its unlocks.
+  Statuses carry no game credit any more ("since now it's an icon with unlockable
+  other icons from games").
+
+- **Timer icon, Slay the Spire 2 icons, per-run Burn and Marked (22 Nov 2026).**
+  The badge on anything temporary is the UI's ⏱ in gold, and the stopwatch it was
+  is Mewgenics' unlock. Slay the Spire 2's own Strength and Dexterity are unlocks;
+  its Ascension icon is the wiki's 128 px original (it was 22 px). Burn is "beat
+  the run while skipping or trashing 3 items/upgrades", Marked "get 2
+  achievements in one run".
+
+- **Simpler status goals (22 Nov 2026).** No condition carries X: Strength is "on
+  a harder difficulty than normal" (+1 Bash), Dexterity "a boss without getting
+  hit" (a chest), Speed "in under an hour" (+1 Dash) — "cut the chest reward for
+  strength and speed, dash and bash are fine enough" — Burn "skip or trash 3", and
+  Marked's price is a random enemy gaining 3 Strength. Every debuff lasts X games
+  (the new `Each Game` decrease).
+
+- **Status icons (22 Nov 2026).** The owner: "replace all of the images with icons
+  that fit the rest of the icons and then make the current ones unlockable from
+  that game". One glyph each, buffs green and debuffs red (💪 ✋ 🪽 🔥 🩸 🎯 💫,
+  the owner's picks), drawn at 256 px and shrunk to their exact screen size so
+  their outlines stay whole; each game picture is that game's unlock
+  (`Cosmetics.status_art`).
+
+- **Locations without the pop-up (22 Nov 2026).** The run's first location is
+  previewed on the entrance screen; a difficulty up is a card toast with the
+  location's art and the new tier, and its chip glows until clicked. The pop-up
+  had landed over the starting gear's chest, and after a difficulty up came after
+  the location's bodies had walked on.
+
+- **Nightmare (21 Nov 2026).** The Silent's Rare: destroy any loot, and three
+  exact copies of it arrive at the start of the next game.
+
+- **Sticker/Ball and Panzer Deck (21 Nov 2026).** Ported from the upload with
+  Into the Breach → Panzer Deck; Hungry Horrors, Into The Grid, Lost For Swords
+  and Zoominoes owned. Every kind of research run over both.
+
 - **No hit rule on the deal-room events (21 Nov 2026).** The owner: "I was
   talking about the devil room event as well because batsaac's mechanic already
   integrates getting hit". The Devil and Angel Rooms' `enemy_hp_lost=0`
