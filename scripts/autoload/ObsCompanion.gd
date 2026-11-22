@@ -390,7 +390,7 @@ func _run_state() -> String:
 # by construction.
 func _shared_art() -> Dictionary:
 	return {
-		"timer": _texture_url(UITheme.TIMER_ART),
+		"timer": _texture_url(Cosmetics.timer_art()),
 		# One sprite per shield, at the same 22px as a status pip — the board sizes
 		# them alike on purpose, so the two rows are read in one glance and a
 		# shield never claims a rank over a status it does not have.

@@ -9,7 +9,7 @@ and characters, and every choice is saved per profile
 |---|---|
 | **Characters** | each character's **icon** and **full portrait**, chosen separately |
 | **Hats** | what each **player** (Retro Bat, Batsaac) wears on its head (§7) |
-| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield), and each **status**'s icon (§4) |
+| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield), ⏱ (anything temporary), and each **status**'s icon (§4) |
 | **Title Letters** | which earned letters the main menu's title may be spelled from |
 
 ## 1. Earning: a rank is a song, a letter or a look
@@ -53,6 +53,7 @@ images2.0/icons/Gold/<Name>_<Game>.png
 images2.0/icons/Shields/<Name>_<Game>.png
 images2.0/icons/Hunger/<Name>_<Game>.png
 images2.0/icons/Statuses/<Status>/<Name>_<Game>.png   one kind per status, its id (§4)
+images2.0/icons/Timer/<Name>_<Game>.png              the ⏱ on anything temporary (§4)
 images2.0/hats/<Name>_<Game>.png                  a hat, its game's rank-up reward (§7)
 images2.0/hats/Special/<Name>_<Game>.png          a hat earned some other way (§7)
 ```
@@ -209,6 +210,14 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   checklist rows and buff strip, the enemy card, the inventory, the hover card
   (`StatusData.hover_card`) and the OBS overlay all do. The Icons tab lists them
   under **Statuses**, the basic icon as each row's default tile.
+- **The timer is ⏱, written AND drawn** (the owner, 22 Nov 2026): the badge in
+  the corner of anything temporary (`UITheme.timed_art`: a borrowed status, a
+  shield that expires with the game) and the ⏱ in "⏱ This game only.". Its basic
+  icon is the glyph in gold with a dark outline, drawn by
+  `tools/build_timer_art.py` into `images2.0/general/Timer.png`
+  (`UITheme.TIMER_ART`); the stopwatch it used to be is Mewgenics' unlock. **Draw
+  the badge with `Cosmetics.timer_art()`.** Slay the Spire 2's own Strength and
+  Dexterity are unlocks too, beside Slay the Spire's.
 - **Gold is ◉**: the purse chip, the shop's purse, prices and gold Reroll, the
   Steal action and the inventory's Gold line. A kind with nothing to earn says so
   on its row ("No icons to earn yet").

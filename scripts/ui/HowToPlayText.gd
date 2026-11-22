@@ -945,15 +945,15 @@ static func _ch_pack() -> Dictionary:
 				+ "a game."),
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
 				+ "through Shields. On YOU it is a debt as well: every game, get 2 "
-				+ "achievements in the game you are playing — or a random enemy on "
+				+ "achievements in one run of the game you are playing — or a random enemy on "
 				+ "the board gains 3 Strength. It lasts a game per stack. On an "
 				+ "ENEMY the same condition pays a chest instead, so a marked body "
 				+ "is worth engaging."),
 			_kv("Burn", "It hits for half. On YOU it is a debt instead: every game, "
-				+ "skip or trash 3 items in the game you are playing — or take 3 "
+				+ "beat the run while skipping or trashing 3 items — or take 3 "
 				+ "damage once the enemies have swung. It lasts a game per stack, "
 				+ "and stacks no higher than 3. On an ENEMY its goal grows a way "
-				+ "out: skip or trash 3 items instead. And it burns "
+				+ "out: beat the run while skipping or trashing 3 items. And it burns "
 				+ "PAPER: every time Burn lands on you there is a 1-in-4 chance "
 				+ "that one random scroll in your pack goes up with it. Pills "
 				+ "and potions are safe."),

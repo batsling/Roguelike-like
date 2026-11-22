@@ -146,8 +146,8 @@ func test_the_decrease_column_is_what_says_a_status_depletes() -> void:
 # lasts and how big a buff's chest is, never a number in the condition itself.
 func test_a_condition_reads_the_same_at_any_stack() -> void:
 	var marked: StatusData = Data.get_status(&"marked")
-	assert_eq(marked.condition_text(StatusData.ENEMY, 1), "you get 2 achievements")
-	assert_eq(marked.condition_text(StatusData.ENEMY, 3), "you get 2 achievements")
+	assert_eq(marked.condition_text(StatusData.ENEMY, 1), "you get 2 achievements in one run")
+	assert_eq(marked.condition_text(StatusData.ENEMY, 3), "you get 2 achievements in one run")
 
 func test_speed_is_under_an_hour_at_any_stack() -> void:
 	# 1 + (1/2)^(X-2) hours, halving toward a floor of one hour. These are the
@@ -309,7 +309,7 @@ func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
 	var bonuses: Array = GameLoop2.bonus_objectives_for(GameLoop2.arrival())
 	assert_eq(bonuses.size(), 1, "it hangs a bonus objective off the enemy")
 	assert_eq((bonuses[0]["status"] as StatusData).objective_text(StatusData.ENEMY, 2),
-		"and if you get 2 achievements, gain +1 Medium Chest")
+		"and if you get 2 achievements in one run, gain +1 Medium Chest")
 
 func test_clauses_stack_enemy_first_then_player() -> void:
 	_register_player_clause()
@@ -509,15 +509,15 @@ func test_burn_asks_for_three_on_either_side() -> void:
 	# body) are gone; a stack is a game it lasts.
 	var burn: StatusData = Data.get_status(&"burn")
 	for x in [1, 3]:
-		assert_eq(burn.condition_text(StatusData.PLAYER, x), "skip or trash 3 items/upgrades")
-		assert_eq(burn.condition_text(StatusData.ENEMY, x), "skip or trash 3 items/upgrades")
+		assert_eq(burn.condition_text(StatusData.PLAYER, x), "beat the run while skipping or trashing 3 items/upgrades")
+		assert_eq(burn.condition_text(StatusData.ENEMY, x), "beat the run while skipping or trashing 3 items/upgrades")
 
 func test_a_demand_reads_as_an_obligation_with_a_price() -> void:
 	# Not "If you do this, gain": there is no version of the game where a demand
 	# goes unanswered — the answer is either the thing or the price.
 	var burn: StatusData = Data.get_status(&"burn")
 	assert_eq(burn.objective_text(StatusData.PLAYER, 2),
-		"You must skip or trash 3 items/upgrades, or take 3 Damage")
+		"You must beat the run while skipping or trashing 3 items/upgrades, or take 3 Damage")
 	assert_eq(burn.penalty_at(StatusData.PLAYER, 2), "take 3 Damage",
 		"and the price is flat")
 	assert_eq(burn.reward_at(StatusData.PLAYER, 1), "", "a demand pays nothing")
@@ -639,7 +639,7 @@ func test_an_instead_side_offers_a_second_way_through_the_goal() -> void:
 	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
-		"Beat it or instead skip or trash 3 items/upgrades")
+		"Beat it or instead beat the run while skipping or trashing 3 items/upgrades")
 	assert_eq(GameLoop2.alternatives_for(GameLoop2.arrival()).size(), 1)
 	assert_eq(GameLoop2.required_clauses_for(GameLoop2.arrival()).size(), 0,
 		"it is an alternative to the goal, not another string on it")
@@ -653,7 +653,7 @@ func test_the_way_out_comes_after_every_clause_it_is_an_alternative_to() -> void
 	GameState.apply_status(CLAUSE_ID, 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat it and you must get 2 achievements"
-		+ " or instead skip or trash 3 items/upgrades")
+		+ " or instead beat the run while skipping or trashing 3 items/upgrades")
 
 func test_a_boss_is_never_offered_the_way_out() -> void:
 	# A boss's goal is the whole of what the boss is (§7.1). A way around it would
@@ -1161,7 +1161,7 @@ func test_the_report_offers_the_way_out_as_a_row_of_its_own() -> void:
 	assert_eq(int(ui._instead_checks[0]["instance"]),
 		int(GameLoop2.arrival()["instance"]), "bound to that body")
 	assert_string_contains(String(ui._instead_checks[0]["check"].text),
-		"or instead: skip or trash 3 items/upgrades", "and it says what to do")
+		"or instead: beat the run while skipping or trashing 3 items/upgrades", "and it says what to do")
 
 func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 	# The whole reason the two are separate lists: the enemy's condition was never
@@ -1842,7 +1842,7 @@ func test_the_goal_sentence_is_still_written_from_the_same_parts() -> void:
 	var entry: Dictionary = GameLoop2.arrival()
 	assert_eq(GameLoop2.goal_text_for(entry),
 		"Beat it and you must get 2 achievements"
-		+ " or instead skip or trash 3 items/upgrades")
+		+ " or instead beat the run while skipping or trashing 3 items/upgrades")
 	for addon in GameLoop2.goal_addons_for(entry):
 		if String(addon["kind"]) == "bonus":
 			assert_false(GameLoop2.goal_text_for(entry).contains(String(addon["text"])),

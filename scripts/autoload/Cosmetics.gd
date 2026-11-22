@@ -112,7 +112,7 @@ func _announce(key: String) -> void:
 		else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
 			"luck": "Luck icon", "chest": "chest icon", "health": "Health icon",
 			"damage": "damage icon", "gold": "gold icon", "shield": "shield icon",
-			"hunger": "Hunger icon"}.get(
+			"hunger": "Hunger icon", "timer": "timer icon"}.get(
 			String(e.get("kind", "")), "look")
 	if bool(e.get("status", false)):
 		what = "%s icon" % String(e.get("kind", "")).capitalize()
@@ -328,7 +328,7 @@ func icon_of(ch: CharacterData) -> Texture2D:
 # when the default glyph is worn. `level` is the Fracture for a trophy and the
 # chest's size (0 Small … 3 Huge) for a gift.
 const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "luck", "🎁": "chest",
-	"♥": "health", "◉": "gold", "🛡": "shield"}
+	"♥": "health", "◉": "gold", "🛡": "shield", "⏱": "timer"}
 
 # A SHIELD IS ALSO DRAWN AS A PICTURE, not only written as 🛡: the pips over the
 # hero, the chip beside the Health, the Camp's Rest, the OBS overlay. Each asks
@@ -350,6 +350,15 @@ func status_art(status: StatusData) -> Texture2D:
 	var e := icon(String(status.id))
 	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)) if not e.is_empty() else null
 	return t if t != null else status.image
+
+# THE TIMER (the owner, 22 Nov 2026): the badge in the corner of anything
+# temporary (UITheme.timed_art) and the ⏱ written in "⏱ This game only." The worn
+# timer icon (Mewgenics' stopwatch), else the basic ⏱ as art
+# (tools/build_timer_art.py).
+func timer_art() -> Texture2D:
+	var e := icon("timer")
+	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)) if not e.is_empty() else null
+	return t if t != null else UITheme.TIMER_ART
 
 # HUNGER IS ONLY EVER DRAWN (docs/players-design.md §4): five of these stand in
 # the header for a player with Hunger. The worn Hunger icon, else the basic 🍗

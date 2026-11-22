@@ -647,10 +647,14 @@ func test_every_status_has_its_old_picture_as_its_games_unlock() -> void:
 		"speed": "mewgenics", "bleed": "mewgenics"}
 	for kind in want:
 		var looks: Array = CosmeticCatalog.icons_of(kind)
-		assert_eq(looks.size(), 1, "%s has one icon to earn" % kind)
-		if looks.size() == 1:
-			assert_eq(String(looks[0]["game"]), want[kind], "%s's is %s's" % [kind, want[kind]])
-			assert_true(bool(looks[0].get("status", false)), "and is marked a status icon")
+		var games: Array = looks.map(func(e): return String(e["game"]))
+		assert_true(games.has(want[kind]), "%s's old picture is %s's" % [kind, want[kind]])
+		for e in looks:
+			assert_true(bool(e.get("status", false)), "and is marked a status icon")
+	# …and Slay the Spire 2's own Strength and Dexterity (the owner, 22 Nov 2026).
+	for kind in ["strength", "dexterity"]:
+		assert_true(CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
+			.has("slay_the_spire_2"), "%s has Slay the Spire 2's too" % kind)
 		var st: StatusData = Data.get_status(StringName(kind))
 		assert_not_null(st, "%s is a status" % kind)
 		if st != null:
@@ -675,3 +679,14 @@ func test_the_icons_tab_has_a_row_for_every_status() -> void:
 		var row: Node = screen.find_child("Kind_%s" % String((st as StatusData).id), true, false)
 		assert_not_null(row, "%s has a row" % (st as StatusData).display_name)
 	screen.queue_free()
+
+# THE TIMER (the owner, 22 Nov 2026): the basic ⏱ until Mewgenics' stopwatch is
+# earned and worn, on every temporary badge.
+func test_the_timer_is_the_glyph_until_mewgenics_is_worn() -> void:
+	var key := "timer/timer_mewgenics"
+	assert_eq(String(CosmeticCatalog.entry(key).get("game", "")), "mewgenics")
+	assert_eq(Cosmetics.timer_art(), UITheme.TIMER_ART, "the basic ⏱, unworn")
+	Cosmetics.set_icon("timer", key)
+	Cosmetics._unlocked[key] = "game:mewgenics"
+	assert_string_contains(Cosmetics.timer_art().resource_path, "Timer_Mewgenics")
+	Cosmetics.set_icon("timer", "")

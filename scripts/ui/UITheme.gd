@@ -681,7 +681,9 @@ const HUNGER_ART: Texture2D = preload("res://images2.0/general/Hunger.png")
 # THE CLOCK. Anything TEMPORARY carries it in its bottom-right corner — a status
 # borrowed for a game or two (docs/potions-design.md §5.3), a shield that expires
 # when this game is reported. It is one badge with one meaning: what it is on is
-# going away, and the tooltip says when.
+# going away, and the tooltip says when. This is the BASIC one, the ⏱ glyph drawn
+# by tools/build_timer_art.py; draw the badge with `Cosmetics.timer_art()`, which
+# swaps in a worn one (Mewgenics' stopwatch is the unlock).
 const TIMER_ART: Texture2D = preload("res://images2.0/general/Timer.png")
 
 # How much of the icon the clock takes, the floor it never goes under, and how
@@ -720,7 +722,13 @@ static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
 	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrap.add_child(art)
-	var badge := crisp_tex(TIMER_ART, maxi(TIMER_MIN, int(round(size * TIMER_FRACTION))))
+	# The WORN timer (Cosmetics.timer_art), shrunk to its screen size like the art.
+	var badge_side: int = maxi(TIMER_MIN, int(round(size * TIMER_FRACTION)))
+	var clock: Texture2D = Cosmetics.timer_art()
+	var shown_clock: Texture2D = clock
+	if clock != null and not is_small_art(clock):
+		shown_clock = shrunk(clock, roundi(badge_side * main_scale()))
+	var badge := crisp_tex(shown_clock, badge_side, shown_clock != clock)
 	var edge: float = badge.custom_minimum_size.x
 	# Bottom-right, hanging off by TIMER_OVERHANG of its own edge. Anchored rather
 	# than laid out: the clock is drawn OVER the art, and a container would push the

@@ -1897,6 +1897,20 @@
 			]
 		},
 		{
+			"id": "timer/timer_mewgenics",
+			"kind": "timer",
+			"name": "Timer",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Timer",
+					"path": "res://images2.0/icons/Timer/Timer_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "bleed/bleed_mewgenics",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -1942,6 +1956,21 @@
 			"status": true
 		},
 		{
+			"id": "dexterity/dexterity_slay_the_spire_2",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "marked/marked_mewgenics",
 			"kind": "marked",
 			"name": "Marked",
@@ -1980,6 +2009,21 @@
 				{
 					"name": "Strength",
 					"path": "res://images2.0/icons/Statuses/Strength/Strength_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_slay_the_spire_2",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Slay_the_Spire_2.png",
 					"min": 0,
 					"max": 10
 				}
