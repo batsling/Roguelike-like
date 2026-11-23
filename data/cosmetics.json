@@ -2061,6 +2061,21 @@
 			"status": true
 		},
 		{
+			"id": "dexterity/dexterity_mewgenics",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "dexterity/dexterity_slay_the_spire",
 			"kind": "dexterity",
 			"name": "Dexterity",
@@ -2256,6 +2271,21 @@
 			"status": true
 		},
 		{
+			"id": "speed/speed_dead_cells",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_mewgenics",
 			"kind": "speed",
 			"name": "Speed",
@@ -2264,6 +2294,36 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_the_binding_of_isaac_rebirth",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_mewgenics",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Mewgenics.png",
 					"min": 0,
 					"max": 10
 				}
