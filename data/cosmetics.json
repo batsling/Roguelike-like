@@ -1897,6 +1897,20 @@
 			]
 		},
 		{
+			"id": "timer/timer_holocure_save_the_fans",
+			"kind": "timer",
+			"name": "Timer",
+			"game": "holocure_save_the_fans",
+			"images": [
+				{
+					"name": "Timer",
+					"path": "res://images2.0/icons/Timer/Timer_HoloCure_Save_the_Fans!.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "timer/timer_mewgenics",
 			"kind": "timer",
 			"name": "Timer",
@@ -1919,6 +1933,36 @@
 				{
 					"name": "Bleed",
 					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_barony",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_battle_brothers",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Battle_Brothers.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1956,6 +2000,36 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_dicefolk",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_for_the_king",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "bleed/bleed_hellcard",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -1964,6 +2038,21 @@
 				{
 					"name": "Bleed",
 					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Hellcard.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_inkbound",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Inkbound.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2076,6 +2165,21 @@
 			"status": true
 		},
 		{
+			"id": "burn/burn_barony",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_brutal_orchestra",
 			"kind": "burn",
 			"name": "Burn",
@@ -2121,6 +2225,21 @@
 			"status": true
 		},
 		{
+			"id": "burn/burn_dicefolk",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_dicey_dungeons",
 			"kind": "burn",
 			"name": "Burn",
@@ -2136,6 +2255,21 @@
 			"status": true
 		},
 		{
+			"id": "burn/burn_for_the_king",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_gunfire_reborn",
 			"kind": "burn",
 			"name": "Burn",
@@ -2144,6 +2278,21 @@
 				{
 					"name": "Burn",
 					"path": "res://images2.0/icons/Statuses/Burn/Burn_Gunfire_Reborn.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_inkbound",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Inkbound.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2256,6 +2405,36 @@
 			"status": true
 		},
 		{
+			"id": "burn/burn_spiritfall",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "spiritfall",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Spiritfall.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "dexterity/dexterity_barony",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "dexterity/dexterity_mewgenics",
 			"kind": "dexterity",
 			"name": "Dexterity",
@@ -2309,6 +2488,21 @@
 				{
 					"name": "Marked",
 					"path": "res://images2.0/icons/Statuses/Marked/Marked_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/marked_inkbound",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Inkbound.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2391,6 +2585,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_barony",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_darkest_dungeon_2",
 			"kind": "poison",
 			"name": "Poison",
@@ -2421,6 +2630,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_dicefolk",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_dicey_dungeons",
 			"kind": "poison",
 			"name": "Poison",
@@ -2444,6 +2668,36 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Don't_Starve.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_for_the_king",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_inkbound",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Inkbound.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2691,6 +2945,21 @@
 			"status": true
 		},
 		{
+			"id": "speed/speed_barony",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_brotato",
 			"kind": "speed",
 			"name": "Speed",
@@ -2714,6 +2983,21 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_for_the_king",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_For_the_King.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2796,6 +3080,21 @@
 			"status": true
 		},
 		{
+			"id": "speed/speed_ring_of_pain",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "ring_of_pain",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Ring_of_Pain.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_soulstone_survivors",
 			"kind": "speed",
 			"name": "Speed",
@@ -2819,6 +3118,36 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_barony",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_dicefolk",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Dicefolk.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2886,6 +3215,36 @@
 			"status": true
 		},
 		{
+			"id": "stun/stun_astrea_six_sided_oracles",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "astrea_six_sided_oracles",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Astrea_Six-Sided_Oracles.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_battle_brothers",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Battle_Brothers.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "stun/stun_cobalt_core",
 			"kind": "stun",
 			"name": "Stun",
@@ -2939,6 +3298,21 @@
 				{
 					"name": "Stun",
 					"path": "res://images2.0/icons/Statuses/Stun/Stun_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_for_the_king",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_For_the_King.png",
 					"min": 0,
 					"max": 10
 				}
