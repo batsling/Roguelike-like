@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_bee_stinger"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/BeeStinger.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"bee_stinger"
+display_name = "Bee Stinger"
+kind = 1
+rarity = 2
+description = "Every enemy a Weapon or an Attack Stuns gains 1 Poison"
+triggers = [{"on": "enemy_stunned", "effects": [{"type": "apply_status", "status": "poison", "value": 1, "target": "enemy"}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Mewgenics"
+tags = PackedStringArray("bug", "bee")
+image = ExtResource("2_img")

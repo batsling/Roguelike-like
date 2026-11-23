@@ -11,6 +11,31 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Status icons from the games (22-23 Nov 2026).** The owner: "let's look for the
+  status logos from previous checked games, give them to me to check piecemeal",
+  then "now do some other games". 106 game icons for the eight statuses went in
+  over eight numbered sheets, from the 27 games of earlier icon rounds and about
+  110 more owned games, each one an unlock worn in place of the basic glyph
+  (`Cosmetics.status_art`); there are 118 in all now. HoloCure's Haste clock went
+  in as a Timer instead ("use 19 as a timer"). Every status folder is a kind of
+  its own in `tools/icon_research.py` (a yes had been bound for `Statuses/`
+  itself), and `add` gives a candidate its ID at once, because a sheet drawn
+  before `research.py build` numbered every candidate "" and `answer` refused it.
+  What was held back was shown afterwards on its own sheet ("let me see the ones
+  you didn't offer me"), and 13 of the 48 were taken.
+
+- **Mewgenics' Bleed and Poison pieces (22 Nov 2026).** The owner: "Let's add
+  some mewgenics items that have to do with the bleed and poison statuses". Two
+  relics: Empty Syringe (syringe; +1 to every Bleed or Poison you lay, through
+  `GameLoop2.player_stun`, which now grows every status the player lays and not
+  only Stun, so potions, wands and a card's bounces ask it too) and Bee Stinger
+  (bug, bee; every enemy a weapon or an attack stuns gains 1 Poison, Envenom's
+  `enemy_stunned`). Two weapons, both one square of the front column: Rusty Razor
+  (1x1, 2 charges, `stun 1, poison 1, bleed 1`, "Defeat an enemy with a rusty
+  weapon") and Shard of Glass (glass, 1x1, 3 charges, `stun 1, bleed 1`, "Break
+  glass 5 times"). A weapon's Effect cell takes `<status> N` now. Rarities and art
+  from the Mewgenics wiki (its `ITEM_*.svg`, drawn at 800 px).
+
 - **The Silent's poison cards (22 Nov 2026).** The owner: "lets actually make
   poison work in game by adding some slay the spire cards". Poisoned Stab (Stun 1
   and 2 Poison; Upgrade Stun, Poison), Deadly Poison (3 Poison; Upgrade Poison),

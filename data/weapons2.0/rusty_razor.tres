@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://weapon2_rusty_razor"]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"rusty_razor"
+display_name = "Rusty Razor"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+aim = "front"
+aim_column = 0
+bounce = 0
+area = "cell"
+stun = 1
+statuses = {"poison": 1, "bleed": 1}
+push_dir = ""
+push = 0
+weapon_type = "melee"
+goal = "Defeat an enemy with a rusty weapon"
+max_charges = 2
+description = ""
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {}
+stun_per_food = {}
+replay_gain = {}
+weapon_retrigger = {}
+source_game = "Mewgenics"
+tags = PackedStringArray()
+file = "RustyRazor"

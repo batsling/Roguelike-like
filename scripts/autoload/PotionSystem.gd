@@ -623,7 +623,9 @@ func _throw_status(op: Dictionary, cells: Array, out: Dictionary) -> bool:
 	var status: StatusData = Data.get_status(StringName(String(op.get("status", ""))))
 	if status == null:
 		return false
-	var stacks: int = _scaled_value(op, "value", 1)
+	# The player threw it, so Strength grows a Stun and Empty Syringe a Poison
+	# (GameLoop2.player_stun).
+	var stacks: int = GameLoop2.player_stun(status.id, _scaled_value(op, "value", 1))
 	var games: int = int(op.get("games", 0))
 	var landed: int = 0
 	for inst in GameLoop2.area_instances(cells):

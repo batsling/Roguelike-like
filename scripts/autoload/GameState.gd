@@ -3755,6 +3755,17 @@ func is_status_immune(status_id: StringName) -> bool:
 				return true
 	return false
 
+# Extra stacks every owned relic adds when the PLAYER lays `status_id` on an enemy
+# (Empty Syringe: +1 Bleed, +1 Poison). Read by GameLoop2.player_stun, the one
+# funnel every player-laid status goes through. 0 for almost every status.
+func status_amplify_bonus(status_id: StringName) -> int:
+	var key: String = String(status_id)
+	var bonus: int = 0
+	for item in inventory:
+		if item is ItemData and not item.status_amplify.is_empty():
+			bonus += int(item.status_amplify.get(key, 0))
+	return maxi(0, bonus)
+
 # Flat per-hit damage every owned item grants to the player's attacks of the
 # given damage_type (Focus Crystal -> +1 melee). Read by Stats.damage_bonus.
 func attack_damage_bonus(damage_type: String) -> int:

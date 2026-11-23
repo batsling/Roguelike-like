@@ -34,12 +34,15 @@ func _index(slot: int) -> int:
 
 func test_every_weapon_loads_with_art_a_goal_and_a_swing() -> void:
 	var all: Array = Data.all_weapons()
-	assert_eq(all.size(), 11, "the sheet's eleven weapons all generated")
+	assert_eq(all.size(), Fixtures.tres_count("res://data/weapons2.0"),
+		"every weapon on the sheet generated and loaded")
 	for w in all:
 		var weapon: WeaponData = w
 		assert_ne(weapon.goal, "", "%s has a goal to charge it" % weapon.id)
 		assert_gt(weapon.stun, 0, "%s stuns" % weapon.id)
-		assert_eq(weapon.max_charges, 3, "%s swings at 3" % weapon.id)
+		# Three is the sheet's default; Rusty Razor is authored at two.
+		assert_eq(weapon.max_charges, 2 if weapon.id == &"rusty_razor" else 3,
+			"%s swings at its Charge" % weapon.id)
 		assert_not_null(LootPassives.load_weapon_art(weapon), "%s has art" % weapon.id)
 	assert_eq(Data.get_weapon(&"hero_longsword").size, Vector2i(1, 3),
 		"Size is rows first: Hero Longsword's 3x1 stands three tall")

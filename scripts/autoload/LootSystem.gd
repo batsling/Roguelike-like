@@ -748,14 +748,27 @@ func weapon_description(entry: Dictionary, rich: bool = false) -> String:
 	var stun: String = str(now)
 	if rich and now != w.stun:
 		stun = LiveNumbers.colored(stun, now > w.stun)
-	var swing: String = "Swing: %s Stun to every enemy in a %s, aimed %s." % [
-		stun, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)]
+	# The swing's statuses (Rusty Razor's Poison and Bleed) ride beside its Stun,
+	# live too: Empty Syringe's +1 is in them (GameLoop2.player_stun).
+	var parts: Array = ["%s Stun" % stun]
+	for sid in w.statuses.keys():
+		var base: int = int(w.statuses[sid])
+		var lands: int = GameLoop2.player_stun(StringName(sid), base)
+		var n: String = str(lands)
+		if rich and lands != base:
+			n = LiveNumbers.colored(n, lands > base)
+		var sd: StatusData = Data.get_status(StringName(sid))
+		parts.append("%s %s" % [n, sd.display_name if sd != null else String(sid).capitalize()])
+	var laid: String = parts[0] if parts.size() == 1 \
+		else "%s and %s" % [", ".join(parts.slice(0, parts.size() - 1)), parts[-1]]
+	var swing: String = "Swing: %s to every enemy in a %s, aimed %s." % [
+		laid, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)]
 	if w.aim == "ray":
 		# A ray's area is laid where the line strikes, not where it was aimed.
 		var reach: String = "it" if w.area == "cell" \
 			else "a %s round each" % WeaponSystem.area_words(w.area)
-		swing = "Swing: fires %s, toward any square. %s Stun to every enemy it hits%s." % [
-			RayAim.words(w.bounce), stun,
+		swing = "Swing: fires %s, toward any square. %s to every enemy it hits%s." % [
+			RayAim.words(w.bounce), laid,
 			"" if w.area == "cell" else " and to every enemy in %s" % reach]
 	if w.push > 0:
 		swing += " Then pushes them %d square%s %s." % [w.push, "" if w.push == 1 else "s",

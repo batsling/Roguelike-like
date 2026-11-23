@@ -592,7 +592,8 @@ static func ray_hit_cells(w: WeaponData, path: Dictionary) -> Array:
 # the same bodies — and a `random` strike picks its body afresh each time.
 #
 # Every body a strike covers fires `weapon_hit` (Bloody Tear's heal), stunned or
-# not; every one it stuns fires `weapon_stunned` (King Bomber's gold). A `push`
+# not; every one it stuns fires `weapon_stunned` (King Bomber's gold), then takes
+# the weapon's own `statuses` (Rusty Razor's Poison and Bleed). A `push`
 # shoves the covered bodies after the Stun lands, farthest-first so the front of a
 # line does not block the back of it. And the board is told what was hit
 # (GameLoop2.last_strike), so it can show the player where a swing they did not
@@ -634,6 +635,13 @@ static func swing(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 						"instance": int(inst), "weapon": w.id})
 					TriggerBus.enemy_stunned.emit({"instance": int(inst),
 						"target": int(inst), "source": "weapon"})
+				# THE SWING'S OWN STATUSES (Rusty Razor's Poison and Bleed), after
+				# the Stun and its hooks, each as the player lays it.
+				for sid in w.statuses.keys():
+					if GameLoop2.entry_for(int(inst)).is_empty():
+						break
+					GameLoop2.apply_status_to(int(inst), StringName(sid),
+						GameLoop2.player_stun(StringName(sid), int(w.statuses[sid])))
 			if w.push > 0:
 				_push_all(hit, push_vector(w), w.push)
 			var strike := {"cells": cells, "instances": hit.duplicate()}

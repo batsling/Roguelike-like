@@ -322,6 +322,8 @@ func _bounce(status: StringName, stacks: int, bounces: int, out: Dictionary,
 	var sdata: StatusData = Data.get_status(status)
 	var word: String = sdata.display_name if sdata != null else String(status).capitalize()
 	var hits: int = 0
+	# Each bounce is its own application, so Empty Syringe adds to every one.
+	stacks = GameLoop2.player_stun(status, stacks)
 	for _i in range(bounces):
 		var bodies: Array = GameLoop2.stack.filter(func(e):
 			return int(e.get("col", GameLoop2.offgrid_col())) <= GameLoop2.grid_cols())

@@ -1897,6 +1897,20 @@
 			]
 		},
 		{
+			"id": "timer/timer_holocure_save_the_fans",
+			"kind": "timer",
+			"name": "Timer",
+			"game": "holocure_save_the_fans",
+			"images": [
+				{
+					"name": "Timer",
+					"path": "res://images2.0/icons/Timer/Timer_HoloCure_Save_the_Fans!.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "timer/timer_mewgenics",
 			"kind": "timer",
 			"name": "Timer",
@@ -1909,6 +1923,201 @@
 					"max": 10
 				}
 			]
+		},
+		{
+			"id": "bleed/bleed_across_the_obelisk",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_aethermancer",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_alt_soulstone_survivors",
+			"kind": "bleed",
+			"name": "Bleed Alt",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Bleed Alt",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Alt_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_barony",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_battle_brothers",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Battle_Brothers.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_darkest_dungeon_2",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_dead_cells",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_dicefolk",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_elden_ring_nightreign",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "elden_ring_nightreign",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Elden_Ring_Nightreign.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_for_the_king",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_griftlands",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "griftlands",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Griftlands.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_hellcard",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "hellcard",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Hellcard.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_inkbound",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Inkbound.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
 		},
 		{
 			"id": "bleed/bleed_mewgenics",
@@ -1926,6 +2135,156 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_path_of_achra",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_rabbit_and_steel",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_rogue_legacy_2",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_shattered_pixel_dungeon",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_soulstone_survivors",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_spellmasons",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "spellmasons",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Spellmasons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_tray_darkest_dungeon",
+			"kind": "bleed",
+			"name": "Bleed Tray",
+			"game": "darkest_dungeon",
+			"images": [
+				{
+					"name": "Bleed Tray",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Tray_Darkest_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_across_the_obelisk",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_aethermancer",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_barony",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_brutal_orchestra",
 			"kind": "burn",
 			"name": "Burn",
@@ -1934,6 +2293,291 @@
 				{
 					"name": "Burn",
 					"path": "res://images2.0/icons/Statuses/Burn/Burn_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_darkest_dungeon_2",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_dead_cells",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_dicefolk",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_dicey_dungeons",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_for_the_king",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_gunfire_reborn",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "gunfire_reborn",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Gunfire_Reborn.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_halls_of_torment",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "halls_of_torment",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Halls_of_Torment.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_inkbound",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Inkbound.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_mewgenics",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_moonlighter",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_noita",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_rabbit_and_steel",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_ravenswatch",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_rogue_legacy_2",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_shattered_pixel_dungeon",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_soulstone_survivors",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_spiritfall",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "spiritfall",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Spiritfall.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "dexterity/dexterity_barony",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "dexterity/dexterity_mewgenics",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Mewgenics.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1971,6 +2615,51 @@
 			"status": true
 		},
 		{
+			"id": "marked/marked_across_the_obelisk",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/marked_inkbound",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Inkbound.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/marked_iratus_lord_of_the_dead",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "iratus_lord_of_the_dead",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Iratus_Lord_of_the_Dead.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "marked/marked_mewgenics",
 			"kind": "marked",
 			"name": "Marked",
@@ -1986,6 +2675,201 @@
 			"status": true
 		},
 		{
+			"id": "marked/marked_path_of_achra",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/marked_ravenswatch",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_across_the_obelisk",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_aethermancer",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_barony",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_darkest_dungeon_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_dead_cells",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_dicefolk",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_dicey_dungeons",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_don_t_starve",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "don_t_starve",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Don't_Starve.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_elden_ring_nightreign",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "elden_ring_nightreign",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Elden_Ring_Nightreign.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_for_the_king",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_inkbound",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Inkbound.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_mewgenics",
 			"kind": "poison",
 			"name": "Poison",
@@ -1994,6 +2878,156 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_moonlighter",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_noita",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_one_step_from_eden",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_path_of_achra",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_rabbit_and_steel",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_revita",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Revita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_ring_of_pain",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "ring_of_pain",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Ring_of_Pain.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_risk_of_rain_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "risk_of_rain_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Risk_of_Rain_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_rogue_legacy_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_shattered_pixel_dungeon",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Shattered_Pixel_Dungeon.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2031,6 +3065,201 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_soulstone_survivors",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_spellmasons",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "spellmasons",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Spellmasons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_spelunky_2",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_the_last_spell",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "the_last_spell",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_The_Last_Spell.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_the_legend_of_bum_bo",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "the_legend_of_bum_bo",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_The_Legend_of_Bum-Bo.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_undermine",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_UnderMine.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_across_the_obelisk",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_barony",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_brotato",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_dead_cells",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_death_road_to_canada",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "death_road_to_canada",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Death_Road_to_Canada.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_for_the_king",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_gnomes",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Gnomes.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_mewgenics",
 			"kind": "speed",
 			"name": "Speed",
@@ -2039,6 +3268,171 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_moonlighter",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_one_step_from_eden",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_path_of_achra",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_rabbit_and_steel",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_ring_of_pain",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "ring_of_pain",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Ring_of_Pain.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_soulstone_survivors",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_the_binding_of_isaac_rebirth",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_barony",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_death_road_to_canada",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "death_road_to_canada",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Death_Road_to_Canada.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_dicefolk",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_mewgenics",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Mewgenics.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2076,6 +3470,171 @@
 			"status": true
 		},
 		{
+			"id": "strength/strength_tales_of_maj_eyal",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "tales_of_maj_eyal",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Tales_of_Maj'Eyal.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_undermine",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_UnderMine.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_astrea_six_sided_oracles",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "astrea_six_sided_oracles",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Astrea_Six-Sided_Oracles.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_battle_brothers",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Battle_Brothers.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_cobalt_core",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "cobalt_core",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_dead_cells",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_dicey_dungeons",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_enter_the_gungeon",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_for_the_king",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_gnomes",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Gnomes.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_mewgenics",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "stun/stun_slay_the_spire",
 			"kind": "stun",
 			"name": "Stun",
@@ -2084,6 +3643,51 @@
 				{
 					"name": "Stun",
 					"path": "res://images2.0/icons/Statuses/Stun/Stun_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_soulstone_survivors",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_tales_of_maj_eyal",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "tales_of_maj_eyal",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Tales_of_Maj'Eyal.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_the_last_spell",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "the_last_spell",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_The_Last_Spell.png",
 					"min": 0,
 					"max": 10
 				}
