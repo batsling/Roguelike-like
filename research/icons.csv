@@ -448,3 +448,28 @@ Picture,Kind,File,Name,Game,Size,What it is there,Source,Confidence,Status,Owner
 ,Statuses/Marked,Marked_Path_of_Achra,Marked,Path of Achra,16x16,The Mark status icon,https://pathofachra.wiki.gg/wiki/File:Mark.png,ok,on sheet,yes,,ico-path-of-achra-marked-path-of-achra
 ,Statuses/Poison,Poison_Path_of_Achra,Poison,Path of Achra,32x32,The Poison status icon,https://pathofachra.wiki.gg/wiki/File:Poison.png,ok,on sheet,yes,,ico-path-of-achra-poison-path-of-achra
 ,Statuses/Speed,Speed_Path_of_Achra,Speed,Path of Achra,32x32,The Speed status icon,https://pathofachra.wiki.gg/wiki/File:Speed.png,ok,on sheet,yes,,ico-path-of-achra-speed-path-of-achra
+,Statuses/Stun,Stun_Astrea_Six-Sided_Oracles,Stun,Astrea: Six-Sided Oracles,334x370,The Stunned status icon,https://astrea.wiki.gg/wiki/File:Stunned.png,ok,to review,,,ico-astrea-six-sided-oracles-stun-astrea-six-sided-oracles
+,Statuses/Bleed,Bleed_Battle_Brothers,Bleed,Battle Brothers,56x56,The Bleeding status effect icon,https://battlebrothers.fandom.com/wiki/File:Bleeding.png,ok,to review,,,ico-battle-brothers-bleed-battle-brothers
+,Statuses/Stun,Stun_Battle_Brothers,Stun,Battle Brothers,56x56,The Stunned status effect icon,https://battlebrothers.fandom.com/wiki/File:Stunned.png,ok,to review,,,ico-battle-brothers-stun-battle-brothers
+,Statuses/Bleed,Bleed_Barony,Bleed,Barony,32x32,The Bleeding status icon,https://barony.wiki.gg/wiki/File:Bleed_Icon.png,ok,to review,,,ico-barony-bleed-barony
+,Statuses/Burn,Burn_Barony,Burn,Barony,32x32,The Burning status icon,https://barony.wiki.gg/wiki/File:Burning_Icon.png,ok,to review,,,ico-barony-burn-barony
+,Statuses/Poison,Poison_Barony,Poison,Barony,32x32,The Poisoned status icon,https://barony.wiki.gg/wiki/File:Poisoned_Icon.png,ok,to review,,,ico-barony-poison-barony
+,Statuses/Speed,Speed_Barony,Speed,Barony,36x36,The Speed status icon,https://barony.wiki.gg/wiki/File:Speed_Icon.png,ok,to review,,,ico-barony-speed-barony
+,Statuses/Strength,Strength_Barony,Strength,Barony,32x32,The Strength buff icon,https://barony.wiki.gg/wiki/File:Strength_Buff.png,ok,to review,,,ico-barony-strength-barony
+,Statuses/Dexterity,Dexterity_Barony,Dexterity,Barony,32x32,The Dexterity buff icon,https://barony.wiki.gg/wiki/File:Dexterity_Buff.png,ok,to review,,,ico-barony-dexterity-barony
+,Statuses/Bleed,Bleed_Dicefolk,Bleed,Dicefolk,256x256,The Bleed token,https://dicefolk.wiki.gg/wiki/File:Bleed_token.png,ok,to review,,,ico-dicefolk-bleed-dicefolk
+,Statuses/Burn,Burn_Dicefolk,Burn,Dicefolk,256x256,The Burn token,https://dicefolk.wiki.gg/wiki/File:Burn_token.png,ok,to review,,,ico-dicefolk-burn-dicefolk
+,Statuses/Poison,Poison_Dicefolk,Poison,Dicefolk,256x256,The Poison token,https://dicefolk.wiki.gg/wiki/File:Poison_token.png,ok,to review,,,ico-dicefolk-poison-dicefolk
+,Statuses/Strength,Strength_Dicefolk,Strength,Dicefolk,512x512,The Strength status icon,https://dicefolk.wiki.gg/wiki/File:Strength.png,ok,to review,,,ico-dicefolk-strength-dicefolk
+,Statuses/Bleed,Bleed_For_the_King,Bleed,For the King,256x256,The Bleed status icon,https://fortheking.wiki.gg/wiki/File:UiHitBleed.png,ok,to review,,,ico-for-the-king-bleed-for-the-king
+,Statuses/Poison,Poison_For_the_King,Poison,For the King,256x256,The Poison status icon,https://fortheking.wiki.gg/wiki/File:UiHitPoison.png,ok,to review,,,ico-for-the-king-poison-for-the-king
+,Statuses/Speed,Speed_For_the_King,Speed,For the King,256x256,The Speed Up status icon,https://fortheking.wiki.gg/wiki/File:UiHitSpeedUp.png,ok,to review,,,ico-for-the-king-speed-for-the-king
+,Statuses/Stun,Stun_For_the_King,Stun,For the King,256x256,The Stun status icon,https://fortheking.wiki.gg/wiki/File:UiHitStun.png,ok,to review,,,ico-for-the-king-stun-for-the-king
+,Statuses/Burn,Burn_For_the_King,Burn,For the King,109x128,The Burning status icon,https://fortheking.wiki.gg/wiki/File:Icon_Burning.png,ok,to review,,,ico-for-the-king-burn-for-the-king
+,Statuses/Speed,Speed_HoloCure_Save_the_Fans!,Speed,HoloCure: Save the Fans!,64x64,The Haste buff icon,https://holocure.wiki.gg/wiki/File:Haste_Icon.png,ok,to review,,,ico-holocure-save-the-fans-speed-holocure-save-the-fans
+,Statuses/Bleed,Bleed_Inkbound,Bleed,Inkbound,30x30,The Bleed status icon,https://inkbound.fandom.com/wiki/File:Bleed_icon.png,ok,to review,,,ico-inkbound-bleed-inkbound
+,Statuses/Burn,Burn_Inkbound,Burn,Inkbound,30x30,The Burn status icon,https://inkbound.fandom.com/wiki/File:Burn_icon.png,ok,to review,,,ico-inkbound-burn-inkbound
+,Statuses/Marked,Marked_Inkbound,Marked,Inkbound,30x30,The Marked status icon,https://inkbound.fandom.com/wiki/File:Marked_icon.png,ok,to review,,,ico-inkbound-marked-inkbound
+,Statuses/Poison,Poison_Inkbound,Poison,Inkbound,30x30,The Poison status icon,https://inkbound.fandom.com/wiki/File:Poison_icon.png,ok,to review,,,ico-inkbound-poison-inkbound
+,Statuses/Speed,Speed_Ring_of_Pain,Speed,Ring of Pain,71x71,The Speed stat icon,https://ring-of-pain.fandom.com/wiki/File:Speed_Icon.png,ok,to review,,,ico-ring-of-pain-speed-ring-of-pain
+,Statuses/Burn,Burn_Spiritfall,Burn,Spiritfall,102x128,The Burned status icon,https://spiritfall.fandom.com/wiki/File:BurnedStatusIcon.png,ok,to review,,,ico-spiritfall-burn-spiritfall
