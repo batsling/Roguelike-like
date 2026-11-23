@@ -1955,6 +1955,21 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_alt_soulstone_survivors",
+			"kind": "bleed",
+			"name": "Bleed Alt",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Bleed Alt",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Alt_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "bleed/bleed_barony",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -2030,6 +2045,21 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_elden_ring_nightreign",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "elden_ring_nightreign",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Elden_Ring_Nightreign.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "bleed/bleed_for_the_king",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -2038,6 +2068,21 @@
 				{
 					"name": "Bleed",
 					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_griftlands",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "griftlands",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Griftlands.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2158,6 +2203,36 @@
 				{
 					"name": "Bleed",
 					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_spellmasons",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "spellmasons",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Spellmasons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_tray_darkest_dungeon",
+			"kind": "bleed",
+			"name": "Bleed Tray",
+			"game": "darkest_dungeon",
+			"images": [
+				{
+					"name": "Bleed Tray",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Tray_Darkest_Dungeon.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2315,6 +2390,21 @@
 			"status": true
 		},
 		{
+			"id": "burn/burn_halls_of_torment",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "halls_of_torment",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Halls_of_Torment.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_inkbound",
 			"kind": "burn",
 			"name": "Burn",
@@ -2338,6 +2428,21 @@
 				{
 					"name": "Burn",
 					"path": "res://images2.0/icons/Statuses/Burn/Burn_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_moonlighter",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Moonlighter.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2720,6 +2825,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_elden_ring_nightreign",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "elden_ring_nightreign",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Elden_Ring_Nightreign.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_for_the_king",
 			"kind": "poison",
 			"name": "Poison",
@@ -2758,6 +2878,21 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_moonlighter",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Moonlighter.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2833,6 +2968,21 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Revita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_ring_of_pain",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "ring_of_pain",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Ring_of_Pain.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2923,6 +3073,21 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_spellmasons",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "spellmasons",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Spellmasons.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3305,6 +3470,21 @@
 			"status": true
 		},
 		{
+			"id": "strength/strength_tales_of_maj_eyal",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "tales_of_maj_eyal",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Tales_of_Maj'Eyal.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "strength/strength_undermine",
 			"kind": "strength",
 			"name": "Strength",
@@ -3478,6 +3658,21 @@
 				{
 					"name": "Stun",
 					"path": "res://images2.0/icons/Statuses/Stun/Stun_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_tales_of_maj_eyal",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "tales_of_maj_eyal",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Tales_of_Maj'Eyal.png",
 					"min": 0,
 					"max": 10
 				}
