@@ -1956,6 +1956,21 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_hellcard",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "hellcard",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Hellcard.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "bleed/bleed_mewgenics",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -1964,6 +1979,36 @@
 				{
 					"name": "Bleed",
 					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_path_of_achra",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_rabbit_and_steel",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Rabbit_and_Steel.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1994,6 +2039,21 @@
 				{
 					"name": "Bleed",
 					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bleed_soulstone_survivors",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Soulstone_Survivors.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2121,6 +2181,36 @@
 			"status": true
 		},
 		{
+			"id": "burn/burn_rabbit_and_steel",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_ravenswatch",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_rogue_legacy_2",
 			"kind": "burn",
 			"name": "Burn",
@@ -2144,6 +2234,21 @@
 				{
 					"name": "Burn",
 					"path": "res://images2.0/icons/Statuses/Burn/Burn_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_soulstone_survivors",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Soulstone_Survivors.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2211,6 +2316,21 @@
 			"status": true
 		},
 		{
+			"id": "marked/marked_iratus_lord_of_the_dead",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "iratus_lord_of_the_dead",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Iratus_Lord_of_the_Dead.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "marked/marked_mewgenics",
 			"kind": "marked",
 			"name": "Marked",
@@ -2219,6 +2339,36 @@
 				{
 					"name": "Marked",
 					"path": "res://images2.0/icons/Statuses/Marked/Marked_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/marked_path_of_achra",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/marked_ravenswatch",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Ravenswatch.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2346,6 +2496,36 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_path_of_achra",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_rabbit_and_steel",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_risk_of_rain_2",
 			"kind": "poison",
 			"name": "Poison",
@@ -2421,6 +2601,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_soulstone_survivors",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_spelunky_2",
 			"kind": "poison",
 			"name": "Poison",
@@ -2429,6 +2624,21 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_the_last_spell",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "the_last_spell",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_The_Last_Spell.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2526,6 +2736,21 @@
 			"status": true
 		},
 		{
+			"id": "speed/speed_moonlighter",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_one_step_from_eden",
 			"kind": "speed",
 			"name": "Speed",
@@ -2534,6 +2759,51 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_path_of_achra",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_rabbit_and_steel",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_soulstone_survivors",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Soulstone_Survivors.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2616,6 +2886,21 @@
 			"status": true
 		},
 		{
+			"id": "stun/stun_cobalt_core",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "cobalt_core",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "stun/stun_dead_cells",
 			"kind": "stun",
 			"name": "Stun",
@@ -2684,6 +2969,36 @@
 				{
 					"name": "Stun",
 					"path": "res://images2.0/icons/Statuses/Stun/Stun_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_soulstone_survivors",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "soulstone_survivors",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Soulstone_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_the_last_spell",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "the_last_spell",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_The_Last_Spell.png",
 					"min": 0,
 					"max": 10
 				}
