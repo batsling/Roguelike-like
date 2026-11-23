@@ -1911,6 +1911,21 @@
 			]
 		},
 		{
+			"id": "bleed/bleed_across_the_obelisk",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "bleed/bleed_darkest_dungeon_2",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -1971,6 +1986,36 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_shattered_pixel_dungeon",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_across_the_obelisk",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_brutal_orchestra",
 			"kind": "burn",
 			"name": "Burn",
@@ -2009,6 +2054,36 @@
 				{
 					"name": "Burn",
 					"path": "res://images2.0/icons/Statuses/Burn/Burn_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_dicey_dungeons",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_gunfire_reborn",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "gunfire_reborn",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Gunfire_Reborn.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2061,6 +2136,21 @@
 			"status": true
 		},
 		{
+			"id": "burn/burn_shattered_pixel_dungeon",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "dexterity/dexterity_mewgenics",
 			"kind": "dexterity",
 			"name": "Dexterity",
@@ -2106,6 +2196,21 @@
 			"status": true
 		},
 		{
+			"id": "marked/marked_across_the_obelisk",
+			"kind": "marked",
+			"name": "Marked",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Marked",
+					"path": "res://images2.0/icons/Statuses/Marked/Marked_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "marked/marked_mewgenics",
 			"kind": "marked",
 			"name": "Marked",
@@ -2114,6 +2219,21 @@
 				{
 					"name": "Marked",
 					"path": "res://images2.0/icons/Statuses/Marked/Marked_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_across_the_obelisk",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Across_the_Obelisk.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2151,6 +2271,36 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_dicey_dungeons",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_don_t_starve",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "don_t_starve",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Don't_Starve.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_mewgenics",
 			"kind": "poison",
 			"name": "Poison",
@@ -2181,6 +2331,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_one_step_from_eden",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_risk_of_rain_2",
 			"kind": "poison",
 			"name": "Poison",
@@ -2204,6 +2369,21 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_shattered_pixel_dungeon",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Shattered_Pixel_Dungeon.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2271,6 +2451,51 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_undermine",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_UnderMine.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_across_the_obelisk",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_brotato",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_dead_cells",
 			"kind": "speed",
 			"name": "Speed",
@@ -2294,6 +2519,21 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_one_step_from_eden",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_One_Step_From_Eden.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2361,6 +2601,21 @@
 			"status": true
 		},
 		{
+			"id": "strength/strength_undermine",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_UnderMine.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "stun/stun_dead_cells",
 			"kind": "stun",
 			"name": "Stun",
@@ -2369,6 +2624,21 @@
 				{
 					"name": "Stun",
 					"path": "res://images2.0/icons/Statuses/Stun/Stun_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_dicey_dungeons",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Dicey_Dungeons.png",
 					"min": 0,
 					"max": 10
 				}
