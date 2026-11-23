@@ -1940,6 +1940,21 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleed_aethermancer",
+			"kind": "bleed",
+			"name": "Bleed",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Bleed",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleed_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "bleed/bleed_barony",
 			"kind": "bleed",
 			"name": "Bleed",
@@ -2158,6 +2173,21 @@
 				{
 					"name": "Burn",
 					"path": "res://images2.0/icons/Statuses/Burn/Burn_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/burn_aethermancer",
+			"kind": "burn",
+			"name": "Burn",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Burn",
+					"path": "res://images2.0/icons/Statuses/Burn/Burn_Aethermancer.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2585,6 +2615,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/poison_aethermancer",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_barony",
 			"kind": "poison",
 			"name": "Poison",
@@ -2773,6 +2818,21 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Rabbit_and_Steel.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_revita",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Revita.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2990,6 +3050,21 @@
 			"status": true
 		},
 		{
+			"id": "speed/speed_death_road_to_canada",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "death_road_to_canada",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Death_Road_to_Canada.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_for_the_king",
 			"kind": "speed",
 			"name": "Speed",
@@ -2998,6 +3073,21 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/speed_gnomes",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Gnomes.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3133,6 +3223,21 @@
 				{
 					"name": "Strength",
 					"path": "res://images2.0/icons/Statuses/Strength/Strength_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_death_road_to_canada",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "death_road_to_canada",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Death_Road_to_Canada.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3313,6 +3418,21 @@
 				{
 					"name": "Stun",
 					"path": "res://images2.0/icons/Statuses/Stun/Stun_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "stun/stun_gnomes",
+			"kind": "stun",
+			"name": "Stun",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Stun",
+					"path": "res://images2.0/icons/Statuses/Stun/Stun_Gnomes.png",
 					"min": 0,
 					"max": 10
 				}
