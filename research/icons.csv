@@ -474,3 +474,11 @@ Picture,Kind,File,Name,Game,Size,What it is there,Source,Confidence,Status,Owner
 ,Statuses/Speed,Speed_Ring_of_Pain,Speed,Ring of Pain,71x71,The Speed stat icon,https://ring-of-pain.fandom.com/wiki/File:Speed_Icon.png,ok,on sheet,yes,,ico-ring-of-pain-speed-ring-of-pain
 ,Statuses/Burn,Burn_Spiritfall,Burn,Spiritfall,102x128,The Burned status icon,https://spiritfall.fandom.com/wiki/File:BurnedStatusIcon.png,ok,on sheet,yes,,ico-spiritfall-burn-spiritfall
 ,Timer,Timer_HoloCure_Save_the_Fans!,Timer,HoloCure: Save the Fans!,64x64,"The Haste buff's clock, worn as the timer on anything temporary (the owner, 23 Nov 2026)",https://holocure.wiki.gg/wiki/File:Haste_Icon.png,ok,on sheet,yes,,ico-holocure-save-the-fans-timer-holocure-save-the-fans
+,Statuses/Bleed,Bleed_Aethermancer,Bleed,Aethermancer,24x24,The Bleed status icon,https://aethermancer.wiki.gg/wiki/File:Bleed_status.png,ok,to review,,,ico-aethermancer-bleed-aethermancer
+,Statuses/Burn,Burn_Aethermancer,Burn,Aethermancer,24x24,The Burn status icon,https://aethermancer.wiki.gg/wiki/File:Burn_status.png,ok,to review,,,ico-aethermancer-burn-aethermancer
+,Statuses/Poison,Poison_Aethermancer,Poison,Aethermancer,24x24,The Poison status icon,https://aethermancer.wiki.gg/wiki/File:Poison_status.png,ok,to review,,,ico-aethermancer-poison-aethermancer
+,Statuses/Strength,Strength_Death_Road_to_Canada,Strength,Death Road to Canada,64x64,The Strength stat icon,https://deathroadtocanada.fandom.com/wiki/File:Strength.png,ok,to review,,,ico-death-road-to-canada-strength-death-road-to-canada
+,Statuses/Speed,Speed_Death_Road_to_Canada,Speed,Death Road to Canada,46x46,The Speed stat icon,https://deathroadtocanada.fandom.com/wiki/File:Speed1.png,ok,to review,,,ico-death-road-to-canada-speed-death-road-to-canada
+,Statuses/Poison,Poison_Revita,Poison,Revita,240x240,The Poison effect icon,https://revita.wiki.gg/wiki/File:EffectPoison.png,ok,to review,,,ico-revita-poison-revita
+,Statuses/Speed,Speed_Gnomes,Speed,Gnomes,18x18,The Speed status sprite,https://gnomes.wiki.gg/wiki/File:Speed_sprite.png,ok,to review,,,ico-gnomes-speed-gnomes
+,Statuses/Stun,Stun_Gnomes,Stun,Gnomes,9x16,The Stun status sprite,https://gnomes.wiki.gg/wiki/File:Stun_sprite.png,ok,to review,,,ico-gnomes-stun-gnomes
