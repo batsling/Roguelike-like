@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Status icons from the games (22-23 Nov 2026).** The owner: "let's look for the
+  status logos from previous checked games, give them to me to check piecemeal",
+  then "now do some other games". 106 game icons for the eight statuses went in
+  over eight numbered sheets, from the 27 games of earlier icon rounds and about
+  110 more owned games, each one an unlock worn in place of the basic glyph
+  (`Cosmetics.status_art`); there are 118 in all now. HoloCure's Haste clock went
+  in as a Timer instead ("use 19 as a timer"). Every status folder is a kind of
+  its own in `tools/icon_research.py` (a yes had been bound for `Statuses/`
+  itself), and `add` gives a candidate its ID at once, because a sheet drawn
+  before `research.py build` numbered every candidate "" and `answer` refused it.
+  What was held back was shown afterwards on its own sheet ("let me see the ones
+  you didn't offer me"), and 13 of the 48 were taken.
+
 - **Mewgenics' Bleed and Poison pieces (22 Nov 2026).** The owner: "Let's add
   some mewgenics items that have to do with the bleed and poison statuses". Two
   relics: Empty Syringe (syringe; +1 to every Bleed or Poison you lay, through
