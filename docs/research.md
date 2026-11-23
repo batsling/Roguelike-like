@@ -403,7 +403,8 @@ not part of `research.py new`. The owner names a game, a kind of icon, or just
 
 A row is one picture a game draws for something this game also has: `Kind` is
 the art folder it would go in (`Health`, `Damage`, `Gold`, `Shields`, `Luck`,
-`Keys`, `Bombs`, `Chests`, `Difficulties`, `Hunger`), `File` the name it would carry there
+`Keys`, `Bombs`, `Chests`, `Difficulties`, `Hunger`, `Timer`, and one kind per status,
+`Statuses/<Status>`, since a status's folder sits inside `Statuses/`), `File` the name it would carry there
 (`<Name>_<Game>`, the form [customization.md](customization.md) §2 reads the
 game out of), `Size` its real pixel size and `Source` the page it came from.
 The picture itself waits in `research/icons/<Kind>/<File>.png`, which Godot
@@ -448,6 +449,12 @@ python3 tools/icon_research.py apply                           # after the owner
 - **An SVG on the wiki is rendered here**, its longer side at 256 px (cairosvg),
   the size Mewgenics' earlier icons came in at: the wiki serves the raw SVG, which
   `best` cannot read.
+- **Status icons (22-23 Nov 2026).** The owner's answers widened "what makes a
+  candidate" for statuses: an icon drawn on its own tile or square (Moonlighter,
+  Halls of Torment, Tales of Maj'Eyal, Elden Ring Nightreign), one with a stack
+  number drawn in (Griftlands) and spell art (Spellmasons) were all taken. What
+  was turned down: the wiki's tinted-monster pictures (Isaac, Gungeon), framed
+  skill icons, cards, items and characters. Offer the tiles; drop the rest.
 - **A picture with a background is cleaned before it is offered as final.**
   Loop Hero's chest came on black: the background was flood-filled away from
   the border at the art's native size, keeping the 1px outline.
