@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Icons: sub-tabs, and Random without the glyph (24 Nov 2026).** The owner:
+  "make sure Random customization should not include base icons", "only things
+  that are not from video games", and "add some sub-tabs for the customization
+  screen to make it look cleaner" (the Icons tab, Symbols / Statuses). An icon
+  slot's Random rolls only unlocked game icons, the glyph only while none is
+  unlocked; costumes and hats keep their default in the draw. The sub-tab bar
+  sits above the scroll so it never scrolls away, and each status's name is a
+  heading now that statuses have a page of their own. Also from the upload:
+  Inventorix, Leap of Fate, Necropolis, Teleglitch and The Last Flame owned.
+
 - **Status icons from the games (22-23 Nov 2026).** The owner: "let's look for the
   status logos from previous checked games, give them to me to check piecemeal",
   then "now do some other games". 106 game icons for the eight statuses went in

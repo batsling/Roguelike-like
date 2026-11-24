@@ -558,6 +558,20 @@ func test_random_rolls_among_the_default_and_what_is_unlocked() -> void:
 		seen[String(e.get("key", ""))] = true
 	assert_eq(seen.size(), 3, "over many runs every option comes up")
 
+# RANDOM ON AN ICON IS GAMES ONLY (the owner, 24 Nov 2026): the basic glyph is not
+# from a game, so it is in the draw only while no game icon is unlocked. A costume
+# keeps its default in the draw (test above).
+func test_random_on_an_icon_rolls_only_game_icons() -> void:
+	var slot := Cosmetics.icon_slot("difficulty")
+	assert_eq(Cosmetics.options(slot), [""], "nothing unlocked: the default is all there is")
+	Cosmetics._unlocked["difficulty/heat_hades"] = "game:hades"
+	assert_eq(Cosmetics.options(slot), ["difficulty/heat_hades"], "one game icon, and no default")
+	var status_slot := Cosmetics.icon_slot("burn")
+	Cosmetics._unlocked["burn/burn_brutal_orchestra"] = "game:brutal_orchestra"
+	assert_false(Cosmetics.options(status_slot).has(""), "a status's basic picture is out too")
+	Cosmetics._unlocked.erase("difficulty/heat_hades")
+	Cosmetics._unlocked.erase("burn/burn_brutal_orchestra")
+
 func test_a_run_start_rolls_random_again() -> void:
 	Cosmetics._unlocked["difficulty/heat_hades"] = "game:hades"
 	Cosmetics.set_icon("difficulty", Cosmetics.RANDOM)
@@ -673,11 +687,30 @@ func test_a_status_is_its_basic_icon_until_its_games_is_worn() -> void:
 	Cosmetics.set_icon("burn", "")
 
 func test_the_icons_tab_has_a_row_for_every_status() -> void:
-	var screen := CustomizeScreen.open(self, 2)
+	var screen := CustomizeScreen.open(self, CustomizeScreen.TAB_ICONS, CustomizeScreen.ICON_SUB_STATUSES)
 	await wait_frames(2)
 	for st in Data.all_statuses():
 		var row: Node = screen.find_child("Kind_%s" % String((st as StatusData).id), true, false)
 		assert_not_null(row, "%s has a row" % (st as StatusData).display_name)
+	screen.queue_free()
+
+# THE ICONS TAB'S SUB-TABS (the owner, 24 Nov 2026): Symbols and Statuses, each its
+# own page, in a bar that only the Icons tab shows.
+func test_the_icons_tab_splits_into_symbols_and_statuses() -> void:
+	var screen := CustomizeScreen.open(self, CustomizeScreen.TAB_ICONS)
+	await wait_frames(2)
+	var bar: Control = screen.find_child("SubTabs", true, false)
+	assert_true(bar.visible, "the Icons tab shows its sub-tabs")
+	assert_eq(bar.get_child_count(), CustomizeScreen.ICON_SUBS.size())
+	assert_not_null(screen.find_child("Kind_key", true, false), "Symbols first: the keys")
+	assert_null(screen.find_child("Kind_poison", true, false), "and no status on that page")
+	(screen.find_child("IconSub1", true, false) as Button).pressed.emit()
+	await wait_frames(2)
+	assert_not_null(screen.find_child("Kind_poison", true, false), "Statuses: poison")
+	assert_null(screen.find_child("Kind_key", true, false), "and no symbol on that page")
+	(screen.find_child("Tab0", true, false) as Button).pressed.emit()
+	await wait_frames(1)
+	assert_false(bar.visible, "another tab has no sub-tabs")
 	screen.queue_free()
 
 # THE TIMER (the owner, 22 Nov 2026): the basic ⏱ until Mewgenics' stopwatch is
