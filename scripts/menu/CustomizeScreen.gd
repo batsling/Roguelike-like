@@ -23,6 +23,12 @@ const TILE := 64
 const LETTER_TILE := 40
 const TABS := ["Characters", "Hats", "Icons", "Title Letters"]
 const TAB_LETTERS := 3
+const TAB_ICONS := 2
+# THE ICONS TAB'S SUB-TABS (the owner, 24 Nov 2026: "add some sub-tabs for the
+# customization screen to make it look cleaner"): the symbols (🗝 ✸ 🏆 …) on one
+# page and the eight statuses on the other, rather than nineteen rows in one scroll.
+const ICON_SUBS := ["Symbols", "Statuses"]
+const ICON_SUB_STATUSES := 1
 # How big the Hats tab draws each player in what they have on.
 const HAT_PREVIEW := 150
 const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
@@ -32,13 +38,18 @@ const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck"
 	"health": "♥", "damage": "⚔", "gold": "◉", "shield": "🛡", "hunger": "🍗", "timer": "⏱"}
 
 var _tab := 0
+var _icon_sub := 0
 var _tab_buttons: Array[Button] = []
 var _body: VBoxContainer
 var _status: Label
+# The sub-tab row, between the status line and the scroll so it never scrolls
+# away; empty and hidden on a tab with no sub-tabs.
+var _sub_bar: HBoxContainer
 
-static func open(parent: Node, tab: int = 0) -> CustomizeScreen:
+static func open(parent: Node, tab: int = 0, icon_sub: int = 0) -> CustomizeScreen:
 	var s := CustomizeScreen.new()
 	s._tab = tab
+	s._icon_sub = icon_sub
 	parent.add_child(s)
 	return s
 
@@ -114,6 +125,11 @@ func _build_shell() -> void:
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vbox.add_child(_status)
 
+	_sub_bar = HBoxContainer.new()
+	_sub_bar.name = "SubTabs"
+	_sub_bar.add_theme_constant_override("separation", UITheme.GAP)
+	vbox.add_child(_sub_bar)
+
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -130,10 +146,14 @@ func _refresh() -> void:
 	for c in _body.get_children():
 		_body.remove_child(c)
 		c.queue_free()
+	for c in _sub_bar.get_children():
+		_sub_bar.remove_child(c)
+		c.queue_free()
+	_sub_bar.visible = _tab == TAB_ICONS
 	match _tab:
 		0: _build_characters()
 		1: _build_hats()
-		2: _build_icons()
+		TAB_ICONS: _build_icons()
 		_: _build_letters()
 
 func _say(text: String) -> void:
@@ -301,7 +321,12 @@ static func hat_tiles(pl: PlayerData, side: int, on_change: Callable) -> Array:
 # --- icons --------------------------------------------------------------------------
 
 func _build_icons() -> void:
-	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; a set of several changes with the chest's size. A Health icon is your heart and every enemy's. A status icon is drawn wherever that status is shown.")
+	_fill_icon_sub_tabs()
+	if _icon_sub == ICON_SUB_STATUSES:
+		_say("A status icon is drawn wherever that status is shown: on you, on an enemy, on its hover card and on the checklist.")
+		_build_status_icons()
+		return
+	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; a set of several changes with the chest's size. A Health icon is your heart and every enemy's.")
 	for kind in CosmeticCatalog.KINDS:
 		var block := VBoxContainer.new()
 		block.name = "Kind_%s" % kind
@@ -321,7 +346,21 @@ func _build_icons() -> void:
 			none.custom_minimum_size = Vector2(0, TILE)
 			none.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			row.add_child(none)
-	_build_status_icons()
+
+# The Icons tab's sub-tab buttons, smaller than the tabs above them.
+func _fill_icon_sub_tabs() -> void:
+	for i in ICON_SUBS.size():
+		var b := Button.new()
+		b.name = "IconSub%d" % i
+		b.text = ICON_SUBS[i]
+		b.toggle_mode = true
+		b.button_pressed = i == _icon_sub
+		b.custom_minimum_size = Vector2(0, 30)
+		b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+		b.pressed.connect(func() -> void:
+			_icon_sub = i
+			_refresh())
+		_sub_bar.add_child(b)
 
 # STATUSES (the owner, 22 Nov 2026): one row each, its BASIC icon as the default
 # tile (the glyph art, StatusData.image) and every game picture earned for it. A
@@ -332,7 +371,6 @@ func _build_status_icons() -> void:
 	statuses.sort_custom(func(a, b): return a.display_name < b.display_name)
 	if statuses.is_empty():
 		return
-	_body.add_child(_heading("Statuses"))
 	for st in statuses:
 		var status: StatusData = st
 		var kind := String(status.id)
@@ -340,7 +378,7 @@ func _build_status_icons() -> void:
 		block.name = "Kind_%s" % kind
 		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 		_body.add_child(block)
-		block.add_child(_dim(status.display_name))
+		block.add_child(_heading(status.display_name))
 		var row := HFlowContainer.new()
 		row.add_theme_constant_override("h_separation", UITheme.GAP)
 		row.add_theme_constant_override("v_separation", UITheme.GAP)
@@ -378,6 +416,8 @@ static func slot_tiles(slot_key: String, default_tex: Texture2D, default_glyph: 
 	var out: Array = []
 	var rolled: Dictionary = Cosmetics.costume_or_icon(slot_key) if chosen == Cosmetics.RANDOM else {}
 	var random_tip := "Random — a different one every run, from the default and every look unlocked here."
+	if slot_key.begins_with("icon:"):
+		random_tip = "Random — a different one every run, from every game's icon unlocked here (the default only while none is)."
 	if chosen == Cosmetics.RANDOM:
 		random_tip += "\nThis run: %s" % (String(rolled["name"]) if not rolled.is_empty() else "the default")
 	var r := tile(null, "🎲", chosen == Cosmetics.RANDOM, false, false, random_tip,

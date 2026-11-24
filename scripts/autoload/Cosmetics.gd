@@ -36,6 +36,9 @@ var _games_off: Dictionary = {}    # game id -> true
 # RANDOM (the owner, 8 Nov 2026): a slot worn as RANDOM shows `_rolled[slot]`, rolled
 # afresh at the start of every run (GameLoop2.start_run -> roll_random) among the
 # default and every unlocked look that fits it. "" in `_rolled` is the default.
+# An ICON slot rolls only icons from games (the owner, 24 Nov 2026: "Random
+# customization should not include base icons ... only things that are not from
+# video games"); its default is in the draw only while nothing is unlocked.
 const RANDOM := "random"
 var _rolled: Dictionary = {}       # slot key -> unit key or ""
 # NEW LOOKS GLOW (the owner, 8 Nov 2026: "similar to how new letters do"): a look
@@ -250,7 +253,9 @@ func _choose(slot_key: String, key: String) -> void:
 	_save()
 	changed.emit()
 
-# The looks a slot can roll: the default ("") and every unlocked look that fits.
+# The looks a slot can roll: the default ("") and every unlocked look that fits —
+# except an ICON slot, whose default (the basic glyph or status picture) is not
+# from a game and is rolled only when no game icon is unlocked for it.
 func options(slot_key: String) -> Array:
 	var parts := slot_key.split(":")
 	var pool: Array = []
@@ -260,10 +265,12 @@ func options(slot_key: String) -> Array:
 		pool = CosmeticCatalog.hats()
 	else:
 		pool = CosmeticCatalog.icons_of(parts[1])
-	var out: Array = [""]
+	var out: Array = [] if parts[0] == "icon" else [""]
 	for e in pool:
 		if is_unlocked(String(e["key"])):
 			out.append(String(e["key"]))
+	if out.is_empty():
+		out.append("")
 	return out
 
 func _roll(slot_key: String) -> void:

@@ -9,7 +9,7 @@ and characters, and every choice is saved per profile
 |---|---|
 | **Characters** | each character's **icon** and **full portrait**, chosen separately |
 | **Hats** | what each **player** (Retro Bat, Batsaac) wears on its head (§7) |
-| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield), ⏱ (anything temporary), and each **status**'s icon (§4) |
+| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield), ⏱ (anything temporary), and each **status**'s icon (§4), on two sub-tabs: **Symbols** and **Statuses** |
 | **Title Letters** | which earned letters the main menu's title may be spelled from |
 
 ## 1. Earning: a rank is a song, a letter or a look
@@ -128,7 +128,10 @@ Luck, chest, Health, damage, gold or shield icon) offers:
 - **Default:** the character's own art, or the glyph.
 - **🎲 Random:** a different look every run, rolled at `GameLoop2.start_run`
   (`Cosmetics.roll_random`) from the default and every unlocked look that fits.
-  The roll is saved, so the menu shows what this run wears; its tooltip names it.
+  **An icon's Random leaves the default out** (the owner, 24 Nov 2026: "only
+  things that are not from video games" are excluded): it rolls only game icons,
+  and falls back to the glyph only while none is unlocked (`Cosmetics.options`).
+  A costume's and a hat's Random still roll the default. The roll is saved, so the menu shows what this run wears; its tooltip names it.
 - **Every look** that fits. A **locked** one is its own picture as a black
   silhouette, like the Collection's unseen entries, with where it comes from on
   the hover.
@@ -211,8 +214,9 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   games. **Draw a status with
   `Cosmetics.status_art(status)`, never `status.image`**: the board's pips, the
   checklist rows and buff strip, the enemy card, the inventory, the hover card
-  (`StatusData.hover_card`) and the OBS overlay all do. The Icons tab lists them
-  under **Statuses**, the basic icon as each row's default tile.
+  (`StatusData.hover_card`) and the OBS overlay all do. The Icons tab's
+  **Statuses** sub-tab lists them, the basic icon as each row's default tile
+  (`CustomizeScreen.open(parent, TAB_ICONS, ICON_SUB_STATUSES)` opens on it).
 - **The timer is ⏱, written AND drawn** (the owner, 22 Nov 2026): the badge in
   the corner of anything temporary (`UITheme.timed_art`: a borrowed status, a
   shield that expires with the game) and the ⏱ in "⏱ This game only.". Its basic
