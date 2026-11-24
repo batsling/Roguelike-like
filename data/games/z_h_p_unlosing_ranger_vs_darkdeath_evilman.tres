@@ -17,5 +17,5 @@ item_pool = Array[StringName]([])
 special_effects = PackedStringArray()
 cover_path = "res://images2.0/games/z-h-p-unlosing-ranger-vs-darkdeath-evilman.png"
 owned = true
-file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Z.H.P. Unlosing Ranger VS Darkdeath Evilman.lnk"
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\ZHP Unlosing Ranger vs. Darkdeath Evilman.url"
 steam_page = "https://store.steampowered.com/app/1732070/ZHP_Unlosing_Ranger_vs_Darkdeath_Evilman/"
