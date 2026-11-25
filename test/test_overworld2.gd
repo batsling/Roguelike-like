@@ -10471,8 +10471,10 @@ func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
 	Page.dismiss_event(_ui)
 
 func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
-	_reboot(&"zoe")
-	var dash_before: int = GameState.dash_charges
+	# Minä, whose level-up pays a verb and nothing else (Zoe's did until 25 Nov
+	# 2026, when it became a chest), so "not taken" is one number that did not move.
+	_reboot(&"min")
+	var transmute_before: int = GameState.transmute
 	_pick_enemies(0)
 	if _ui._levelup_check == null:
 		pending("the run did not put a level-up row on the report")
@@ -10480,7 +10482,7 @@ func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
 	_tick(_ui._levelup_check)
 	_ui._levelup_check.button_pressed = false      # thought better of it
 	Page.report_beat(_ui)
-	assert_eq(GameState.dash_charges, dash_before,
+	assert_eq(GameState.transmute, transmute_before,
 		"a row you took back is a row you did not claim")
 	_ui._end_resolve()
 	Page.leave_post_game(_ui)

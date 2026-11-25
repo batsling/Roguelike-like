@@ -511,7 +511,8 @@ static func aim_phrase(aim: String, column: int = 0, bounce: int = 0) -> String:
 static func area_words(area: String) -> String:
 	var low: String = area.to_lower()
 	match low:
-		"cell":
+		# The owner writes one square as 1x1 since 25 Nov 2026; `cell` still reads.
+		"cell", "1x1":
 			return "single square"
 		"row", "col", "column", "cross":
 			return low

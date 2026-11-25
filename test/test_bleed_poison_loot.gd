@@ -37,7 +37,7 @@ func test_rusty_razor_is_one_square_at_the_front_on_two_charges() -> void:
 	assert_eq(w.size, Vector2i.ONE, "1x1")
 	assert_eq(w.max_charges, 2)
 	assert_eq(w.aim, "front", "the leftmost column")
-	assert_eq(w.area, "cell", "one square of it")
+	assert_eq(w.area, "1x1", "one square of it (the owner's 1x1, 25 Nov 2026)")
 	assert_eq(w.goal, "Defeat an enemy with a rusty weapon")
 	assert_eq(w.source_game, "Mewgenics")
 	assert_eq(w.statuses, {"poison": 1, "bleed": 1})
