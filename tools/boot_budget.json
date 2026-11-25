@@ -16,13 +16,13 @@
  },
  "data/bosses2.0/": {
   "eager_art_kb": 0,
-  "files": 64,
-  "kb": 40
+  "files": 65,
+  "kb": 42
  },
  "data/cards2.0/": {
   "eager_art_kb": 0,
-  "files": 47,
-  "kb": 28
+  "files": 62,
+  "kb": 39
  },
  "data/characters2.0/": {
   "eager_art_kb": 2033,
@@ -31,8 +31,8 @@
  },
  "data/curses2.0/": {
   "eager_art_kb": 0,
-  "files": 13,
-  "kb": 8
+  "files": 14,
+  "kb": 9
  },
  "data/enemies2.0/": {
   "eager_art_kb": 0,
@@ -41,8 +41,8 @@
  },
  "data/events2.0/": {
   "eager_art_kb": 0,
-  "files": 27,
-  "kb": 49
+  "files": 34,
+  "kb": 59
  },
  "data/evolutions2.0/": {
   "eager_art_kb": 0,
@@ -51,13 +51,13 @@
  },
  "data/games/": {
   "eager_art_kb": 0,
-  "files": 1259,
-  "kb": 1124
+  "files": 1274,
+  "kb": 1138
  },
  "data/items2.0/": {
-  "eager_art_kb": 1420,
-  "files": 99,
-  "kb": 67
+  "eager_art_kb": 1553,
+  "files": 109,
+  "kb": 74
  },
  "data/locations/": {
   "eager_art_kb": 0,
@@ -66,7 +66,7 @@
  },
  "data/mechanics/": {
   "eager_art_kb": 0,
-  "files": 3,
+  "files": 4,
   "kb": 2
  },
  "data/objects2.0/": {
@@ -105,9 +105,9 @@
   "kb": 1550
  },
  "data/statuses2.0/": {
-  "eager_art_kb": 112,
-  "files": 9,
-  "kb": 9
+  "eager_art_kb": 103,
+  "files": 10,
+  "kb": 10
  },
  "data/tiles2.0/": {
   "eager_art_kb": 57,
@@ -116,8 +116,8 @@
  },
  "data/trinkets2.0/": {
   "eager_art_kb": 0,
-  "files": 28,
-  "kb": 18
+  "files": 33,
+  "kb": 22
  },
  "data/units2.0/": {
   "eager_art_kb": 10,
@@ -131,7 +131,7 @@
  },
  "data/weapons2.0/": {
   "eager_art_kb": 0,
-  "files": 14,
-  "kb": 10
+  "files": 18,
+  "kb": 13
  }
 }

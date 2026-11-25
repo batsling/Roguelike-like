@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_seeking_edge"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"seeking_edge"
+display_name = "Seeking Edge"
+rarity = "Rare"
+source_game = "Slay the Spire 2"
+set_name = "Regent Rare"
+description = "Sovereign Blade hits the whole row. Use once: Forge 1 (the card stays)"
+effect = [{"op": "forge", "value": 1}]
+file = "SeekingEdge"
+icon = "Slay_The_Spire_2_Regent_Rare"
+loot_type = "Passive"
+tags = PackedStringArray("regent")
+passive = true
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_area = {"sovereign_blade": "row"}
+use_once = true

@@ -532,8 +532,15 @@ func all_weapons() -> Array:
 	return _weapons.values()
 
 # One random weapon, weighted by rarity on the shared ladder — roll_trinket's twin.
+# Never a weapon whose rarity is N/A (WeaponData.is_findable): Sovereign Blade is
+# made by the Regent's start and by Forge, and by nothing that rolls.
 func roll_weapon(rng: RandomNumberGenerator = null) -> WeaponData:
-	return _roll_by_rarity(_weapons.values(), rng)
+	return _roll_by_rarity(_weapons.values().filter(func(w): return w.is_findable()), rng)
+
+# One of `pool` (any content resources with a `rarity`), rarity-weighted and leaned
+# by the location like every other roll — GameState.roll_tagged_loot_entry's.
+func roll_from_pool(pool: Array, rng: RandomNumberGenerator = null) -> Variant:
+	return _roll_by_rarity(pool, rng)
 
 # --- Evolutions (docs/loot-passives.md §13) ---------------------------------
 func all_evolutions() -> Array:

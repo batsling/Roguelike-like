@@ -1207,7 +1207,7 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	# copying a piece you USE (and so wears a Use button), and how far along an
 	# enemy-defeat trigger is (docs/loot-passives.md §2, §11).
 	var extras: Dictionary = {"rot": int(entry.get("rot", 0))}
-	if not LootPassives.usable_copy(index).is_empty():
+	if not LootPassives.usable_copy(index).is_empty() or LootSystem.has_once_use(entry):
 		extras["usable"] = true
 	var progress: Dictionary = LootPassives.kill_progress(index)
 	if not progress.is_empty():

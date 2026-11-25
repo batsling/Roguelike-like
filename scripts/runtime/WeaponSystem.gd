@@ -556,6 +556,19 @@ static func push_vector(w: WeaponData) -> Vector2i:
 			return GameLoop2.PUSH_DOWN
 	return GameLoop2.PUSH_BACK
 
+# The AREA this piece swings with right now: its own, unless a held rule names it
+# (Seeking Edge's `weapon_area sovereign_blade row`, CardData.weapon_area). Read off
+# every working passive, so a Blueprint copying Seeking Edge does it too.
+static func area_of(entry) -> String:
+	var w: WeaponData = def(entry)
+	if w == null:
+		return "cell"
+	for row in LootPassives.active():
+		var wa = row["def"].get("weapon_area")
+		if wa is Dictionary and (wa as Dictionary).has(String(w.id)):
+			return String(wa[String(w.id)])
+	return w.area
+
 # The squares a swing aimed at `cell` hits (its `area` from there, clipped).
 #
 # A RAY's area is laid at EVERY enemy the line strikes rather than at the square
@@ -568,7 +581,7 @@ static func hit_cells(entry, cell: Vector2i) -> Array:
 	if w == null:
 		return []
 	if w.aim != "ray":
-		return GameLoop2.area_cells(cell, w.area)
+		return GameLoop2.area_cells(cell, area_of(entry))
 	return ray_hit_cells(w, RayAim.trace(cell, w.bounce))
 
 static func ray_hit_cells(w: WeaponData, path: Dictionary) -> Array:

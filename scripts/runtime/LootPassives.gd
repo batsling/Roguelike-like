@@ -530,7 +530,7 @@ static func every_for(trig: Dictionary, row: Dictionary) -> int:
 # THE COUNTED HOOKS A SQUARE SHOWS, and what one tick of each is called. A
 # defeated enemy is a CHARGE (food, Guilty); a finished game is a GAME (ETHEREAL,
 # docs/loot-passives.md §18 — Clumsy leaves after 3).
-const COUNTED_HOOKS := {"enemy_killed": "charge", "game_beaten": "game"}
+const COUNTED_HOOKS := {"enemy_killed": "charge", "game_beaten": "game", "game_won": "game"}
 
 static func kill_progress(index: int) -> Dictionary:
 	for row in active():

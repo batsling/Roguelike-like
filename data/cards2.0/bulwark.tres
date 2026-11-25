@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_bulwark"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"bulwark"
+display_name = "Bulwark"
+rarity = "Uncommon"
+source_game = "Slay the Spire 2"
+set_name = "Regent Uncommon"
+description = "Gain +3 Temporary Shield and Forge 2"
+effect = [{"op": "gain_stat", "stat": "shields", "value": 3}, {"op": "forge", "value": 2}]
+file = "Bulwark"
+icon = "Slay_The_Spire_2_Regent_Uncommon"
+loot_type = "Usable"
+tags = PackedStringArray("regent")
+upgrade_types = PackedStringArray("shield")

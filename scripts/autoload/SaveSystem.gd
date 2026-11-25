@@ -182,6 +182,7 @@ func _build_payload() -> Dictionary:
 		"current_game_id": String(GameState.current_game_id),
 		"start_game_id": String(GameState.start_game_id),
 		"start_gear_given": GameState.start_gear_given,
+		"pending_start_choices": GameState.pending_start_choices.duplicate(true),
 		"amulet_game_id": String(GameState.amulet_game_id),
 		"visited_games": _stringnames_to_strings(GameState.visited_games),
 		"path_taken": _stringnames_to_strings(GameState.path_taken),
@@ -423,6 +424,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	# A save from before starting gear existed is a run already under way: it has
 	# had its opening, and loading it must not pay a kit it never asked for.
 	GameState.start_gear_given = bool(data.get("start_gear_given", true))
+	var choices = data.get("pending_start_choices", [])
+	GameState.pending_start_choices = (choices as Array).duplicate(true) \
+		if choices is Array else []
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))
 	# A save from before pinning was removed may still carry `route_waypoint`;
 	# it is simply not read.

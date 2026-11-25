@@ -126,6 +126,14 @@ extends Resource
 # (stun, shield, charge, potion, loot, destroy — LootUpgrade.grows). Empty: the
 # card cannot be upgraded, and is never found unidentified (docs/loot-passives.md §19).
 @export var upgrade_types: PackedStringArray = PackedStringArray()
+# A HELD rule that changes one weapon's swing AREA, {weapon id: area}: Seeking
+# Edge's `weapon_area sovereign_blade row` (WeaponSystem.area_of). Passive cards only.
+@export var weapon_area: Dictionary = {}
+# A PASSIVE card that can also be USED, once (Seeking Edge: "a card that is
+# passive, but has a use that doesn't get rid of the card"). Its `effect` is that
+# use; the pack entry is marked `used_once` when it is pressed and the card stays
+# (LootSystem.use_loot, LootSystem.has_once_use).
+@export var use_once: bool = false
 
 
 func is_passive() -> bool:

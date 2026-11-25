@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Forge, the Sovereign Blade and Zoe's Courier's Board (25 Nov 2026).** The
+  owner's upload changed four characters, Burning Blood, six boss footprints and the
+  weapons' `cell` areas (now `1x1`), and added the Entomancer boss; the goals it
+  typed into owner sheets (Zoe's "Successfully deliver something", Entomancer's
+  "Oneshot a bug 7 times") were carried up into `goals`. Burning Blood's "+ 5%
+  Health" became +2 Health (asked: "just make it +2 health"). New: **Courier's
+  Board** (Haste), Zoe's starting relic, +1 Dash for every 2 games perfected and
+  counted on the relic; **Sovereign Blade**, an N/A-rarity weapon only the Regent's
+  start and Forge make; **Forge** (`Forge.gd`: a first forge makes the blade at
+  1 + N Stun, later ones upgrade it); and the Regent's cards **Wrought in War**,
+  **Bulwark**, **Seeking Edge** (a passive card with one use, and the blade hits the
+  whole row) and **Furnace** (Forge 1 every second game won). The upload's new
+  loadout words work too: the Manager's "1 random Coin Loot" and Zagreus's "Choose
+  1 of 3 Random Weapons", asked on the drop screen in a new pick-one mode.
+  docs/loot-passives.md §22.
+
 - **Icons: sub-tabs, and Random without the glyph (24 Nov 2026).** The owner:
   "make sure Random customization should not include base icons", "only things
   that are not from video games", and "add some sub-tabs for the customization

@@ -53,6 +53,12 @@ var start_game_id: StringName = &""
 # the moment the first game is committed, saved with the run, so a save loaded
 # after the start never pays it a second time.
 var start_gear_given: bool = false
+# A CHARACTER'S STARTING CHOICE still to be asked (CharacterData.starting_loot's
+# `choose`, Zagreus's "Choose 1 of 3 Random Weapons"): each entry is an Array of
+# rolled pack entries, one of which the player keeps. Rolled at run start by
+# grant_starting_loot, asked as the first game is set up (Overworld2.
+# _offer_start_choices), saved with the run until then.
+var pending_start_choices: Array = []
 # Whether starting gear is paid at all. Always on in the game; the GUT suite turns
 # it off in `test/pre_run_hook.gd`, because a random chest or weapon riding on
 # whichever genre card 0 rolled is noise in every test that is not about the kit,
@@ -1560,6 +1566,7 @@ func reset_run() -> void:
 	current_game_id = &""
 	start_game_id = &""
 	start_gear_given = false
+	pending_start_choices.clear()
 	amulet_game_id = &""
 	visited_games.clear()
 	path_taken.clear()
@@ -1827,21 +1834,75 @@ func grant_starting_loot(char_data: CharacterData) -> void:
 				"pill": add_pill_loot(id)
 				"bag": add_bag_loot(id)
 			continue
+		# A CHOICE ("Choose 1 of 3 Random Weapons"): `count` different pieces rolled
+		# now, asked about when the first game is set up (pending_start_choices).
+		if spec.has("choose"):
+			var offer: Array = []
+			var ids: Array = []
+			for _try in range(maxi(1, int(spec.get("count", 3))) * 10):
+				if offer.size() >= maxi(1, int(spec.get("count", 3))):
+					break
+				var pick: Dictionary = _roll_start_entry(kind, String(spec.get("tag", "")))
+				if pick.is_empty() or ids.has(pick.get("id")):
+					continue
+				ids.append(pick.get("id"))
+				offer.append(pick)
+			if not offer.is_empty():
+				pending_start_choices.append(offer)
+			continue
 		for _i in range(maxi(1, int(spec.get("count", 1)))):
-			var entry: Dictionary = CardSystem.roll_card_loot(null, String(spec["tag"])) \
-				if kind == "card" and spec.has("tag") else roll_loot_entry(kind)
+			var entry: Dictionary = _roll_start_entry(kind, String(spec.get("tag", "")))
 			if entry.is_empty():
 				continue
-			if kind == "wand":
+			var got: String = String(entry.get("type", kind))
+			if got == "wand":
 				WandSystem.ensure_materials()
-			if kind == "potion":
+			if got == "potion":
 				PotionSystem.ensure_colors()
-			if kind == "bag":
+			if got == "bag":
 				auto_place_bag(entry)
 				continue
 			loot_items.append(_seated(entry))
 			_note_loot_gained(loot_items[-1])
 	emit_signal("inventory_changed")
+
+# One rolled piece for a starting loadout: `kind` is a loot kind or "loot" (any
+# kind), `tag` narrows it to pieces whose sheet row carries that tag ("1 random
+# joker card", the Manager's "1 random Coin Loot"). {} when nothing qualifies.
+func _roll_start_entry(kind: String, tag: String) -> Dictionary:
+	if tag == "":
+		return roll_loot_entry(kind)
+	if kind == "card":
+		return CardSystem.roll_card_loot(null, tag)
+	return roll_tagged_loot_entry(tag, kind)
+
+# A piece of loot whose sheet row is tagged `tag`, of `kind` ("loot" for any kind
+# that has tags: trinkets, cards, weapons, bags), rarity-weighted over everything
+# that qualifies. A weapon no roll may find (Sovereign Blade) and a curse never do.
+func roll_tagged_loot_entry(tag: String, kind: String = "loot") -> Dictionary:
+	var pool: Array = []
+	var any: bool = kind == "loot"
+	if any or kind == "trinket":
+		pool.append_array(Data.all_trinkets())
+	if any or kind == "card":
+		pool.append_array(Data.all_cards().filter(func(c): return not c.is_curse()))
+	if any or kind == "weapon":
+		pool.append_array(Data.all_weapons().filter(func(w): return w.is_findable()))
+	if any or kind == "bag":
+		pool.append_array(Data.all_bags())
+	pool = pool.filter(func(d):
+		var tags = d.get("tags")
+		return tags is PackedStringArray and (tags as PackedStringArray).has(tag))
+	if pool.is_empty():
+		return {}
+	var def: Resource = Data.roll_from_pool(pool)
+	if def is WeaponData:
+		return WeaponSystem.new_entry(def)
+	if def is CardData:
+		return WeaponSystem.roll_new({"type": "card", "id": def.id, "rarity": def.rarity})
+	if def is BagData:
+		return {"type": "bag", "id": def.id, "rarity": def.rarity}
+	return {"type": "trinket", "id": def.get("id"), "rarity": def.get("rarity")}
 
 # Clears the bookkeeping that tracks item-granted bonuses and instance ids.
 # Shared by reset_run() and apply_character() so the two can't drift apart.

@@ -93,7 +93,10 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# A PASSIVE CARD IS NEVER PLAYED (docs/loot-passives.md §1) — it works from its
 	# slot and has no Use button. Refused here as well, so an echo or a copy that
 	# reached one through some other door does nothing rather than "spending" it.
-	if card.is_passive():
+	#
+	# EXCEPT A PASSIVE CARD'S ONE USE (Seeking Edge, CardData.use_once), which
+	# LootSystem.use_loot plays with `once_use` set and only while it is unspent.
+	if card.is_passive() and not (card.use_once and bool(ctx.get("once_use", false))):
 		return out
 	var rng: RandomNumberGenerator = ctx.get("rng")
 	# An ATTACK card's Stun is what Envenom answers (`enemy_stunned`), so the play
@@ -202,6 +205,11 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 				"candidates": copyable_items()})
 		"spawn_boss":
 			_spawn_boss(out)
+		"forge":
+			# Wrought in War, Bulwark, Seeking Edge's use (Forge.gd has the rule).
+			var line: String = Forge.forge(int(effect.get("value", 1)))
+			if line != "":
+				out["logs"].append(line + ".")
 		_:
 			push_warning("CardSystem: unknown effect op '%s'" % op)
 

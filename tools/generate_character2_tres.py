@@ -30,7 +30,11 @@ Starting loadout -> comma-separated things the run opens holding. Each is
           — or `N random [<tag>] <kind>` ("1 random joker card",
           "1 random wand"), which is rolled at run start as {type, count[,
           tag]}. A name no sheet has is a refusal. (The column was `Starting
-          items` and is still read under that name.)
+          items` and is still read under that name.) `loot` is any kind, so
+          "1 random Coin Loot" is a piece of any kind tagged `coin`. And
+          `Choose 1 of N Random [<tag>] <kind>s` rolls N different pieces and
+          asks which ONE to keep as the first game is set up ({type, count,
+          choose: 1[, tag]}, Zagreus).
 
 Art resolves from the File column (§10.1, matching the enemy/item sheets): the
 full portrait from images2.0/characters/Full/<File>.png and the round in-world
@@ -202,8 +206,17 @@ def string_name_array(ids) -> str:
 LOADOUT_SHEETS = {"weapon": "weapons", "trinket": "trinkets", "card": "cards",
                   "wand": "wands", "scroll": "scrolls", "potion": "potions",
                   "pill": "pills", "bag": "bags"}
+# `loot` is any kind (the Manager's "1 random Coin Loot": a piece of any kind whose
+# row is tagged `coin`, GameState.roll_tagged_loot_entry).
+RANDOM_KINDS = "|".join(list(LOADOUT_SHEETS) + ["loot"])
 RANDOM_LOOT_RE = re.compile(
-    r"^(\d+)\s+random\s+(?:([a-z_ ]+?)\s+)?(%s)s?$" % "|".join(LOADOUT_SHEETS), re.I)
+    r"^(\d+)\s+random\s+(?:([a-z_ ]+?)\s+)?(%s)s?$" % RANDOM_KINDS, re.I)
+# "Choose 1 of 3 Random Weapons" (Zagreus, 25 Nov 2026): N different pieces rolled
+# at run start, ONE kept — asked on the drop screen as the first game is set up
+# (GameState.pending_start_choices). Only 1 is a choice the screen can ask.
+CHOOSE_LOOT_RE = re.compile(
+    r"^choose\s+(\d+)\s+of\s+(\d+)\s+random\s+(?:([a-z_ ]+?)\s+)?(%s)s?$" % RANDOM_KINDS,
+    re.I)
 
 
 def _norm(name) -> str:
@@ -218,6 +231,17 @@ def parse_loadout(name, raw, catalog):
     """
     items, loot = [], []
     for term in [t.strip() for t in _clean(raw).split(",") if t.strip()]:
+        m = CHOOSE_LOOT_RE.match(term)
+        if m:
+            keep, of = int(m.group(1)), int(m.group(2))
+            if keep != 1 or of < 2:
+                raise ValueError("character %r: %r — a starting choice is `Choose 1 of N` "
+                                 "with N of 2 or more" % (name, term))
+            entry = {"type": m.group(4).lower(), "count": of, "choose": 1}
+            if m.group(3):
+                entry["tag"] = m.group(3).strip().lower().replace(" ", "_")
+            loot.append(entry)
+            continue
         m = RANDOM_LOOT_RE.match(term)
         if m:
             entry = {"type": m.group(3).lower(), "count": int(m.group(1))}
@@ -243,7 +267,8 @@ def parse_loadout(name, raw, catalog):
                 break
         else:
             raise ValueError("character %r: Starting loadout %r is not a relic, a piece "
-                             "of loot by name, or `N random [tag] <kind>`" % (name, term))
+                             "of loot by name, `N random [tag] <kind>` or `Choose 1 of N "
+                             "random [tag] <kind>s`" % (name, term))
     return items, loot
 
 

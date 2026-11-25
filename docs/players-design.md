@@ -116,7 +116,10 @@ run still opens with every verb at 0.
   Manager's "+1 Push", Minä's "+1 Transmute" and Zoe's "+1 Dash". Minä's and
   Zoe's rewards were nothing but a verb, which left their level-ups paying
   nothing, and the owner refilled both the next day with the verb they had.
-  Isaac's and the Manager's stay as they were left (a chest, gold).
+  Isaac's and the Manager's stay as they were left (a chest, gold). On 25 Nov the
+  owner gave the Manager his Push back ("+1 Gold and +1 Push") and moved Zoe's
+  Dash onto her starting relic, the Courier's Board, her level-up paying a
+  Medium Chest instead (docs/loot-passives.md §22).
 - `generate_character2_tres.py` reads a verb in a Reward into `level_up_stats`
   again (`STAT_VERBS`); `GameState.apply_level_up_stats` pays it.
 - **The Erratic Deck's challenge** ("Beat a game while having selected a random

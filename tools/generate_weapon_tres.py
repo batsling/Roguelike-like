@@ -192,7 +192,10 @@ def parse_type(raw, name):
 def weapon_tres(row) -> tuple:
     name = str(row["Name"]).strip()
     wid = slugify(name)
-    rarity = _clean(row.get("Rarity")) or "Common"
+    # N/A IS A RARITY HERE, not a blank: a weapon no roll can find — Sovereign
+    # Blade, which only the Regent's start and a Forge make (WeaponData.is_findable).
+    raw_rarity = str(row.get("Rarity") or "").strip()
+    rarity = "N/A" if raw_rarity.upper() == "N/A" else (_clean(raw_rarity) or "Common")
     w, h = parse_size(row.get("Size"), name)
     aim, aim_col, aim_bounce = parse_aim(row.get("Aim"), name)
     area = check_area(row.get("Area"), name)
@@ -208,7 +211,8 @@ def weapon_tres(row) -> tuple:
     passive_text = _clean(row.get("Passive Effect"))
     passive = items.parse_loot_passive(name, passive_text, allow_empty=True)
     if (passive["copy_neighbour"] or passive["bank_shields"] or passive["echo_first_loot"]
-            or passive["harmless_statuses"] or passive["gold_debt"]):
+            or passive["harmless_statuses"] or passive["gold_debt"]
+            or passive["weapon_area"]):
         raise ValueError("weapon %r: copy_right / bank_shields / echo_first_loot / "
                          "harmless_status "
                          "are not weapon passives" % name)

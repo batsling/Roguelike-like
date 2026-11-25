@@ -1099,3 +1099,66 @@ takes any trinket id.
 
 The art is the Backpack Hero wiki's original sprites (`Brick.png`,
 `Brickwall.png`, `Roof.png`, `Masonry_Tools.png`). Tests: `test/test_structures.gd`.
+
+## 22. Forge — the Regent's Sovereign Blade
+
+**The owner, 25 Nov 2026:** "lets add Sovereign Blade as a wide two square tiled
+weapon that does 1 stun … the only way to gain it is to start with regent or to use
+a card that has 'forge' on it. forge will work similarly to how it does in sts,
+where if you don't have a Sovereign Blade then you create one with 1 stun, but
+further forges will add stun."
+
+**The blade** is a `weapons` row: Slay the Spire 2, 1x2 (two wide), Aim `front`,
+Area `1x2` (the first two squares of the row), `stun 1`, goal "Forge a blade",
+3 charges, the card's full ART rather than the card (`images2.0/weapons/
+SovereignBlade.png`, cropped 2:1 from the wiki's `-Art` file). Its Rarity is
+**N/A**, which the weapon generator keeps as a word and `WeaponData.is_findable`
+reads as *never rolled*: no drop, chest, shop, starting kit or tagged roll finds
+it (`Data.roll_weapon`, `GameState.roll_tagged_loot_entry`). The Regent's
+`Starting loadout` names it.
+
+**Forge N** (`scripts/runtime/Forge.gd`, the one rule):
+
+- **No blade in the pack** → a new one is made, EMPTY like any weapon, with
+  **1 + N** Stun (asked, the owner chose "1 + the forge": Bulwark's Forge 2 with no
+  blade makes a 3-Stun blade). Into the pack where it fits, else offered on the drop
+  screen (`GameState.offer_loot_entries`). Never rolled unidentified — it is made.
+- **A blade in the pack** → +N Stun on every one, as an UPGRADE (§19's
+  `stun_bonus`), so it wears "+N", saves, swings and evolves with it.
+
+What carries Forge — the card op `forge N` (`CardSystem`) and the relic-grammar
+verb `forge N` (`EffectSystem._h_forge`):
+
+| Card | Rarity | Kind | Does |
+|---|---|---|---|
+| **Wrought in War** | Common | Usable, attack | Stun 1, Forge 1 |
+| **Bulwark** | Uncommon | Usable | +3 Temporary Shield, Forge 2 |
+| **Seeking Edge** | Rare | Passive **with one use** | held: the blade's area is the whole ROW (`weapon_area sovereign_blade row`, `WeaponSystem.area_of`); used once: Forge 1, and the card stays |
+| **Furnace** | Uncommon | Passive | `game_won every=2: forge 1` — a game WON, counted on the card |
+
+All four are tagged `regent` and ride the ordinary card pool, so a run that is not
+the Regent's can forge a blade too. Their faces are the wiki's cards; their backs
+are the Ironclad backs recoloured to the Regent's orange
+(`images2.0/cards_icons/Slay_The_Spire_2_Regent_*.png`). Wrought in War and
+Seeking Edge are each alone in their deck, the trade Echo Form already made
+(`test_card_system.gd`'s `LONELY_DECKS`).
+
+**A PASSIVE CARD WITH ONE USE** is new with Seeking Edge (the owner: "a card that is
+passive, but has a use that doesn't get rid of the card"; asked, *once ever*). The
+sheet writes it as a `once:` clause in the passive's Effect, in the card grammar:
+`weapon_area sovereign_blade row; once: forge 1`. It compiles to `effect` plus
+`use_once = true`; the pack draws a Use button while `LootSystem.has_once_use` says
+so, and `LootSystem.use_loot` plays it, marks the entry `used_once` and leaves the
+card in its slot. It stands outside the copies (Echo Form, Echo Chamber), as a
+weapon's swing does.
+
+**Two starting-loadout words came in the same upload** (`generate_character2_tres.py`):
+`N random [<tag>] Loot` — any kind of loot whose row carries the tag (the
+Manager's "1 random Coin Loot", `GameState.roll_tagged_loot_entry`) — and
+`Choose 1 of N Random [<tag>] <kind>s` (Zagreus's three weapons): N different
+pieces rolled at run start into `GameState.pending_start_choices` (saved), asked as
+the first game is set up (`Overworld2._offer_start_choices`) on the drop screen in
+PICK-ONE mode (`LootDropModal`'s `pick_one`, `DropQueue.offer_choice`): the first
+piece taken or used answers it, and the rest are left behind.
+
+Tests: `test/test_forge.gd`.
