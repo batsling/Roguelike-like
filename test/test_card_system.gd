@@ -36,7 +36,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 45, "the sheet's 45 rows all generated")
+	assert_eq(cards.size(), 49, "the sheet's 49 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -46,11 +46,14 @@ func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 		assert_ne(card.description, "", "%s prints what it does" % card.id)
 		# A PASSIVE CARD does its something from the pack rather than when played
 		# (docs/loot-passives.md), so what it carries is a passive, not an effect.
+		# …EXCEPT ITS ONE USE (Seeking Edge, CardData.use_once), which is its effect.
 		if card.is_passive():
-			assert_true(card.effect.is_empty(), "%s has nothing to play" % card.id)
+			assert_eq(card.effect.is_empty(), not card.use_once,
+				"%s has nothing to play, unless it has its one use" % card.id)
 			assert_true(not card.triggers.is_empty() or card.copy_neighbour != ""
 				or not card.stat_bonuses.is_empty() or not card.status_bonuses.is_empty()
-				or card.bank_shields or card.echo_first_loot > 0 or card.gold_debt > 0,
+				or card.bank_shields or card.echo_first_loot > 0 or card.gold_debt > 0
+				or not card.weapon_area.is_empty(),
 				"%s does something from the pack" % card.id)
 			continue
 		assert_false(card.effect.is_empty(), "%s does something" % card.id)
@@ -151,8 +154,13 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # one-card decks of its own. Sorted the way GDScript sorts: capital T first.
 # The Silent's poison cards (22 Nov 2026) gave Prepared and Finisher company, so
 # the Silent Common and Uncommon decks no longer name their card face down.
+# The Regent's Forge cards (25 Nov 2026) wear the game's flat-bottomed backs, one
+# per rarity like the Ironclad's: Bulwark and Furnace share Uncommon, and Wrought
+# in War and Seeking Edge are each alone in theirs — Echo Form's trade again.
 const LONELY_DECKS := [
 	"Isaac_MTG_Cards",                  # Ancient Recall
+	"Slay_The_Spire_2_Regent_Common",   # Wrought in War
+	"Slay_The_Spire_2_Regent_Rare",     # Seeking Edge
 	"Slay_The_Spire_Defect_Common",     # Stack
 	"Slay_The_Spire_Defect_Uncommon",   # Bullseye
 	"Slay_the_Spire_Defect_Rare",       # Echo Form

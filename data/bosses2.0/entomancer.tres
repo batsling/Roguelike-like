@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://boss_entomancer"]
+
+[ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
+
+[resource]
+script = ExtResource("1_enemy")
+id = &"entomancer"
+display_name = "Entomancer"
+game_type = &"deckbuilder"
+difficulty = 1
+boss = true
+source_game = "Slay the Spire 2"
+health = 1
+damage = 5
+goal_type = &"bounty"
+goal = "Oneshot a bug 7 times"
+goal_count = 7
+tag = &"bug"
+size = "2x2"
+shape_rows = 2
+shape_cols = 2
+shape_mask = PackedInt32Array(3, 3)
+file = "Entomancer"
+image_path = "res://images2.0/bosses/Entomancer.png"

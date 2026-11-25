@@ -102,6 +102,7 @@ func _register_defaults() -> void:
 	register("chance", _h_chance)
 	register("one_of", _h_one_of)
 	register("counter", _h_counter)
+	register("forge", _h_forge)
 	register("reroll_enemies", _h_reroll_enemies)
 	register("teleport_type", _h_teleport_type)
 	register("obtain_item", _h_obtain_item)
@@ -1022,6 +1023,12 @@ func _h_smelt(_effect: Dictionary, ctx: Dictionary) -> void:
 # What an effect that moves no run resource did, for the trigger's toast (see
 # GameState._end_trigger_report). Resource changes are read off the run and need
 # no line here.
+# `forge N` — Slay the Spire 2's Forge (Furnace): the rule is Forge.gd's.
+func _h_forge(effect: Dictionary, ctx: Dictionary) -> void:
+	var line: String = Forge.forge(int(effect.get("value", 1)))
+	if line != "":
+		_did(ctx, line)
+
 func _did(ctx: Dictionary, line: String) -> void:
 	var lines: Array = ctx.get("did", [])
 	lines.append(line)

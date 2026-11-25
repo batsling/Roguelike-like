@@ -55,7 +55,7 @@ func test_burning_blood_heals_on_game_beaten() -> void:
 	GameState.max_hp = 10
 	GameState.hp = 5
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
-	assert_eq(GameState.hp, 6, "Burning Blood: +1 Health after beating a game")
+	assert_eq(GameState.hp, 7, "Burning Blood: +2 Health after beating a game")
 
 func test_meat_on_the_bone_heals_only_when_low() -> void:
 	Fixtures.give(self, &"meat_on_the_bone")

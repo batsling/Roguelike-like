@@ -388,6 +388,15 @@ func on_loot_offered(entries: Array) -> void:
 	queue.append({"loot": entries.duplicate(true)})
 	pump()
 
+# A CHOICE of loot rather than a grant: take one, the rest are left (Zagreus's
+# "Choose 1 of 3 Random Weapons", GameState.pending_start_choices). Always its own
+# modal — a choice is not a payout to pile onto a haul screen's table.
+func offer_choice(entries: Array) -> void:
+	if GameLoop2.run_over or entries.is_empty():
+		return
+	queue.append({"loot": entries.duplicate(true), "pick_one": true})
+	pump()
+
 # ---------------------------------------------------------------------------
 # Asking, one at a time
 # ---------------------------------------------------------------------------
@@ -439,7 +448,8 @@ func open_next() -> void:
 		# effect cannot land right now fizzles rather than being refused. The flag
 		# stays on the call because this screen must not assume the rule — the day
 		# something else CAN forbid a use, it comes in here.
-		var loot_modal := LootDropModal.open(_page, drop["loot"], true)
+		var loot_modal := LootDropModal.open(_page, drop["loot"], true,
+			bool(drop.get("pick_one", false)))
 		modal = loot_modal
 		# `taken` is what ended up in the pack. THE SCREEN PLACES ITS OWN takes
 		# (§4.3): with several offers, and uses and bins interleaved between them,

@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3 uid="uid://weapon2_sovereign_blade"]
+
+[ext_resource type="Script" path="res://scripts/resources/WeaponData.gd" id="1_weapon"]
+
+[resource]
+script = ExtResource("1_weapon")
+id = &"sovereign_blade"
+display_name = "Sovereign Blade"
+rarity = "N/A"
+size = Vector2i(2, 1)
+aim = "front"
+aim_column = 0
+bounce = 0
+area = "1x2"
+stun = 1
+push_dir = ""
+push = 0
+weapon_type = "melee"
+goal = "Forge a blade"
+max_charges = 3
+description = "Only made by Forge: each Forge after the first gives it +1 Stun"
+triggers = []
+stat_bonuses = {}
+status_bonuses = {}
+weapon_stun = {}
+stun_per_food = {}
+replay_gain = {}
+weapon_retrigger = {}
+source_game = "Slay the Spire 2"
+tags = PackedStringArray("sword")
+file = "SovereignBlade"

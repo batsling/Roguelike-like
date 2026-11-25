@@ -10471,8 +10471,10 @@ func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
 	Page.dismiss_event(_ui)
 
 func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
-	_reboot(&"zoe")
-	var dash_before: int = GameState.dash_charges
+	# Minä, whose level-up pays a verb and nothing else (Zoe's did until 25 Nov
+	# 2026, when it became a chest), so "not taken" is one number that did not move.
+	_reboot(&"min")
+	var transmute_before: int = GameState.transmute
 	_pick_enemies(0)
 	if _ui._levelup_check == null:
 		pending("the run did not put a level-up row on the report")
@@ -10480,8 +10482,53 @@ func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
 	_tick(_ui._levelup_check)
 	_ui._levelup_check.button_pressed = false      # thought better of it
 	Page.report_beat(_ui)
-	assert_eq(GameState.dash_charges, dash_before,
+	assert_eq(GameState.transmute, transmute_before,
 		"a row you took back is a row you did not claim")
+	_ui._end_resolve()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
+
+# ZOE'S COURIER'S BOARD COUNTS ITSELF (the owner, 25 Nov 2026: "this is something
+# that should be checked automatically"). There is no row to tick: a game reported
+# beaten with no lost run logged on the visit fires `game_perfected`
+# (GameLoop2.attempts() == 0), and the board's counter moves on its own.
+func _couriers_board() -> ItemData:
+	for it in GameState.inventory:
+		if it is ItemData and (it as ItemData).id == &"couriers_board":
+			return it
+	return null
+
+# Perfect games counted so far: two per Dash the board has paid, plus its count.
+# (The opening game the run is stood past already counts, so the board can be
+# part way — or roll over and pay — on the game a test reports.)
+func _courier_progress(board: ItemData) -> int:
+	return GameState.dash_charges * 2 + int(board.counter_value)
+
+func test_the_couriers_board_counts_a_perfect_game_by_itself() -> void:
+	_reboot(&"zoe")
+	var board: ItemData = _couriers_board()
+	assert_not_null(board, "Zoe opens with the Courier's Board")
+	_pick_enemies(0)
+	var before: int = _courier_progress(board)
+	Page.report_beat(_ui)
+	assert_eq(_courier_progress(board), before + 1,
+		"a game won with no lost run is a perfect game, counted with nothing ticked")
+	_ui._end_resolve()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
+
+func test_the_couriers_board_does_not_count_a_game_with_a_lost_run() -> void:
+	_reboot(&"zoe")
+	var board: ItemData = _couriers_board()
+	_pick_enemies(0)
+	_ui.log_attempt()
+	_ui._end_resolve()
+	if GameLoop2.run_over:
+		pending("the lost run ended the run before the report")
+		return
+	var before: int = _courier_progress(board)
+	Page.report_beat(_ui)
+	assert_eq(_courier_progress(board), before, "a lost run on the visit is not a perfect game")
 	_ui._end_resolve()
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)

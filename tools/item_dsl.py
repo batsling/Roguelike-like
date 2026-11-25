@@ -541,6 +541,16 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     if verb == "remove_self":
         return {"type": "remove_self"}
 
+    # `forge N` — Slay the Spire 2's Forge (docs/loot-passives.md §22): +N Stun on
+    # every Sovereign Blade in the pack, or a new blade of 1 + N Stun when there is
+    # none (scripts/runtime/Forge.gd). Furnace's `game_won every=2: forge 1`.
+    if verb == "forge":
+        rest, _ = _kv(toks[1:])
+        nums = [int(x) for x in rest if re.match(r"^\d+$", x)]
+        if not nums or nums[0] < 1:
+            raise ValueError("item DSL: forge wants an amount of 1 or more in %r" % raw)
+        return {"type": "forge", "value": nums[0]}
+
     # `place_in_row <trinket_id>` — a NEW piece of that trinket lands in a random
     # empty cell of the row the firing piece sits in (Masonry Tools' Brick,
     # docs/loot-passives.md §21). A full row is nothing.
@@ -1140,6 +1150,15 @@ def parse_item(row):
             # Shields it left standing into Shields (docs/loot-passives.md §8).
             fields["bank_shields"] = True
             last_trigger = None
+        elif kl0 == "weapon_area":
+            # Seeking Edge, held: one weapon's swing covers a different AREA —
+            # `weapon_area sovereign_blade row` (WeaponSystem.area_of). A card's
+            # rule, like gold_debt.
+            mm = re.match(r"weapon_area\s+([a-z0-9_]+)\s+(\S+)$", kl)
+            if not mm:
+                raise ValueError("item DSL: weapon_area wants <weapon id> <area> in %r" % clause)
+            fields.setdefault("weapon_area", {})[mm.group(1)] = mm.group(2)
+            last_trigger = None
         elif kl0 == "gold_debt":
             # Credit Card, held: shop purchases may take Gold down to -N
             # (GameState.gold_debt_limit). Copies add up.
@@ -1323,7 +1342,7 @@ def parse_item(row):
 LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour",
                        "bank_shields", "echo_first_loot", "gold_debt", "weapon_stun",
                        "stun_per_food", "charge_bonus_chance", "replay_gain",
-                       "weapon_retrigger", "harmless_statuses")
+                       "weapon_retrigger", "harmless_statuses", "weapon_area")
 # Everything parse_item always emits whatever the Effect said, so never a refusal.
 _ROW_FIELDS = ("id", "display_name", "kind", "rarity", "description", "max_uses",
                "card_grants", "stat_multipliers", "scaling")
@@ -1342,7 +1361,7 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
         raise ValueError("%s: a loot passive cannot author %s — only triggers, "
                          "passive:, passive_status:, copy_right, bank_shields, "
                          "echo_first_loot, gold_debt, weapon_stun, stun_per_food, "
-                         "replay_on_use, weapon_retrigger, harmless_status "
+                         "replay_on_use, weapon_retrigger, harmless_status, weapon_area "
                          "and charge_bonus "
                          "reach the pack "
                          "(docs/loot-passives.md §3)" % (name, ", ".join(sorted(extra))))
@@ -1360,7 +1379,8 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
             "charge_bonus_chance": float(out.get("charge_bonus_chance", 0.0)),
             "replay_gain": out.get("replay_gain", {}),
             "weapon_retrigger": out.get("weapon_retrigger", {}),
-            "harmless_statuses": out.get("harmless_statuses", [])}
+            "harmless_statuses": out.get("harmless_statuses", []),
+            "weapon_area": out.get("weapon_area", {})}
 
 
 def _split_head(clause):

@@ -22,7 +22,8 @@ func test_manager_levels_gold() -> void:
 	var manager: CharacterData = Data.get_character2(&"manager")
 	assert_not_null(manager, "manager.tres should load from data/characters2.0")
 	assert_eq(manager.source_game, "Raccoin: Coin Pusher Roguelike")
-	assert_eq(manager.level_up_stats, {"gold": 1}, "level-up pays +1 Gold and no verb")
+	assert_eq(manager.level_up_stats, {"gold": 1, "push": 1},
+		"level-up pays +1 Gold and +1 Push (the owner, 25 Nov 2026)")
 	assert_eq(manager.level_up_condition, "Beat a game while having collected 3 different types of currency")
 
 # --- a character gives no stats (docs/players-design.md §3) ------------------
@@ -45,16 +46,22 @@ func test_a_level_up_pays_only_what_the_run_can_apply() -> void:
 				"transmute", "scramble", "bombs", "keys"],
 				"%s's level-up pays Max Health, gold or a verb, not %s" % [ch.display_name, k])
 
-# The owner's Reward cells of 14 Nov 2026: a verb and nothing else.
-func test_mina_and_zoe_level_up_into_a_verb() -> void:
+# The owner's Reward cells of 14 Nov 2026: a verb and nothing else. (Zoe's was a
+# Dash too until 25 Nov 2026, when her Dash moved onto the Courier's Board and her
+# level-up became a Medium Chest — test_forge.gd has the board.)
+func test_mina_levels_up_into_a_verb() -> void:
 	var mina: CharacterData = Data.get_character2(&"min")
 	assert_eq(mina.level_up_stats, {"transmute": 1}, "Gain +1 Transmute")
-	var zoe: CharacterData = Data.get_character2(&"zoe")
-	assert_eq(zoe.level_up_stats, {"dash": 1}, "Gain +1 Dash")
-	assert_eq(String(zoe.level_up_reward_type), "none", "the verb is the whole reward")
-	GameLoop2.start_run(zoe)
+	assert_eq(String(mina.level_up_reward_type), "none", "the verb is the whole reward")
+	GameLoop2.start_run(mina)
 	GameState.grant_level_up()
-	assert_eq(GameState.dash_charges, 1, "and the level pays it")
+	assert_eq(GameState.transmute, 1, "and the level pays it")
+
+func test_zoe_levels_up_into_a_medium_chest() -> void:
+	var zoe: CharacterData = Data.get_character2(&"zoe")
+	assert_eq(String(zoe.level_up_reward_type), "item", "Medium Chest -> item reward")
+	assert_eq(zoe.level_up_reward_chest_choices, 2, "Medium -> pick 1 of 2")
+	assert_true(zoe.starting_items.has(&"couriers_board"), "and her Dash is the board's now")
 
 func test_isaac_starting_loadout() -> void:
 	var isaac: CharacterData = Data.get_character2(&"isaac")
@@ -875,7 +882,7 @@ func test_game_beaten_fires_burning_blood_heal() -> void:
 	GameState.hp = 5
 	GameState.inventory.append(Data.get_item2(&"burning_blood"))
 	TriggerBus.emit_signal("game_beaten", {"game_id": "test"})
-	assert_eq(GameState.hp, 6, "Burning Blood heals +1 after beating a game")
+	assert_eq(GameState.hp, 7, "Burning Blood heals +2 after beating a game")
 
 func test_game_selected_fires_anchor_shield() -> void:
 	GameState.inventory.append(Data.get_item2(&"anchor"))
@@ -943,24 +950,24 @@ func test_levelling_up_on_a_card_reward_actually_pays_a_card() -> void:
 # `Overworld2._means_perfected` sets `GameState.last_game_perfected` off the
 # WORDING of the character's condition, because the condition has no
 # machine-readable side. That match was a bare `contains("perfect")` until the
-# goals were rewritten in one pass and Zoe's went from "Perfect a Game" to "Beat
-# a game without losing" — which contains no "perfect", errored nowhere, and
-# silently stopped setting the flag every perfect-aware relic hangs off.
+# goals were rewritten in one pass and a perfect wording was lost without a word.
 #
-# So the wording is pinned here. If a later pass over the `goals` sheet rewrites
-# Zoe's condition again, this fails and names the reason instead of the relic
-# quietly never firing.
+# Zoe's condition was the one it was for until 25 Nov 2026, when the owner made it
+# "Successfully deliver something" and moved perfection onto her Courier's Board,
+# which answers `game_perfected` — the VISIT's outcome, not any wording. So this
+# pins the matcher itself: a perfect wording still reads as one, and a goal that
+# is not one does not.
 # ===========================================================================
 
-func test_zoes_level_up_still_reads_as_a_perfected_game() -> void:
-	var zoe: CharacterData = Data.get_character2(&"zoe")
-	assert_not_null(zoe, "zoe.tres should load from data/characters2.0")
-	assert_false(zoe.level_up_condition.is_empty(), "Zoe has a condition")
+func test_a_perfect_wording_still_reads_as_a_perfected_game() -> void:
 	var page = preload("res://scripts/redesign2/Overworld2.gd").new()
-	assert_true(page._means_perfected(zoe.level_up_condition),
-		("Zoe's level-up is the perfect-game one, and the flag is set by matching "
-		+ "its wording — which reads \"%s\". Add the new wording to "
-		+ "Overworld2.PERFECTED_WORDINGS.") % zoe.level_up_condition)
+	assert_true(page._means_perfected("Perfect a game by beating it without losing"),
+		"the old wording still means a perfected game")
+	assert_true(page._means_perfected("Beat a game without losing"),
+		"and so does the goals pass's")
+	var zoe: CharacterData = Data.get_character2(&"zoe")
+	assert_false(page._means_perfected(zoe.level_up_condition),
+		"Zoe's delivery goal is not a perfected game any more")
 	# …and it is not so loose that every condition trips it, which would set the
 	# flag on characters who did nothing of the kind.
 	var manager: CharacterData = Data.get_character2(&"manager")

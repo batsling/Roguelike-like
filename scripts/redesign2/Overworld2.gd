@@ -1657,6 +1657,7 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	# The run's FIRST game hands over its genre's kit (GameState.START_GEAR) —
 	# from the panel or, on a custom run with none, from whatever card opened it.
 	_grant_start_gear_once(game)
+	_offer_start_choices()
 	# NIGHTMARE's copies, owed since the card was played: "next turn" is the next
 	# game, so they arrive as it starts, the way starting gear does.
 	_grant_nightmare_copies()
@@ -1711,6 +1712,19 @@ func _grant_start_gear_once(game: GameData) -> void:
 			_drops.queue.append(_drops.rolled_drop(items))
 			_drops.pump()
 	_refresh_items()
+
+# A CHARACTER'S STARTING CHOICE (GameState.pending_start_choices — Zagreus's
+# "Choose 1 of 3 Random Weapons"): asked as the first game is set up, on the drop
+# screen in pick-one mode, so the one taken lands in the pack and the rest go.
+# Not gated on starting gear: it is the character's loadout, not the genre's kit.
+func _offer_start_choices() -> void:
+	var choices: Array = GameState.pending_start_choices.duplicate(true)
+	GameState.pending_start_choices.clear()
+	for offer in choices:
+		if offer is Array and not (offer as Array).is_empty():
+			GameLog.add("Starting loadout: choose 1 of %d." % (offer as Array).size(),
+				UITheme.GOLD)
+			_drops.offer_choice(offer)
 
 # NIGHTMARE (Slay the Spire): the exact copies of the piece it destroyed, handed
 # over as the next game starts. Into the pack where they fit; the rest are asked

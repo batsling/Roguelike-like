@@ -91,6 +91,11 @@ var _body_scroll: ScrollContainer = null
 # page passes its own answer rather than this screen assuming one, so the rule
 # about when loot can be spent lives in one place.
 var _spendable: bool = true
+# PICK ONE (Zagreus's "Choose 1 of 3 Random Weapons", 25 Nov 2026): the table is a
+# choice, not a haul. The first offer TAKEN — or spent where it stands — answers
+# it, and the rest are left behind. Binning one is not a choice: the others stay.
+var _pick_one: bool = false
+var _picked: bool = false
 # EMBEDDED MODE. `_slot` is the container this payout is a section of, `_body` is
 # what it put there (rebuilt in place, taken down on the answer), and `_page_node`
 # is the overworld the use modal and the info card mount over — as a modal that is
@@ -172,9 +177,11 @@ func _init() -> void:
 # Entry point: mount over `host` and ask about one rolled entry, or about a whole
 # handful. A bare Dictionary is accepted so the single-payout call site — which is
 # nine drops in ten — reads the way it always has.
-static func open(host: Node, offer, spendable: bool = true) -> LootDropModal:
+static func open(host: Node, offer, spendable: bool = true,
+		pick_one: bool = false) -> LootDropModal:
 	var modal := LootDropModal.new()
 	modal._spendable = spendable
+	modal._pick_one = pick_one
 	modal._start(host, offer)
 	return modal
 
@@ -342,6 +349,9 @@ func _build() -> void:
 	# the pack needs and tells the reader nothing they are not looking at.
 	if _slot == null and _curse:
 		box.add_child(_line("☠  You are cursed", UITheme.CURSE, 18))
+	elif _slot == null and _pick_one:
+		box.add_child(_line("✦  Choose 1 of %d — the rest are left behind" % _offers.size(),
+			UITheme.TEXT_DIM, 15))
 	elif _slot == null:
 		box.add_child(_line("✦  The game paid out" if not multi
 			else "✦  The game paid out %d pieces" % _offers.size(), UITheme.TEXT_DIM, 15))
@@ -707,6 +717,7 @@ func _take_offer(entry: Dictionary, slot: int, offer: int) -> void:
 		return
 	_taken.append(entry.duplicate(true))
 	_forget_offer(offer, entry)
+	_picked = true
 	_after_change()
 
 func _take_all() -> void:
@@ -722,6 +733,9 @@ func _take_all() -> void:
 		if _can_take(entry) and GameState.take_loot_entry(entry):
 			_taken.append(entry.duplicate(true))
 			_offers.remove_at(i)
+			if _pick_one:
+				_picked = true
+				break
 			i = 0 if GameState.is_bag_entry(entry) else i
 			continue
 		i += 1
@@ -738,6 +752,7 @@ func _take_bag_offer(entry: Dictionary, origin: Vector2i, rot: int, offer: int) 
 		return
 	_taken.append(entry.duplicate(true))
 	_forget_offer(offer, entry)
+	_picked = true
 	_after_change()
 
 # An attached bag dragged onto the bin. It asks first, like a piece does.
@@ -782,6 +797,7 @@ func _use_offer(offer: int) -> void:
 	modal.finished.connect(func():
 		if spent[0]:
 			_forget_offer(offer, entry)
+			_picked = true
 		_after_change())
 	modal.start_entry(_page(), entry, _page())
 
@@ -842,6 +858,13 @@ func _discard_carried(index: int) -> void:
 func _after_change() -> void:
 	if _answered:
 		return
+	# A pick-one table is answered by its first take: the rest go (see `_pick_one`).
+	if _pick_one and _picked and not _offers.is_empty():
+		var left: Array = []
+		for e in _offers:
+			left.append(LootSystem.display_name(e))
+		GameLog.add("Left %s behind." % ", ".join(left), Color(0.8, 0.8, 0.8))
+		_offers.clear()
 	var page: Node = _page()
 	if page != null and page.has_method("_refresh_items"):
 		page._refresh_items()

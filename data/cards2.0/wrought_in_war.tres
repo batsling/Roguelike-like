@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_wrought_in_war"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"wrought_in_war"
+display_name = "Wrought in War"
+rarity = "Common"
+source_game = "Slay the Spire 2"
+set_name = "Regent Common"
+description = "Apply Stun 1 to an Enemy and Forge 1"
+effect = [{"op": "stun", "value": 1}, {"op": "forge", "value": 1}]
+file = "WroughtInWar"
+icon = "Slay_The_Spire_2_Regent_Common"
+loot_type = "Usable"
+tags = PackedStringArray("regent", "attack")
+upgrade_types = PackedStringArray("stun")

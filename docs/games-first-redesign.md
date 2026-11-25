@@ -253,10 +253,10 @@ made every goal say when it is answered (§7.7):
 |---|---|---|
 | Rodney | Beat a game without meta progression | +1 Max Health, +1 Loot |
 | Isaac | Beat a game while having used sorrow or self-inflicted pain as a weapon | +1 Small Chest |
-| Zoe | Perfect a game by beating it without losing | +1 Dash |
+| Zoe | Successfully deliver something | +1 Medium Chest |
 | Minä | Beat a game while having crafted or combined a spell or weapon | +1 Transmute |
 | Ironclad | Beat a game while having made a Faustian bargain | +1 Small Chest |
-| Manager | Beat a game while having collected 3 different types of currency | +1 Gold |
+| Manager | Beat a game while having collected 3 different types of currency | +1 Gold, +1 Push |
 | Regent | Beat a game while having made a friend | +1 Small Chest |
 | Zagreus | Beat a game with the help of a God | +1 Large Chest |
 | Poe Ratcho | Beat a game while being stinky | +1 Random Sized Chest |
@@ -285,18 +285,16 @@ How it already works in the project (to be kept):
 - **Crown** already exists as `bonus_level_up_chance` (roll an extra level-up);
   **Snowball** as `stat_gain_bonus` (+1 on a keyed stat gain). Both need only the
   new stat ids (transmute, bash, …) added.
-- **Zoe's is the perfected-game one** and feeds the `perfect_aware` /
-  `perfect_effects` verification path. It reads **"Perfect a game by beating it
-  without losing"**, and it is worded that way on purpose: the flag is set by
-  matching the condition's PROSE (`Overworld2._means_perfected`), because the
-  condition has no machine-readable side. The match used to be a bare
-  `contains("perfect")`, and the goals rewrite briefly took the word out — the
-  flag stopped being set, nothing errored, and the symptom would have been a
-  perfect-aware relic that never fires for the one character built around it.
-  The goal now carries BOTH wordings `PERFECTED_WORDINGS` looks for, so neither
-  is load-bearing alone, and `test_redesign2.gd` fails if a later pass drops
-  them both. Giving the condition a real field is the durable fix and is a
-  column on the sheet, not a change to make in passing.
+- **Zoe's WAS the perfected-game one** and fed the `perfect_aware` /
+  `perfect_effects` verification path, which sets its flag by matching the
+  condition's PROSE (`Overworld2._means_perfected`). On 25 Nov 2026 the owner made
+  her goal "Successfully deliver something" and moved perfection onto her starting
+  relic, the **Courier's Board** (+1 Dash for every 2 games perfected), which
+  answers the `game_perfected` hook — the visit's outcome, not any wording. No
+  relic is perfect-aware today; the matcher stays, pinned by `test_redesign2.gd`,
+  for the day a condition means a perfected game again. Giving the condition a
+  real field is the durable fix and is a column on the sheet, not a change to
+  make in passing.
 - Rewards draw from the same resource vocabulary as drops (Max Health, Dash,
   Transmute, Scroll, Small Chest — see §8.1 Chests).
 

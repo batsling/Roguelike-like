@@ -82,6 +82,19 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 	# Blueprint leaves the pack, and what resolves is a copy of its neighbour. The
 	# neighbour is untouched. A copied wand zaps once and the Blueprint is spent
 	# with it — it has no charges of its own to keep.
+	#
+	# AND A PASSIVE CARD WITH ONE USE (Seeking Edge, CardData.use_once): pressed
+	# once, it plays its `effect` and STAYS where it is, marked `used_once` so the
+	# button does not come back. Outside the copies, like a weapon's swing: an
+	# Echo Form or an Echo Chamber replaying it would be the once twice.
+	if has_once_use(entry):
+		(entry as Dictionary)["used_once"] = true
+		GameState.emit_signal("inventory_changed")
+		GameState.note_action()
+		var octx: Dictionary = ctx.duplicate()
+		octx["once_use"] = true
+		octx["card_slot"] = GameState.loot_slot_of(index)
+		return CardSystem.play_card((entry as Dictionary).duplicate(true), octx)
 	if LootPassives.is_passive(entry):
 		var copied: Dictionary = LootPassives.usable_copy(index)
 		if copied.is_empty():
@@ -271,6 +284,14 @@ func _echo_ctx(echo: Dictionary, ctx: Dictionary) -> Dictionary:
 	var out: Dictionary = ctx.duplicate()
 	out["target"] = Vector2i(int(at[0]), int(at[1]))
 	return out
+
+# Whether `entry` is a passive card whose one use is still unspent (Seeking Edge).
+func has_once_use(entry) -> bool:
+	if not (entry is Dictionary) or String(entry.get("type", "")) != "card" \
+			or bool(entry.get("used_once", false)):
+		return false
+	var card: CardData = Data.get_card(StringName(entry.get("id", "")))
+	return card != null and card.use_once and not card.effect.is_empty()
 
 # Is this piece the one kind that spends charges rather than slots? One reading of
 # the type, here rather than at each call site, so the exceptions a wand needs can
@@ -762,7 +783,7 @@ func weapon_description(entry: Dictionary, rich: bool = false) -> String:
 	var laid: String = parts[0] if parts.size() == 1 \
 		else "%s and %s" % [", ".join(parts.slice(0, parts.size() - 1)), parts[-1]]
 	var swing: String = "Swing: %s to every enemy in a %s, aimed %s." % [
-		laid, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)]
+		laid, WeaponSystem.area_words(WeaponSystem.area_of(entry)), WeaponSystem.aim_words(w)]
 	if w.aim == "ray":
 		# A ray's area is laid where the line strikes, not where it was aimed.
 		var reach: String = "it" if w.area == "cell" \

@@ -32,6 +32,14 @@ item_dsl.parse_loot_passive into the same four fields a trinket carries.
 Description no longer opens "Passive:" — the chip says it once, and the line is
 left to say what the card does. A Type other than Usable or Passive is refused.
 
+A PASSIVE CARD MAY ALSO BE USED ONCE (Seeking Edge, 25 Nov 2026: "a card that is
+passive, but has a use that doesn't get rid of the card"). Its Effect carries one
+clause opening `once:` — `weapon_area sovereign_blade row; once: forge 1` — and
+what follows the colon is written in THIS sheet's card grammar, not the relic
+one. It compiles to `effect` with `use_once = true`: the pack draws the card a Use
+button until it has been pressed once (the entry is marked `used_once`), and the
+card stays where it is either way (LootSystem.use_loot).
+
 Effect token DSL (semicolons separate clauses, as in every other sheet):
 
     gain_hp <n>                 -> {op:gain_hp, value:n}
@@ -58,6 +66,10 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
                                    destroy; n exact copies of it arrive at the
                                    start of the next game (Nightmare)
     charge_pick <n>             -> {op:charge_pick, value:n}   n charges into one thing
+    forge <n>                   -> {op:forge, value:n}  Slay the Spire 2's Forge: +n Stun
+                                   on every Sovereign Blade, or a new blade of 1 + n
+                                   Stun when the pack holds none (scripts/runtime/
+                                   Forge.gd, docs/loot-passives.md §22)
     exhume                      -> {op:exhume}         a destroyed piece back
     none                        -> nothing
 
@@ -103,6 +115,7 @@ OUT_DIR = os.path.join(PROJECT_ROOT, "data", "cards2.0")
 # stops at the wrong underscore. Same shape as PotionSystem.SOURCES, and here for
 # the same reason: the file name is content, not just a path.
 ICON_SOURCES = [
+    ("Slay_the_Spire_2", "Slay the Spire 2"),
     ("Slay_the_Spire", "Slay the Spire"),
     ("Balatro", "Balatro"),
     ("Isaac", "The Binding of Isaac"),
@@ -242,7 +255,7 @@ def parse_clause(s: str) -> list:
             raise ValueError("card effect DSL: gain_stat needs a stat and an amount in %r" % s)
         return [_with_per({"op": "gain_stat", "stat": bare[0], "value": int(bare[1])}, kv, s)]
 
-    if verb in ("lose_hp", "destroy_pick", "charge_pick", "nightmare"):
+    if verb in ("lose_hp", "destroy_pick", "charge_pick", "nightmare", "forge"):
         if not bare:
             raise ValueError("card effect DSL: %s needs an amount in %r" % (verb, s))
         return [{"op": verb, "value": int(bare[0])}]
@@ -381,9 +394,17 @@ def card_tres(row) -> tuple:
     loot_type = _clean(row.get("Type")) or "Usable"
     if loot_type not in ("Usable", "Passive"):
         raise ValueError("card %r: Type %r is not Usable or Passive" % (name, loot_type))
+    use_once = False
     if loot_type == "Passive":
-        passive = items.parse_loot_passive(name, _clean(row.get("Effect")))
-        effect = []
+        # A `once:` clause is the card's one Use (see the docstring); the rest is
+        # the passive, in the relic grammar.
+        held, once = [], []
+        for clause in [c.strip() for c in _clean(row.get("Effect")).split(";") if c.strip()]:
+            m = re.match(r"^once\s*:\s*(.+)$", clause, re.I)
+            (once if m else held).append(m.group(1) if m else clause)
+        passive = items.parse_loot_passive(name, "; ".join(held), allow_empty=bool(once))
+        effect = parse_effect("; ".join(once), name) if once else []
+        use_once = bool(once)
     else:
         effect = parse_effect(row.get("Effect"), name)
     file = on_disk("cards", _clean(row.get("Image")))
@@ -432,6 +453,10 @@ def card_tres(row) -> tuple:
             lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
         if passive["gold_debt"]:
             lines.append("gold_debt = %d" % passive["gold_debt"])
+        if passive["weapon_area"]:
+            lines.append("weapon_area = %s" % gd_value(passive["weapon_area"]))
+        if use_once:
+            lines.append("use_once = true")
         if passive["harmless_statuses"]:
             raise ValueError("card %r: harmless_status is a trinket's rule "
                              "(docs/loot-passives.md §17)" % name)

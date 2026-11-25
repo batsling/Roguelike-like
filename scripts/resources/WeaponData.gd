@@ -94,6 +94,13 @@ func rarity_index() -> int:
 	return RarityStyle.index_of(rarity)
 
 
+# Whether any roll can find it — a drop, a chest, a shop, a starting kit. N/A is
+# the sheet's word for a weapon only something specific makes (Sovereign Blade:
+# the Regent's start and Forge, scripts/runtime/Forge.gd).
+func is_findable() -> bool:
+	return rarity.strip_edges().to_upper() != "N/A"
+
+
 func art_file() -> String:
 	return file if file != "" else display_name.replace(" ", "").replace("'", "")
 

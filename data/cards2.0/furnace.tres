@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_furnace"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"furnace"
+display_name = "Furnace"
+rarity = "Uncommon"
+source_game = "Slay the Spire 2"
+set_name = "Regent Uncommon"
+description = "After every 2 games you beat, Forge 1"
+effect = []
+file = "Furnace"
+icon = "Slay_The_Spire_2_Regent_Uncommon"
+loot_type = "Passive"
+tags = PackedStringArray("regent")
+passive = true
+triggers = [{"on": "game_won", "every": 2, "effects": [{"type": "forge", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}
