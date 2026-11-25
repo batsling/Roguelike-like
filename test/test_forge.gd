@@ -101,8 +101,13 @@ func test_seeking_edge_makes_the_blade_hit_the_whole_row() -> void:
 
 func test_furnace_forges_after_every_second_game_won() -> void:
 	Fixtures.card(self, &"furnace", 0)
+	var idx: int = GameState.loot_index_at_slot(0)
+	assert_eq(LootPassives.kill_progress(idx).get("have", -1), 0, "its counter shows 0 / 2")
 	TriggerBus.game_won.emit({"game_id": &""})
 	assert_true(_blades().is_empty(), "one game won is not two")
+	var progress: Dictionary = LootPassives.kill_progress(idx)
+	assert_eq([progress.get("have"), progress.get("need")], [1, 2],
+		"and counts up: 1 / 2 (the incremental counter on the card)")
 	TriggerBus.game_won.emit({"game_id": &""})
 	assert_eq(_blades().size(), 1, "the second forges")
 	assert_eq(_stun(_blades()[0]), 2)

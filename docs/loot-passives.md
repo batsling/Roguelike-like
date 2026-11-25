@@ -1134,14 +1134,19 @@ verb `forge N` (`EffectSystem._h_forge`):
 | **Wrought in War** | Common | Usable, attack | Stun 1, Forge 1 |
 | **Bulwark** | Uncommon | Usable | +3 Temporary Shield, Forge 2 |
 | **Seeking Edge** | Rare | Passive **with one use** | held: the blade's area is the whole ROW (`weapon_area sovereign_blade row`, `WeaponSystem.area_of`); used once: Forge 1, and the card stays |
-| **Furnace** | Uncommon | Passive | `game_won every=2: forge 1` — a game WON, counted on the card |
+| **Furnace** | Uncommon | Passive | `game_won every=2: forge 1` — a game WON, counted on the card (its corner counter reads 0 / 2, 1 / 2; `LootPassives.COUNTED_HOOKS` has `game_won` for it) |
 
 All four are tagged `regent` and ride the ordinary card pool, so a run that is not
-the Regent's can forge a blade too. Their faces are the wiki's cards; their backs
-are the Ironclad backs recoloured to the Regent's orange
-(`images2.0/cards_icons/Slay_The_Spire_2_Regent_*.png`). Wrought in War and
-Seeking Edge are each alone in their deck, the trade Echo Form already made
-(`test_card_system.gd`'s `LONELY_DECKS`).
+the Regent's can forge a blade too. Their faces are the wiki's cards; their backs are the game's own,
+from the wiki's Regent page (`StS2_CardIcon_Regent_<Type>_<Rarity>.png` →
+`images2.0/cards_icons/Slay_The_Spire_2_Regent_*.png`, the owner's pointer). Slay
+the Spire 2 draws a back per type AND rarity, so each of the four is alone in its
+deck, the trade Echo Form already made (`test_card_system.gd`'s `LONELY_DECKS`).
+
+**Courier's Board counts itself.** Nothing is ticked for it: a game reported
+beaten with no lost run logged on the visit (`GameLoop2.attempts() == 0`) fires
+`game_perfected`, and the relic's counter moves (`test_overworld2.gd` drives the
+real report both ways).
 
 **A PASSIVE CARD WITH ONE USE** is new with Seeking Edge (the owner: "a card that is
 passive, but has a use that doesn't get rid of the card"; asked, *once ever*). The

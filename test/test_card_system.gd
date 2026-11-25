@@ -154,12 +154,15 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # one-card decks of its own. Sorted the way GDScript sorts: capital T first.
 # The Silent's poison cards (22 Nov 2026) gave Prepared and Finisher company, so
 # the Silent Common and Uncommon decks no longer name their card face down.
-# The Regent's Forge cards (25 Nov 2026) brought three Slay the Spire 2 decks, two
-# of them with one card each: the same trade as Echo Form's, taken the same way.
+# The Regent's Forge cards (25 Nov 2026) wear the game's own backs, which Slay the
+# Spire 2 draws per TYPE and rarity — so each of the four is alone in its deck: the
+# same trade as Echo Form's, taken the same way.
 const LONELY_DECKS := [
-	"Isaac_MTG_Cards",                  # Ancient Recall
-	"Slay_The_Spire_2_Regent_Common",   # Wrought in War
-	"Slay_The_Spire_2_Regent_Rare",     # Seeking Edge
+	"Isaac_MTG_Cards",                          # Ancient Recall
+	"Slay_The_Spire_2_Regent_Attack_Common",    # Wrought in War
+	"Slay_The_Spire_2_Regent_Power_Rare",       # Seeking Edge
+	"Slay_The_Spire_2_Regent_Power_Uncommon",   # Furnace
+	"Slay_The_Spire_2_Regent_Skill_Uncommon",   # Bulwark
 	"Slay_The_Spire_Defect_Common",     # Stack
 	"Slay_The_Spire_Defect_Uncommon",   # Bullseye
 	"Slay_the_Spire_Defect_Rare",       # Echo Form
