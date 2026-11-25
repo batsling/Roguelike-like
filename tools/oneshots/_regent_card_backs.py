@@ -3,8 +3,9 @@
 
 The owner, 25 Nov 2026, pointing at the Slay the Spire 2 wiki's Regent page:
 "there are regent card backs here". Slay the Spire 2 draws a back per TYPE and
-rarity (StS2_CardIcon_Regent_<Type>_<Rarity>.png), so each card gets its own and
-the recoloured Ironclad backs that stood in for them are gone.
+rarity (StS2_CardIcon_Regent_<Type>_<Rarity>.png); then "can you just use the
+flat bottom ones, that makes it simpler" — the SKILL backs, one per rarity, the
+way the Ironclad's decks already are. The recoloured stand-ins are gone.
 
     python3 tools/oneshots/_regent_card_backs.py
 """
@@ -18,10 +19,10 @@ from _xlsx_surgery import Workbook  # noqa: E402
 
 XLSX = os.path.join(TOOLS, "Roguelikes.xlsx")
 BACKS = {
-    "Wrought in War": "Slay_The_Spire_2_Regent_Attack_Common",
-    "Bulwark": "Slay_The_Spire_2_Regent_Skill_Uncommon",
-    "Seeking Edge": "Slay_The_Spire_2_Regent_Power_Rare",
-    "Furnace": "Slay_The_Spire_2_Regent_Power_Uncommon",
+    "Wrought in War": "Slay_The_Spire_2_Regent_Common",
+    "Bulwark": "Slay_The_Spire_2_Regent_Uncommon",
+    "Seeking Edge": "Slay_The_Spire_2_Regent_Rare",
+    "Furnace": "Slay_The_Spire_2_Regent_Uncommon",
 }
 
 

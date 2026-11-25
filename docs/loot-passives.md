@@ -1137,11 +1137,12 @@ verb `forge N` (`EffectSystem._h_forge`):
 | **Furnace** | Uncommon | Passive | `game_won every=2: forge 1` — a game WON, counted on the card (its corner counter reads 0 / 2, 1 / 2; `LootPassives.COUNTED_HOOKS` has `game_won` for it) |
 
 All four are tagged `regent` and ride the ordinary card pool, so a run that is not
-the Regent's can forge a blade too. Their faces are the wiki's cards; their backs are the game's own,
-from the wiki's Regent page (`StS2_CardIcon_Regent_<Type>_<Rarity>.png` →
-`images2.0/cards_icons/Slay_The_Spire_2_Regent_*.png`, the owner's pointer). Slay
-the Spire 2 draws a back per type AND rarity, so each of the four is alone in its
-deck, the trade Echo Form already made (`test_card_system.gd`'s `LONELY_DECKS`).
+the Regent's can forge a blade too. Their faces are the wiki's cards; their backs are the game's own flat-bottomed
+(Skill) backs from the wiki's Regent page, one per RARITY like the Ironclad's
+(`images2.0/cards_icons/Slay_The_Spire_2_Regent_<Rarity>.png`; the owner: "just
+use the flat bottom ones, that makes it simpler"). Wrought in War and Seeking Edge
+are each alone in their deck, the trade Echo Form already made
+(`test_card_system.gd`'s `LONELY_DECKS`).
 
 **Courier's Board counts itself.** Nothing is ticked for it: a game reported
 beaten with no lost run logged on the visit (`GameLoop2.attempts() == 0`) fires
