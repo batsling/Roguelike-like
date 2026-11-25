@@ -37,6 +37,13 @@ const PIECE_COUNT_MAX := 300
 # loot — so the screen reads as the run's furniture with the games falling through
 # it, rather than as a wall of box art.
 const COVER_SHARE := 0.3
+# Of those, about how many are the player's earned ICONS (the owner, 25 Nov 2026:
+# "a small percentage of the main screen"). Costumes and hats are still taken
+# whole like the characters, but there are ~400 icons against a small pool of
+# ~230, and taken whole they pushed nearly all the loot off the menu once a
+# profile had earned enough of them. They are drawn at random from the unlocked
+# ones each launch, up to this share of the pieces (`icon_pool`).
+const ICON_SHARE := 0.1
 
 # Draw sizes, in canvas pixels. A cover is drawn to its real 3:4; the small art
 # keeps its own aspect inside this box.
@@ -183,6 +190,12 @@ func cover_pool() -> int:
 func small_pool() -> int:
 	return ceili(piece_count() * (1.0 - COVER_SHARE) * SMALL_POOL_PER_SMALL)
 
+# How many icon pictures the small pool holds at most. A piece draws its picture
+# from the pool at random, so a pool share of ICON_SHARE / (1 - COVER_SHARE) puts
+# about ICON_SHARE of everything on screen.
+func icon_pool() -> int:
+	return ceili(piece_count() * ICON_SHARE * SMALL_POOL_PER_SMALL)
+
 var _rng := RandomNumberGenerator.new()
 var _pieces: Array[Dictionary] = []
 # [path, kind] still to decode, and the textures already decoded, by kind.
@@ -319,6 +332,9 @@ func _fill_queue() -> void:
 	# roster some nights and not others is just a bug nobody can reproduce.
 	var chars: Array = _character_jobs()
 	chars.append_array(_cosmetic_jobs())
+	var icons: Array = _icon_jobs()
+	icons.shuffle()
+	chars.append_array(icons.slice(0, icon_pool()))
 	_queue.clear()
 	_queue.append_array(chars)
 	_queue.append_array(seated)
@@ -473,15 +489,27 @@ func _seen_covers() -> Dictionary:
 	return out
 
 # THE LOOKS THE PLAYER HAS EARNED fall too (Customization): every unlocked
-# costume and icon, taken whole like the characters — they are about the player.
+# costume and hat, taken whole like the characters — they are about the player.
+# The ICONS are `_icon_jobs`, drawn down to their share rather than taken whole.
 func _cosmetic_jobs() -> Array:
 	var out: Array = []
 	for e in CosmeticCatalog.all_units():
-		if not Cosmetics.is_unlocked(String(e["key"])):
+		if String(e["unit"]) == "icon" or not Cosmetics.is_unlocked(String(e["key"])):
 			continue
 		for path in CosmeticCatalog.paths(e):
 			out.append({"path": path, "kind": Kind.SMALL,
 				"foot": CHARACTER_FOOT if String(e["unit"]) == "costume" else 1})
+	return out
+
+# Every picture of every UNLOCKED icon set (a Risk of Rain 2 difficulty set is
+# three), before `_fill_queue` draws them down to `icon_pool()`.
+func _icon_jobs() -> Array:
+	var out: Array = []
+	for e in CosmeticCatalog.all_units():
+		if String(e["unit"]) != "icon" or not Cosmetics.is_unlocked(String(e["key"])):
+			continue
+		for path in CosmeticCatalog.paths(e):
+			out.append({"path": path, "kind": Kind.SMALL, "foot": 1, "icon": true})
 	return out
 
 # Every distinct PNG in a folder.

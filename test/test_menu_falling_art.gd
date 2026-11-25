@@ -838,3 +838,42 @@ func test_curse_cards_fall_once_seen() -> void:
 		for job in g:
 			paths.append(String(job.get("path", "")))
 	assert_true(paths.has(MenuFallingArt.CURSE_DIR + "Clumsy.png"), "a seen curse falls")
+
+# EARNED ICONS ARE A SMALL SHARE OF THE MENU (the owner, 25 Nov 2026). With every
+# icon unlocked there are ~400 pictures against a small pool of ~230; taken whole,
+# as they used to be, they pushed the loot off the menu. They are drawn down to
+# `icon_pool()`, and the rest of the small art still gets its room.
+func test_unlocked_icons_are_only_a_small_share_of_the_pool() -> void:
+	var was := Settings.unlock_everything
+	Settings.unlock_everything = true
+	var all_icons: int = _art._icon_jobs().size()
+	_art._fill_queue()
+	Settings.unlock_everything = was
+	var icons: int = 0
+	var small: int = 0
+	for job in _art._queue:
+		if int(job.get("kind", MenuFallingArt.Kind.SMALL)) != MenuFallingArt.Kind.SMALL:
+			continue
+		small += 1
+		if bool(job.get("icon", false)):
+			icons += 1
+	assert_gt(all_icons, _art.icon_pool(), "more icons exist than the share holds")
+	assert_eq(icons, _art.icon_pool(), "the icons fill their share and no more")
+	var share: float = float(icons) / float(small + _art.cover_pool())
+	assert_almost_eq(share, MenuFallingArt.ICON_SHARE, 0.03, "about a tenth of the pieces")
+	_drain()
+
+func test_locked_icons_do_not_fall() -> void:
+	var was := Settings.unlock_everything
+	Settings.unlock_everything = false
+	var jobs: Array = _art._icon_jobs()
+	Settings.unlock_everything = was
+	for job in jobs:
+		var stem := String(job["path"]).get_file().get_basename()
+		var unlocked := false
+		for e in CosmeticCatalog.all_units():
+			if String(e["unit"]) == "icon" and CosmeticCatalog.paths(e).has(String(job["path"])):
+				unlocked = Cosmetics.is_unlocked(String(e["key"]))
+		assert_true(unlocked, "%s falls only once earned" % stem)
+	assert_true(_art._cosmetic_jobs().all(func(j): return not bool(j.get("icon", false))),
+		"costumes and hats stay apart from the icons")
