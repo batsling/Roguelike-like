@@ -395,6 +395,8 @@ func _shared_art() -> Dictionary:
 		# them alike on purpose, so the two rows are read in one glance and a
 		# shield never claims a rank over a status it does not have.
 		"shield": _texture_url(Cosmetics.shield_art()),
+		# A shield set can draw the Temporary Shield apart (Cosmetics.shield_art).
+		"shield_temp": _texture_url(Cosmetics.shield_art(true)),
 	}
 
 # `get_character2`: the roster the run is actually dealt from

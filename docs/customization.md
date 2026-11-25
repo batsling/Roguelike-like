@@ -185,7 +185,13 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   `UITheme.SHIELD_ART`, which is that same glyph drawn once by
   `tools/build_shield_art.py`. **Draw a shield with `Cosmetics.shield_art()`,
   never `UITheme.SHIELD_ART` directly.** The pixel shield that used to be the
-  default is Brutal Orchestra's icon to earn.
+  default is Brutal Orchestra's icon to earn. **A shield set can split the two
+  pools** (the owner, 25 Nov 2026): its range is the POOL, as a chest set's is
+  the chest's size — `_0-0` the Shield that stays, `_1-1` the Temporary Shield
+  (Cobalt Core's Shield and Temp Shield are one unlock). A site drawing a
+  temporary shield asks for `Cosmetics.shield_art(true)` (the board's timed pips,
+  the offering's "Gain +N Temporary Shields", the overlay's `shield_temp`); a set
+  of one picture draws it for both.
 - **Hunger is only ever drawn**, five to the bar in the header for a player with
   Hunger (`docs/players-design.md` §4): `Cosmetics.hunger_art()`, the worn Hunger
   icon, else `UITheme.HUNGER_ART` — the 🍗 glyph drawn once in Hunger's amber by

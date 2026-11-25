@@ -205,6 +205,34 @@
 			]
 		},
 		{
+			"id": "key/iron_key_barony",
+			"kind": "key",
+			"name": "Iron Key",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Iron Key",
+					"path": "res://images2.0/icons/Keys/Iron_Key_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_crypt_of_the_necrodancer",
+			"kind": "key",
+			"name": "Key",
+			"game": "crypt_of_the_necrodancer",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Crypt_of_the_NecroDancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "key/key_enter_the_gungeon",
 			"kind": "key",
 			"name": "Key",
@@ -269,6 +297,20 @@
 				{
 					"name": "Key",
 					"path": "res://images2.0/icons/Keys/Key_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/silver_key_barony",
+			"kind": "key",
+			"name": "Silver Key",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Silver Key",
+					"path": "res://images2.0/icons/Keys/Silver_Key_Barony.png",
 					"min": 0,
 					"max": 10
 				}
@@ -438,6 +480,32 @@
 					"name": "Powerful Grenade",
 					"path": "res://images2.0/icons/Bombs/Powerful_Grenade_Dead_Cells.png",
 					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/aethermancer",
+			"kind": "difficulty",
+			"name": "Normal / Heroic / Mythic",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Normal",
+					"path": "res://images2.0/icons/Difficulties/Normal_Aethermancer_0-3.png",
+					"min": 0,
+					"max": 3
+				},
+				{
+					"name": "Heroic",
+					"path": "res://images2.0/icons/Difficulties/Heroic_Aethermancer_4-7.png",
+					"min": 4,
+					"max": 7
+				},
+				{
+					"name": "Mythic",
+					"path": "res://images2.0/icons/Difficulties/Mythic_Aethermancer_8-10.png",
+					"min": 8,
 					"max": 10
 				}
 			]
@@ -691,6 +759,20 @@
 			]
 		},
 		{
+			"id": "luck/luck_backpack_battles",
+			"kind": "luck",
+			"name": "Luck",
+			"game": "backpack_battles",
+			"images": [
+				{
+					"name": "Luck",
+					"path": "res://images2.0/icons/Luck/Luck_Backpack_Battles.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "luck/luck_brotato",
 			"kind": "luck",
 			"name": "Luck",
@@ -741,6 +823,40 @@
 				{
 					"name": "Luck",
 					"path": "res://images2.0/icons/Luck/Luck_The_Legend_of_Bum-Bo.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/brotato",
+			"kind": "chest",
+			"name": "Crate / Legendary Crate",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Crate",
+					"path": "res://images2.0/icons/Chests/Crate_Brotato_0-2.png",
+					"min": 0,
+					"max": 2
+				},
+				{
+					"name": "Legendary Crate",
+					"path": "res://images2.0/icons/Chests/Legendary_Crate_Brotato_3-4.png",
+					"min": 3,
+					"max": 4
+				}
+			]
+		},
+		{
+			"id": "chest/chest_crypt_of_the_necrodancer",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "crypt_of_the_necrodancer",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Crypt_of_the_NecroDancer.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1071,6 +1187,20 @@
 			]
 		},
 		{
+			"id": "health/heart_crypt_of_the_necrodancer",
+			"kind": "health",
+			"name": "Heart",
+			"game": "crypt_of_the_necrodancer",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Crypt_of_the_NecroDancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/heart_enter_the_gungeon",
 			"kind": "health",
 			"name": "Heart",
@@ -1183,6 +1313,20 @@
 			]
 		},
 		{
+			"id": "health/hitpoints_battle_brothers",
+			"kind": "health",
+			"name": "Hitpoints",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Hitpoints",
+					"path": "res://images2.0/icons/Health/Hitpoints_Battle_Brothers.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/max_hp_brotato",
 			"kind": "health",
 			"name": "Max HP",
@@ -1211,6 +1355,34 @@
 			]
 		},
 		{
+			"id": "damage/attack_barony",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/attack_cobalt_core",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "cobalt_core",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/attack_rogue_legacy",
 			"kind": "damage",
 			"name": "Attack",
@@ -1219,6 +1391,20 @@
 				{
 					"name": "Attack",
 					"path": "res://images2.0/icons/Damage/Attack_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_battle_brothers",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Battle_Brothers.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1351,6 +1537,20 @@
 			]
 		},
 		{
+			"id": "gold/coin_crypt_of_the_necrodancer",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "crypt_of_the_necrodancer",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Crypt_of_the_NecroDancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_into_the_breach",
 			"kind": "gold",
 			"name": "Coin",
@@ -1435,6 +1635,34 @@
 			]
 		},
 		{
+			"id": "gold/crowns_battle_brothers",
+			"kind": "gold",
+			"name": "Crowns",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Crowns",
+					"path": "res://images2.0/icons/Gold/Crowns_Battle_Brothers.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_across_the_obelisk",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/gold_bar_spelunky",
 			"kind": "gold",
 			"name": "Gold Bar",
@@ -1471,6 +1699,20 @@
 				{
 					"name": "Gold Bar",
 					"path": "res://images2.0/icons/Gold/Gold_Bar_Spelunky_Classic.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_coin_backpack_battles",
+			"kind": "gold",
+			"name": "Gold Coin",
+			"game": "backpack_battles",
+			"images": [
+				{
+					"name": "Gold Coin",
+					"path": "res://images2.0/icons/Gold/Gold_Coin_Backpack_Battles.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1603,6 +1845,34 @@
 			]
 		},
 		{
+			"id": "gold/materials_brotato",
+			"kind": "gold",
+			"name": "Materials",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Materials",
+					"path": "res://images2.0/icons/Gold/Materials_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/money_barony",
+			"kind": "gold",
+			"name": "Money",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Money",
+					"path": "res://images2.0/icons/Gold/Money_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/penny_the_binding_of_isaac",
 			"kind": "gold",
 			"name": "Penny",
@@ -1653,6 +1923,20 @@
 				{
 					"name": "Armor",
 					"path": "res://images2.0/icons/Shields/Armor_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_class_barony",
+			"kind": "shield",
+			"name": "Armor Class",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Armor Class",
+					"path": "res://images2.0/icons/Shields/Armor_Class_Barony.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1729,6 +2013,20 @@
 			]
 		},
 		{
+			"id": "shield/block_across_the_obelisk",
+			"kind": "shield",
+			"name": "Block",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Block",
+					"path": "res://images2.0/icons/Shields/Block_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/block_backpack_battles",
 			"kind": "shield",
 			"name": "Block",
@@ -1739,6 +2037,26 @@
 					"path": "res://images2.0/icons/Shields/Block_Backpack_Battles.png",
 					"min": 0,
 					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/cobalt_core",
+			"kind": "shield",
+			"name": "Shield / Temp Shield",
+			"game": "cobalt_core",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Cobalt_Core_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Temp Shield",
+					"path": "res://images2.0/icons/Shields/Temp_Shield_Cobalt_Core_1-1.png",
+					"min": 1,
+					"max": 1
 				}
 			]
 		},
@@ -1771,6 +2089,20 @@
 			]
 		},
 		{
+			"id": "shield/iron_shield_barony",
+			"kind": "shield",
+			"name": "Iron Shield",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Iron Shield",
+					"path": "res://images2.0/icons/Shields/Iron_Shield_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/large_shield_nethack",
 			"kind": "shield",
 			"name": "Large Shield",
@@ -1779,6 +2111,34 @@
 				{
 					"name": "Large Shield",
 					"path": "res://images2.0/icons/Shields/Large_Shield_NetHack.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_across_the_obelisk",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_aethermancer",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Aethermancer.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1841,6 +2201,20 @@
 			]
 		},
 		{
+			"id": "hunger/apple_aethermancer",
+			"kind": "hunger",
+			"name": "Apple",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Apple",
+					"path": "res://images2.0/icons/Hunger/Apple_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "hunger/floor_chicken_vampire_survivors",
 			"kind": "hunger",
 			"name": "Floor Chicken",
@@ -1849,6 +2223,20 @@
 				{
 					"name": "Floor Chicken",
 					"path": "res://images2.0/icons/Hunger/Floor_Chicken_Vampire_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "hunger/food_battle_brothers",
+			"kind": "hunger",
+			"name": "Food",
+			"game": "battle_brothers",
+			"images": [
+				{
+					"name": "Food",
+					"path": "res://images2.0/icons/Hunger/Food_Battle_Brothers.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1891,6 +2279,62 @@
 				{
 					"name": "Fruit",
 					"path": "res://images2.0/icons/Hunger/Fruit_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "hunger/hunger_barony",
+			"kind": "hunger",
+			"name": "Hunger",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Hunger",
+					"path": "res://images2.0/icons/Hunger/Hunger_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "hunger/meat_barony",
+			"kind": "hunger",
+			"name": "Meat",
+			"game": "barony",
+			"images": [
+				{
+					"name": "Meat",
+					"path": "res://images2.0/icons/Hunger/Meat_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "timer/hourglass_of_undoing_aethermancer",
+			"kind": "timer",
+			"name": "Hourglass of Undoing",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Hourglass of Undoing",
+					"path": "res://images2.0/icons/Timer/Hourglass_of_Undoing_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "timer/time_stop_cobalt_core",
+			"kind": "timer",
+			"name": "Time Stop",
+			"game": "cobalt_core",
+			"images": [
+				{
+					"name": "Time Stop",
+					"path": "res://images2.0/icons/Timer/Time_Stop_Cobalt_Core.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2555,6 +2999,21 @@
 			"status": true
 		},
 		{
+			"id": "burn/heat_cobalt_core",
+			"kind": "burn",
+			"name": "Heat",
+			"game": "cobalt_core",
+			"images": [
+				{
+					"name": "Heat",
+					"path": "res://images2.0/icons/Statuses/Burn/Heat_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "dexterity/dexterity_barony",
 			"kind": "dexterity",
 			"name": "Dexterity",
@@ -2705,6 +3164,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/corrode_cobalt_core",
+			"kind": "poison",
+			"name": "Corrode",
+			"game": "cobalt_core",
+			"images": [
+				{
+					"name": "Corrode",
+					"path": "res://images2.0/icons/Statuses/Poison/Corrode_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/poison_across_the_obelisk",
 			"kind": "poison",
 			"name": "Poison",
@@ -2728,6 +3202,21 @@
 				{
 					"name": "Poison",
 					"path": "res://images2.0/icons/Statuses/Poison/Poison_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/poison_backpack_battles",
+			"kind": "poison",
+			"name": "Poison",
+			"game": "backpack_battles",
+			"images": [
+				{
+					"name": "Poison",
+					"path": "res://images2.0/icons/Statuses/Poison/Poison_Backpack_Battles.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3155,6 +3644,36 @@
 			"status": true
 		},
 		{
+			"id": "speed/fast_across_the_obelisk",
+			"kind": "speed",
+			"name": "Fast",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Fast",
+					"path": "res://images2.0/icons/Statuses/Speed/Fast_Across_the_Obelisk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "speed/heat_backpack_battles",
+			"kind": "speed",
+			"name": "Heat",
+			"game": "backpack_battles",
+			"images": [
+				{
+					"name": "Heat",
+					"path": "res://images2.0/icons/Statuses/Speed/Heat_Backpack_Battles.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_across_the_obelisk",
 			"kind": "speed",
 			"name": "Speed",
@@ -3373,6 +3892,51 @@
 				{
 					"name": "Speed",
 					"path": "res://images2.0/icons/Statuses/Speed/Speed_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/empower_backpack_battles",
+			"kind": "strength",
+			"name": "Empower",
+			"game": "backpack_battles",
+			"images": [
+				{
+					"name": "Empower",
+					"path": "res://images2.0/icons/Statuses/Strength/Empower_Backpack_Battles.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/power_aethermancer",
+			"kind": "strength",
+			"name": "Power",
+			"game": "aethermancer",
+			"images": [
+				{
+					"name": "Power",
+					"path": "res://images2.0/icons/Statuses/Strength/Power_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/powerful_across_the_obelisk",
+			"kind": "strength",
+			"name": "Powerful",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Powerful",
+					"path": "res://images2.0/icons/Statuses/Strength/Powerful_Across_the_Obelisk.png",
 					"min": 0,
 					"max": 10
 				}

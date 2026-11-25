@@ -340,9 +340,15 @@ const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "lu
 # A SHIELD IS ALSO DRAWN AS A PICTURE, not only written as 🛡: the pips over the
 # hero, the chip beside the Health, the Camp's Rest, the OBS overlay. Each asks
 # here, so a worn shield icon is on those too; unworn it is the basic 🛡 as art.
-func shield_art() -> Texture2D:
+#
+# A SHIELD SET CAN SPLIT THE TWO POOLS (the owner, 25 Nov 2026: Cobalt Core's
+# Shield and Temp Shield are one unlock). Its range is the POOL, the way a chest
+# set's is the chest's size: 0 the Shield that stays (CosmeticCatalog.SHIELD_KEPT),
+# 1 the Temporary Shield (SHIELD_TEMPORARY). A set of one image draws it for both.
+func shield_art(temporary: bool = false) -> Texture2D:
 	var e := icon("shield")
-	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)) if not e.is_empty() else null
+	var level: int = CosmeticCatalog.SHIELD_TEMPORARY if temporary else CosmeticCatalog.SHIELD_KEPT
+	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, level)) if not e.is_empty() else null
 	return t if t != null else UITheme.SHIELD_ART
 
 # A STATUS IS DRAWN, never written (the owner, 22 Nov 2026): its badge on a body,

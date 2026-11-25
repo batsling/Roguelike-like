@@ -149,6 +149,12 @@ static func units_of_character(character: StringName) -> Array:
 # every range.
 const BOSS_CHEST := 4
 
+# A SHIELD set's range is the shield's POOL (Cosmetics.shield_art): Cobalt Core's
+# Shield is `0-0`, the one kept until a hit takes it, and its Temp Shield `1-1`,
+# the one that expires with the game.
+const SHIELD_KEPT := 0
+const SHIELD_TEMPORARY := 1
+
 # The image of an icon set at `level` (a run's Fracture; a chest's size for a chest
 # set): the one whose range holds it. A level above every range is the HIGHEST
 # image, and anything else the first.
@@ -169,6 +175,10 @@ static func image_for(e: Dictionary, level: int) -> String:
 static func range_text(e: Dictionary, image: Dictionary) -> String:
 	var lo: int = int(image.get("min", 0))
 	var hi: int = int(image.get("max", lo))
+	if String(e.get("kind", "")) == "shield":
+		if lo <= SHIELD_KEPT and hi >= SHIELD_TEMPORARY:
+			return "Shield and Temporary Shield"
+		return "Temporary Shield" if lo >= SHIELD_TEMPORARY else "Shield"
 	if String(e.get("kind", "")) != "chest":
 		return "Fracture %d–%d" % [lo, hi] if hi != lo else "Fracture %d" % lo
 	if lo >= BOSS_CHEST:
