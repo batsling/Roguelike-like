@@ -1915,6 +1915,26 @@
 			]
 		},
 		{
+			"id": "shield/across_the_obelisk",
+			"kind": "shield",
+			"name": "Shield / Block",
+			"game": "across_the_obelisk",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Across_the_Obelisk_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Block",
+					"path": "res://images2.0/icons/Shields/Block_Across_the_Obelisk_1-1.png",
+					"min": 1,
+					"max": 1
+				}
+			]
+		},
+		{
 			"id": "shield/armor_brotato",
 			"kind": "shield",
 			"name": "Armor",
@@ -2013,20 +2033,6 @@
 			]
 		},
 		{
-			"id": "shield/block_across_the_obelisk",
-			"kind": "shield",
-			"name": "Block",
-			"game": "across_the_obelisk",
-			"images": [
-				{
-					"name": "Block",
-					"path": "res://images2.0/icons/Shields/Block_Across_the_Obelisk.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
 			"id": "shield/block_backpack_battles",
 			"kind": "shield",
 			"name": "Block",
@@ -2111,20 +2117,6 @@
 				{
 					"name": "Large Shield",
 					"path": "res://images2.0/icons/Shields/Large_Shield_NetHack.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
-			"id": "shield/shield_across_the_obelisk",
-			"kind": "shield",
-			"name": "Shield",
-			"game": "across_the_obelisk",
-			"images": [
-				{
-					"name": "Shield",
-					"path": "res://images2.0/icons/Shields/Shield_Across_the_Obelisk.png",
 					"min": 0,
 					"max": 10
 				}

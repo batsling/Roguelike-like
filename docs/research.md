@@ -455,6 +455,10 @@ python3 tools/icon_research.py apply                           # after the owner
   number drawn in (Griftlands) and spell art (Spellmasons) were all taken. What
   was turned down: the wiki's tinted-monster pictures (Isaac, Gungeon), framed
   skill icons, cards, items and characters. Offer the tiles; drop the rest.
+- **A game's lasting and temporary shields are ONE set** (the owner, 25 Nov
+  2026: Cobalt Core's Shield and Temp Shield, Across the Obelisk's Shield and
+  Block). The lasting one's `File` ends `_0-0`, the temporary one's `_1-1`
+  (customization.md §4), so they are paired without asking; say so on the sheet.
 - **A picture with a background is cleaned before it is offered as final.**
   Loop Hero's chest came on black: the background was flood-filled away from
   the border at the art's native size, keeping the 1px outline.
