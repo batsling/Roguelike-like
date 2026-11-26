@@ -205,6 +205,20 @@
 			]
 		},
 		{
+			"id": "key/golden_key_shattered_pixel_dungeon",
+			"kind": "key",
+			"name": "Golden Key",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Golden Key",
+					"path": "res://images2.0/icons/Keys/Golden_Key_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "key/iron_key_barony",
 			"kind": "key",
 			"name": "Iron Key",
@@ -261,6 +275,20 @@
 			]
 		},
 		{
+			"id": "key/key_hellcard",
+			"kind": "key",
+			"name": "Key",
+			"game": "hellcard",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Hellcard.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "key/key_luck_be_a_landlord",
 			"kind": "key",
 			"name": "Key",
@@ -269,6 +297,34 @@
 				{
 					"name": "Key",
 					"path": "res://images2.0/icons/Keys/Key_Luck_be_a_Landlord.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_ravenswatch",
+			"kind": "key",
+			"name": "Key",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_revita",
+			"kind": "key",
+			"name": "Key",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Revita.png",
 					"min": 0,
 					"max": 10
 				}
@@ -311,6 +367,20 @@
 				{
 					"name": "Key",
 					"path": "res://images2.0/icons/Keys/Key_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_undermine",
+			"kind": "key",
+			"name": "Key",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_UnderMine.png",
 					"min": 0,
 					"max": 10
 				}
@@ -415,6 +485,20 @@
 			]
 		},
 		{
+			"id": "bomb/bomb_shattered_pixel_dungeon",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "bomb/bomb_slay_the_spire",
 			"kind": "bomb",
 			"name": "Bomb",
@@ -479,6 +563,20 @@
 				{
 					"name": "Bomb",
 					"path": "res://images2.0/icons/Bombs/Bomb_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_undermine",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_UnderMine.png",
 					"min": 0,
 					"max": 10
 				}
@@ -707,6 +805,32 @@
 			]
 		},
 		{
+			"id": "difficulty/rabbit_and_steel",
+			"kind": "difficulty",
+			"name": "Normal / Hard / Lunar",
+			"game": "rabbit_and_steel",
+			"images": [
+				{
+					"name": "Normal",
+					"path": "res://images2.0/icons/Difficulties/Normal_Rabbit_and_Steel_0-3.png",
+					"min": 0,
+					"max": 3
+				},
+				{
+					"name": "Hard",
+					"path": "res://images2.0/icons/Difficulties/Hard_Rabbit_and_Steel_4-7.png",
+					"min": 4,
+					"max": 7
+				},
+				{
+					"name": "Lunar",
+					"path": "res://images2.0/icons/Difficulties/Lunar_Rabbit_and_Steel_8-10.png",
+					"min": 8,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "difficulty/risk_of_rain",
 			"kind": "difficulty",
 			"name": "Drizzle / Rainstorm / Monsoon",
@@ -843,6 +967,20 @@
 			]
 		},
 		{
+			"id": "luck/luck_one_step_from_eden",
+			"kind": "luck",
+			"name": "Luck",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Luck",
+					"path": "res://images2.0/icons/Luck/Luck_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "luck/luck_the_binding_of_isaac_rebirth",
 			"kind": "luck",
 			"name": "Luck",
@@ -919,6 +1057,20 @@
 			]
 		},
 		{
+			"id": "chest/chest_halls_of_torment",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "halls_of_torment",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Halls_of_Torment.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_loop_hero",
 			"kind": "chest",
 			"name": "Chest",
@@ -961,6 +1113,34 @@
 			]
 		},
 		{
+			"id": "chest/chest_revita",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Revita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_shattered_pixel_dungeon",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_spelunky",
 			"kind": "chest",
 			"name": "Chest",
@@ -989,6 +1169,20 @@
 			]
 		},
 		{
+			"id": "chest/chest_spiritfall",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "spiritfall",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Spiritfall.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_the_binding_of_isaac",
 			"kind": "chest",
 			"name": "Chest",
@@ -1011,6 +1205,20 @@
 				{
 					"name": "Chest",
 					"path": "res://images2.0/icons/Chests/Chest_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_undermine",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_UnderMine.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1115,6 +1323,38 @@
 			]
 		},
 		{
+			"id": "chest/one_step_from_eden",
+			"kind": "chest",
+			"name": "Common Chest / Rare Chest / Epic Chest / Legendary Chest",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Common Chest",
+					"path": "res://images2.0/icons/Chests/Common_Chest_One_Step_From_Eden_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Rare Chest",
+					"path": "res://images2.0/icons/Chests/Rare_Chest_One_Step_From_Eden_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "Epic Chest",
+					"path": "res://images2.0/icons/Chests/Epic_Chest_One_Step_From_Eden_2-2.png",
+					"min": 2,
+					"max": 2
+				},
+				{
+					"name": "Legendary Chest",
+					"path": "res://images2.0/icons/Chests/Legendary_Chest_One_Step_From_Eden_3-4.png",
+					"min": 3,
+					"max": 4
+				}
+			]
+		},
+		{
 			"id": "chest/risk_of_rain",
 			"kind": "chest",
 			"name": "Small Chest / Large Chest / Golden Chest",
@@ -1187,6 +1427,20 @@
 			]
 		},
 		{
+			"id": "chest/treasure_chest_super_auto_pets",
+			"kind": "chest",
+			"name": "Treasure Chest",
+			"game": "super_auto_pets",
+			"images": [
+				{
+					"name": "Treasure Chest",
+					"path": "res://images2.0/icons/Chests/Treasure_Chest_Super_Auto_Pets.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/health_dicey_dungeons",
 			"kind": "health",
 			"name": "Health",
@@ -1229,6 +1483,48 @@
 			]
 		},
 		{
+			"id": "health/health_moonlighter",
+			"kind": "health",
+			"name": "Health",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/health_one_step_from_eden",
+			"kind": "health",
+			"name": "Health",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/health_ring_of_pain",
+			"kind": "health",
+			"name": "Health",
+			"game": "ring_of_pain",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Ring_of_Pain.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/health_rogue_legacy",
 			"kind": "health",
 			"name": "Health",
@@ -1237,6 +1533,20 @@
 				{
 					"name": "Health",
 					"path": "res://images2.0/icons/Health/Health_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/health_super_auto_pets",
+			"kind": "health",
+			"name": "Health",
+			"game": "super_auto_pets",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Super_Auto_Pets.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1355,6 +1665,20 @@
 			]
 		},
 		{
+			"id": "health/heart_revita",
+			"kind": "health",
+			"name": "Heart",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Revita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/heart_rogue_legacy_2",
 			"kind": "health",
 			"name": "Heart",
@@ -1397,6 +1721,20 @@
 			]
 		},
 		{
+			"id": "health/heart_undermine",
+			"kind": "health",
+			"name": "Heart",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_UnderMine.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/hearts_luck_be_a_landlord",
 			"kind": "health",
 			"name": "Hearts",
@@ -1425,6 +1763,20 @@
 			]
 		},
 		{
+			"id": "health/hp_inkbound",
+			"kind": "health",
+			"name": "HP",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "HP",
+					"path": "res://images2.0/icons/Health/HP_Inkbound.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/life_for_the_king",
 			"kind": "health",
 			"name": "Life",
@@ -1433,6 +1785,20 @@
 				{
 					"name": "Life",
 					"path": "res://images2.0/icons/Health/Life_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/life_path_of_achra",
+			"kind": "health",
+			"name": "Life",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Life",
+					"path": "res://images2.0/icons/Health/Life_Path_of_Achra.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1481,6 +1847,20 @@
 			]
 		},
 		{
+			"id": "health/vitality_ravenswatch",
+			"kind": "health",
+			"name": "Vitality",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "Vitality",
+					"path": "res://images2.0/icons/Health/Vitality_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/attack_barony",
 			"kind": "damage",
 			"name": "Attack",
@@ -1503,6 +1883,20 @@
 				{
 					"name": "Attack",
 					"path": "res://images2.0/icons/Damage/Attack_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/attack_damage_one_step_from_eden",
+			"kind": "damage",
+			"name": "Attack Damage",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Attack Damage",
+					"path": "res://images2.0/icons/Damage/Attack_Damage_One_Step_From_Eden.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1537,6 +1931,20 @@
 			]
 		},
 		{
+			"id": "damage/attack_ring_of_pain",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "ring_of_pain",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Ring_of_Pain.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/attack_rogue_legacy",
 			"kind": "damage",
 			"name": "Attack",
@@ -1545,6 +1953,20 @@
 				{
 					"name": "Attack",
 					"path": "res://images2.0/icons/Damage/Attack_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/attack_super_auto_pets",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "super_auto_pets",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Super_Auto_Pets.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1607,6 +2029,34 @@
 			]
 		},
 		{
+			"id": "damage/damage_moonlighter",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_revita",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Revita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/damage_rogue_legacy_2",
 			"kind": "damage",
 			"name": "Damage",
@@ -1663,6 +2113,20 @@
 			]
 		},
 		{
+			"id": "damage/dmg_ravenswatch",
+			"kind": "damage",
+			"name": "DMG",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "DMG",
+					"path": "res://images2.0/icons/Damage/DMG_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/physical_damage_for_the_king",
 			"kind": "damage",
 			"name": "Physical Damage",
@@ -1671,6 +2135,20 @@
 				{
 					"name": "Physical Damage",
 					"path": "res://images2.0/icons/Damage/Physical_Damage_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/bling_wildfrost",
+			"kind": "gold",
+			"name": "Bling",
+			"game": "wildfrost",
+			"images": [
+				{
+					"name": "Bling",
+					"path": "res://images2.0/icons/Gold/Bling_Wildfrost.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1999,6 +2477,34 @@
 			]
 		},
 		{
+			"id": "gold/gold_halls_of_torment",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "halls_of_torment",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Halls_of_Torment.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_moonlighter",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/gold_nugget_noita",
 			"kind": "gold",
 			"name": "Gold Nugget",
@@ -2035,6 +2541,20 @@
 				{
 					"name": "Gold Piece",
 					"path": "res://images2.0/icons/Gold/Gold_Piece_NetHack.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_shattered_pixel_dungeon",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Shattered_Pixel_Dungeon.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2083,6 +2603,20 @@
 			]
 		},
 		{
+			"id": "gold/gold_undermine",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_UnderMine.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/hegemony_credit_enter_the_gungeon",
 			"kind": "gold",
 			"name": "Hegemony Credit",
@@ -2119,6 +2653,20 @@
 				{
 					"name": "Money",
 					"path": "res://images2.0/icons/Gold/Money_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/money_one_step_from_eden",
+			"kind": "gold",
+			"name": "Money",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Money",
+					"path": "res://images2.0/icons/Gold/Money_One_Step_From_Eden.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2175,6 +2723,20 @@
 				{
 					"name": "Shills",
 					"path": "res://images2.0/icons/Gold/Shills_Griftlands.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/soul_revita",
+			"kind": "gold",
+			"name": "Soul",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Soul",
+					"path": "res://images2.0/icons/Gold/Soul_Revita.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2299,6 +2861,20 @@
 			]
 		},
 		{
+			"id": "shield/armor_ravenswatch",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "ravenswatch",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/armor_rogue_legacy",
 			"kind": "shield",
 			"name": "Armor",
@@ -2369,6 +2945,20 @@
 			]
 		},
 		{
+			"id": "shield/blocking_shattered_pixel_dungeon",
+			"kind": "shield",
+			"name": "Blocking",
+			"game": "shattered_pixel_dungeon",
+			"images": [
+				{
+					"name": "Blocking",
+					"path": "res://images2.0/icons/Shields/Blocking_Shattered_Pixel_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/cobalt_core",
 			"kind": "shield",
 			"name": "Shield / Temp Shield",
@@ -2385,6 +2975,34 @@
 					"path": "res://images2.0/icons/Shields/Temp_Shield_Cobalt_Core_1-1.png",
 					"min": 1,
 					"max": 1
+				}
+			]
+		},
+		{
+			"id": "shield/defense_moonlighter",
+			"kind": "shield",
+			"name": "Defense",
+			"game": "moonlighter",
+			"images": [
+				{
+					"name": "Defense",
+					"path": "res://images2.0/icons/Shields/Defense_Moonlighter.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/defense_ring_of_pain",
+			"kind": "shield",
+			"name": "Defense",
+			"game": "ring_of_pain",
+			"images": [
+				{
+					"name": "Defense",
+					"path": "res://images2.0/icons/Shields/Defense_Ring_of_Pain.png",
+					"min": 0,
+					"max": 10
 				}
 			]
 		},
@@ -2501,6 +3119,20 @@
 			]
 		},
 		{
+			"id": "shield/shield_inkbound",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "inkbound",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Inkbound.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/shield_into_the_breach",
 			"kind": "shield",
 			"name": "Shield",
@@ -2523,6 +3155,48 @@
 				{
 					"name": "Shield",
 					"path": "res://images2.0/icons/Shields/Shield_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_one_step_from_eden",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_revita",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "revita",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Revita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_spiritfall",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "spiritfall",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Spiritfall.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2627,6 +3301,20 @@
 			]
 		},
 		{
+			"id": "hunger/food_ration_nethack",
+			"kind": "hunger",
+			"name": "Food Ration",
+			"game": "nethack",
+			"images": [
+				{
+					"name": "Food Ration",
+					"path": "res://images2.0/icons/Hunger/Food_Ration_NetHack.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "hunger/food_supply_loop_hero",
 			"kind": "hunger",
 			"name": "Food Supply",
@@ -2635,6 +3323,20 @@
 				{
 					"name": "Food Supply",
 					"path": "res://images2.0/icons/Hunger/Food_Supply_Loop_Hero.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "hunger/food_undermine",
+			"kind": "hunger",
+			"name": "Food",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Food",
+					"path": "res://images2.0/icons/Hunger/Food_UnderMine.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2697,6 +3399,20 @@
 			]
 		},
 		{
+			"id": "timer/hourglass_hellcard",
+			"kind": "timer",
+			"name": "Hourglass",
+			"game": "hellcard",
+			"images": [
+				{
+					"name": "Hourglass",
+					"path": "res://images2.0/icons/Timer/Hourglass_Hellcard.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "timer/hourglass_of_undoing_aethermancer",
 			"kind": "timer",
 			"name": "Hourglass of Undoing",
@@ -2705,6 +3421,34 @@
 				{
 					"name": "Hourglass of Undoing",
 					"path": "res://images2.0/icons/Timer/Hourglass_of_Undoing_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "timer/hourglass_super_auto_pets",
+			"kind": "timer",
+			"name": "Hourglass",
+			"game": "super_auto_pets",
+			"images": [
+				{
+					"name": "Hourglass",
+					"path": "res://images2.0/icons/Timer/Hourglass_Super_Auto_Pets.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "timer/hourglass_undermine",
+			"kind": "timer",
+			"name": "Hourglass",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Hourglass",
+					"path": "res://images2.0/icons/Timer/Hourglass_UnderMine.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3082,6 +3826,36 @@
 			"status": true
 		},
 		{
+			"id": "bleed/bleeding_risk_of_rain_2",
+			"kind": "bleed",
+			"name": "Bleeding",
+			"game": "risk_of_rain_2",
+			"images": [
+				{
+					"name": "Bleeding",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bleeding_Risk_of_Rain_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "bleed/bloody_noita",
+			"kind": "bleed",
+			"name": "Bloody",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Bloody",
+					"path": "res://images2.0/icons/Statuses/Bleed/Bloody_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/burn_across_the_obelisk",
 			"kind": "burn",
 			"name": "Burn",
@@ -3412,6 +4186,51 @@
 			"status": true
 		},
 		{
+			"id": "burn/fire_into_the_breach",
+			"kind": "burn",
+			"name": "Fire",
+			"game": "into_the_breach",
+			"images": [
+				{
+					"name": "Fire",
+					"path": "res://images2.0/icons/Statuses/Burn/Fire_Into_the_Breach.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/fire_path_of_achra",
+			"kind": "burn",
+			"name": "Fire",
+			"game": "path_of_achra",
+			"images": [
+				{
+					"name": "Fire",
+					"path": "res://images2.0/icons/Statuses/Burn/Fire_Path_of_Achra.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/flame_one_step_from_eden",
+			"kind": "burn",
+			"name": "Flame",
+			"game": "one_step_from_eden",
+			"images": [
+				{
+					"name": "Flame",
+					"path": "res://images2.0/icons/Statuses/Burn/Flame_One_Step_From_Eden.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/heat_cobalt_core",
 			"kind": "burn",
 			"name": "Heat",
@@ -3420,6 +4239,21 @@
 				{
 					"name": "Heat",
 					"path": "res://images2.0/icons/Statuses/Burn/Heat_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "burn/on_fire_risk_of_rain_2",
+			"kind": "burn",
+			"name": "On Fire",
+			"game": "risk_of_rain_2",
+			"images": [
+				{
+					"name": "On Fire",
+					"path": "res://images2.0/icons/Statuses/Burn/On_Fire_Risk_of_Rain_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3585,6 +4419,21 @@
 				{
 					"name": "Marked",
 					"path": "res://images2.0/icons/Statuses/Marked/Marked_Ravenswatch.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "marked/target_undermine",
+			"kind": "marked",
+			"name": "Target",
+			"game": "undermine",
+			"images": [
+				{
+					"name": "Target",
+					"path": "res://images2.0/icons/Statuses/Marked/Target_UnderMine.png",
 					"min": 0,
 					"max": 10
 				}
@@ -4117,6 +4966,21 @@
 			"status": true
 		},
 		{
+			"id": "speed/faster_movement_noita",
+			"kind": "speed",
+			"name": "Faster Movement",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Faster Movement",
+					"path": "res://images2.0/icons/Statuses/Speed/Faster_Movement_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/heat_backpack_battles",
 			"kind": "speed",
 			"name": "Heat",
@@ -4380,6 +5244,21 @@
 				{
 					"name": "Empower",
 					"path": "res://images2.0/icons/Statuses/Strength/Empower_Backpack_Battles.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/muscircle_peglin",
+			"kind": "strength",
+			"name": "Muscircle",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Muscircle",
+					"path": "res://images2.0/icons/Statuses/Strength/Muscircle_Peglin.png",
 					"min": 0,
 					"max": 10
 				}
