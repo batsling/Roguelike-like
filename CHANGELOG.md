@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The map, the hero and Customization (26 Nov 2026).** The owner's list. On the
+  run's **full map**: every box is outlined in its game's type colour, and a
+  clicked game's lines are drawn over the roads in that colour, cased in orange
+  where the line is a step of the optimal path (a neighbour on it is ringed
+  orange too); hovering a rift's swirl puts up its card as a box does; the two
+  switches (Optimal | Full, All games | Owned) moved into the header row, so the
+  map has one bar of options; the "YOU ARE HERE" and "THE AMULET" captions are
+  gone (the rings stay); and a connection's card shows its proof screenshot or
+  clip poster, with the two covers smaller to make room. On the **run page**: the
+  character's icon sits a little smaller inside its badge on the player's
+  portrait, the hero's shields are 30 px (from 22) with an 18 px clock, and the
+  page never draws a vertical scroll bar (it fitted a wide window with 2 px to
+  spare, so a counter row put one up; it still scrolls by wheel). In
+  **Customization**, each tab with looks has 🎲 Random all (`Cosmetics.choose_all`),
+  and a ticked game's name in Title Letters no longer loses its last letter when
+  hovered: the theme never set CheckBox `hover_pressed`, which fell back to
+  Godot's stock style and its wider margin (setting it also trims every ticked
+  CheckBox to its real height).
+
 - **Forge, the Sovereign Blade and Zoe's Courier's Board (25 Nov 2026).** The
   owner's upload changed four characters, Burning Blood, six boss footprints and the
   weapons' `cell` areas (now `1x1`), and added the Entomancer boss; the goals it

@@ -721,7 +721,19 @@ the player doesn't own is not drawn at all, nor its lines, unless the run's own
 road or its anchors use it (`AtlasView.hidden`). The run's **rifts** are drawn
 on it as dashed teal seams with a clickable swirl badge, each curve picked from
 a range of bows to stay on the paper and cross as few boxes as it can
-(`AtlasView.rift_curves`, docs/rifts-design.md §9).
+(`AtlasView.rift_curves`, docs/rifts-design.md §9). Hovering a swirl puts up
+the rift's card, as hovering a box does.
+
+Both switches sit in the map's one header row with its tools (the owner, 26 Nov
+2026: one bar of options, not two). Every box is outlined in its game's TYPE
+colour (`AtlasView.map_type_color`: `RunGraph.type_color` darkened a third to
+read on the paper); a picked game's lines are drawn over the roads in that
+colour, cased in the road's orange where the line is a step of the optimal path
+(`AtlasView.on_optimal_path`), and a neighbour on the optimal path is ringed in
+the same orange. The You and Amulet rings carry no caption on this map — the
+captions covered the boxes around them. A connection's card shows its proof
+screenshot (or a clip's poster) from `images2.0/proof/`, read through
+`GameChoiceModal.proof_texture`, and a click opens it full size.
 
 The drawio is upstream of that file the way the sheet is upstream of `data/`:
 redraw, upload the `.drawio` alone (the SVG is exported from it), rerun:

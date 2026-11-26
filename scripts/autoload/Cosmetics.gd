@@ -242,6 +242,22 @@ func costume_or_icon(slot_key: String) -> Dictionary:
 func choose(slot_key: String, key: String) -> void:
 	_choose(slot_key, key)
 
+# The same choice for many slots at once, saved and announced ONCE: the
+# Customization screen's 🎲 Random all (the owner, 26 Nov 2026), which would
+# otherwise write the profile and refresh every listener once per slot.
+func choose_all(slot_keys: Array, key: String) -> void:
+	for slot_key in slot_keys:
+		var k := String(slot_key)
+		if key == "":
+			_worn.erase(k)
+		else:
+			_worn[k] = key
+		_rolled.erase(k)
+		if key == RANDOM:
+			_roll(k)
+	_save()
+	changed.emit()
+
 func _choose(slot_key: String, key: String) -> void:
 	if key == "":
 		_worn.erase(slot_key)

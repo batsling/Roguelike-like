@@ -13,6 +13,11 @@ extends Control
 
 const SEGMENTS := 48
 const RING := 2.0
+# How much of the circle the icon's square spans, edge to edge. At 1.0 the square
+# filled the whole circle and its corners and edges were cut off — the icon read
+# zoomed in (the owner, 26 Nov 2026: "zoom out the character icon a little bit").
+# Below 1.0 it sits a little smaller, with the panel colour showing round it.
+const ICON_SPAN := 0.84
 
 var character: CharacterData = null:
 	set(v):
@@ -35,13 +40,18 @@ func _draw() -> void:
 	if tex == null:
 		return
 	var inner: float = r - RING
+	# The icon's square, centred: half its side. The shape drawn is the circle
+	# clipped to that square (each point of the circle pulled inside it), so a
+	# square icon's corners still round off and nothing outside it is sampled.
+	var half: float = inner * ICON_SPAN
 	var pts := PackedVector2Array()
 	var uvs := PackedVector2Array()
 	for i in range(SEGMENTS):
 		var a: float = TAU * float(i) / float(SEGMENTS)
-		var d := Vector2(cos(a), sin(a))
-		pts.append(c + d * inner)
-		uvs.append(Vector2(0.5, 0.5) + d * 0.5)
+		var d := Vector2(cos(a), sin(a)) * inner
+		var p := Vector2(clampf(d.x, -half, half), clampf(d.y, -half, half))
+		pts.append(c + p)
+		uvs.append(Vector2(0.5, 0.5) + p / (2.0 * half))
 	draw_colored_polygon(pts, Color.WHITE, uvs, tex)
 
 func _make_custom_tooltip(_for_text: String) -> Object:

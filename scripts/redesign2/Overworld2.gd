@@ -8333,6 +8333,13 @@ func _build_ui() -> void:
 	# to reach it is worse than the bar. SHOW_NEVER keeps the axis scrollable — by
 	# wheel, by drag, by code — and simply never draws the bar.
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	# …AND THE VERTICAL ONE, for the same reason (the owner, 26 Nov 2026: "there's
+	# still a scroll bar"). The page is built to fit one 720-tall canvas, and on a
+	# wide window it does with only a few pixels to spare, so a fifth checklist row
+	# or a counter's +/− put a bar down the right of the board for the sake of a
+	# handful of pixels. The page still scrolls by wheel and drag when it does
+	# run over; the bar is simply never drawn.
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	add_child(scroll)
 	_scroll = scroll
 	var root := VBoxContainer.new()

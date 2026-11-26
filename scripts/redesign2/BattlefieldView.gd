@@ -3482,11 +3482,14 @@ func _paint_hero_cards() -> void:
 		_hero_frame.tooltip_text = ch.display_name if ch != null else ""
 		_hero_frame.set_meta(&"character_card", ch != null)
 
-# Icon edge for one shield sprite over the hero. The status pips beside them are
-# STATUS_PIP_HERO and these match: the two rows are read in one glance and a
-# shield drawn larger than a status would claim a rank over it that it does not
-# have.
-const SHIELD_PIP := 22
+# Icon edge for one shield sprite over the hero. It matched STATUS_PIP_HERO (22)
+# until the owner asked for it bigger (26 Nov 2026), so that the clock on a
+# temporary shield reads: the clock is TIMER_FRACTION of this edge, and at 22 it
+# was held at TIMER_MIN, a 14 px smudge hanging off a small shield. At 30 the
+# shield and its clock are both legible; the clock is drawn at SHIELD_CLOCK of
+# the shield (18 px) rather than the usual half, so its face reads.
+const SHIELD_PIP := 30
+const SHIELD_CLOCK := 0.6
 
 # One SPRITE per shield: each is one INSTANCE of damage it stops dead, whatever
 # that instance was for (§3). Nothing is drawn hollow any more — a lost run
@@ -3511,7 +3514,8 @@ func _fill_shields() -> void:
 	for _i in range(bonus):
 		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, false))
 	for _i in range(left):
-		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(true), SHIELD_PIP, true))
+		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(true), SHIELD_PIP, true,
+			SHIELD_CLOCK))
 	_hero_shields.visible = left + bonus > 0
 	_hero_shields.tooltip_text = ("%s (the ones with a clock on them) — each stops "
 		+ "one hit outright, however big, and they go when you report this game.") \

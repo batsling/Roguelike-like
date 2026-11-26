@@ -704,7 +704,10 @@ const TIMER_OVERHANG: float = 0.3
 # `tex` at `size`, with the clock in its corner when `timed`. Returns the plain
 # TextureRect otherwise, so an untimed icon costs exactly what it did before this
 # badge existed.
-static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
+# `clock_fraction`: the clock's edge as a share of the art's (TIMER_FRACTION
+# unless a caller wants a larger clock, as the hero's shields do).
+static func timed_art(tex: Texture2D, size: int, timed: bool,
+		clock_fraction: float = TIMER_FRACTION) -> Control:
 	# A BIG PICTURE IS SHRUNK FIRST (the owner, 22 Nov 2026: the status icons should
 	# "look a little cleaner"). Mipmaps average a 256 px icon down in coarse steps,
 	# which fused the outlines of the basic status icons into blobs at the 16-22 px
@@ -724,7 +727,7 @@ static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrap.add_child(art)
 	# The WORN timer (Cosmetics.timer_art), shrunk to its screen size like the art.
-	var badge_side: int = maxi(TIMER_MIN, int(round(size * TIMER_FRACTION)))
+	var badge_side: int = maxi(TIMER_MIN, int(round(size * clock_fraction)))
 	var clock: Texture2D = Cosmetics.timer_art()
 	var shown_clock: Texture2D = clock
 	if clock != null and not is_small_art(clock):
@@ -1559,8 +1562,16 @@ static func make_theme() -> Theme:
 	t.set_stylebox("hover", "CheckBox", clear)
 	t.set_stylebox("pressed", "CheckBox", clear)
 	t.set_stylebox("focus", "CheckBox", clear)
+	# HOVER_PRESSED AND DISABLED TOO. A ticked box under the mouse draws
+	# `hover_pressed`, and with it unset that state fell back to Godot's stock
+	# stylebox, whose wider content margin pushed the label right inside a box
+	# sized for `normal` — the last letter of a ticked game's name was cut off
+	# while hovered (the owner, 26 Nov 2026, on Customization's Title Letters).
+	t.set_stylebox("hover_pressed", "CheckBox", clear)
+	t.set_stylebox("disabled", "CheckBox", clear)
 	t.set_color("font_color", "CheckBox", TEXT)
 	t.set_color("font_hover_color", "CheckBox", GOLD)
+	t.set_color("font_hover_pressed_color", "CheckBox", GOLD)
 	# Godot's stock check glyphs are a thin grey outline drawn for a light theme,
 	# and on these near-black panels they all but vanish — the report checklist is
 	# the one place the player is actually ANSWERING something, so its boxes are

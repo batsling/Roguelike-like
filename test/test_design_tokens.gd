@@ -553,3 +553,16 @@ func test_a_dropdown_marks_its_selection_and_nothing_else() -> void:
 	assert_gt(on_img.get_pixelv(mid).a, 0.9, "the chosen row wears a solid mark")
 	assert_almost_eq(on_img.get_pixelv(mid).r, UITheme.ACCENT.r, 0.02, "in the accent")
 	assert_eq(off_img.get_pixelv(mid).a, 0.0, "and an unchosen row wears nothing")
+
+# A TICKED CHECKBOX UNDER THE MOUSE draws `hover_pressed`. Unset, it fell back to
+# Godot's stock stylebox, whose wider margin pushed the label right inside a box
+# sized for `normal` and cut its last letter off while hovered (Customization's
+# Title Letters, 26 Nov 2026). Every state a CheckBox can draw is the theme's.
+func test_every_checkbox_state_is_the_themes_own() -> void:
+	var t: Theme = UITheme.shared()
+	var normal: StyleBox = t.get_stylebox("normal", "CheckBox")
+	for state in ["hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		assert_true(t.has_stylebox(state, "CheckBox"), "the theme sets CheckBox %s" % state)
+		var sb: StyleBox = t.get_stylebox(state, "CheckBox")
+		assert_eq(sb.get_minimum_size(), normal.get_minimum_size(),
+			"%s pads the label exactly as normal does" % state)
