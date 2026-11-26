@@ -441,7 +441,10 @@ python3 tools/icon_research.py apply                           # after the owner
   sent. (13 Nov 2026: a row was dropped between two drawings of one sheet, nobody
   could say afterwards which drawing the owner had answered from, and five
   right icons were swapped out for five wrong ones before the picture was
-  looked at again.) After
+  looked at again.) **A batch the owner has seen whole but answers in parts
+  keeps its numbers**: answer the first part with `--skip` for the rest, then
+  `sheet --start <n>` draws what is left numbered from where it was (26 Nov
+  2026: 49-188 stayed 49-188 after 1-48 were answered). After
   `answer`, read the yes list back to the owner by name.
 - **`apply`** moves every `yes` into `images2.0/icons/<Kind>/` and rebuilds
   `data/cosmetics.json`; a `no` loses its picture and keeps its row, so it is

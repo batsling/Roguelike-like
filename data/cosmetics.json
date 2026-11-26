@@ -247,6 +247,20 @@
 			]
 		},
 		{
+			"id": "key/key_for_the_king",
+			"kind": "key",
+			"name": "Key",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "key/key_luck_be_a_landlord",
 			"kind": "key",
 			"name": "Key",
@@ -339,6 +353,20 @@
 				{
 					"name": "Bomb",
 					"path": "res://images2.0/icons/Bombs/Bomb_Crypt_of_the_NecroDancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_for_the_king",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_For_the_King.png",
 					"min": 0,
 					"max": 10
 				}
@@ -745,6 +773,20 @@
 			]
 		},
 		{
+			"id": "luck/clover_for_the_king",
+			"kind": "luck",
+			"name": "Clover",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Clover",
+					"path": "res://images2.0/icons/Luck/Clover_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "luck/four_leaf_clover_luck_be_a_landlord",
 			"kind": "luck",
 			"name": "Four-Leaf Clover",
@@ -857,6 +899,20 @@
 				{
 					"name": "Chest",
 					"path": "res://images2.0/icons/Chests/Chest_Crypt_of_the_NecroDancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_dicey_dungeons",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Dicey_Dungeons.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1131,6 +1187,34 @@
 			]
 		},
 		{
+			"id": "health/health_dicey_dungeons",
+			"kind": "health",
+			"name": "Health",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/health_gunfire_reborn",
+			"kind": "health",
+			"name": "Health",
+			"game": "gunfire_reborn",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Gunfire_Reborn.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/health_mewgenics",
 			"kind": "health",
 			"name": "Health",
@@ -1209,6 +1293,20 @@
 				{
 					"name": "Heart",
 					"path": "res://images2.0/icons/Health/Heart_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_gnomes",
+			"kind": "health",
+			"name": "Heart",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Gnomes.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1327,6 +1425,20 @@
 			]
 		},
 		{
+			"id": "health/life_for_the_king",
+			"kind": "health",
+			"name": "Life",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Life",
+					"path": "res://images2.0/icons/Health/Life_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/max_hp_brotato",
 			"kind": "health",
 			"name": "Max HP",
@@ -1355,6 +1467,20 @@
 			]
 		},
 		{
+			"id": "health/vigor_elden_ring_nightreign",
+			"kind": "health",
+			"name": "Vigor",
+			"game": "elden_ring_nightreign",
+			"images": [
+				{
+					"name": "Vigor",
+					"path": "res://images2.0/icons/Health/Vigor_Elden_Ring_Nightreign.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/attack_barony",
 			"kind": "damage",
 			"name": "Attack",
@@ -1377,6 +1503,34 @@
 				{
 					"name": "Attack",
 					"path": "res://images2.0/icons/Damage/Attack_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/attack_dicefolk",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/attack_griftlands",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "griftlands",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Griftlands.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1419,6 +1573,20 @@
 				{
 					"name": "Damage",
 					"path": "res://images2.0/icons/Damage/Damage_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_gnomes",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Gnomes.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1489,6 +1657,20 @@
 				{
 					"name": "Damage",
 					"path": "res://images2.0/icons/Damage/Damage_Wildfrost.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/physical_damage_for_the_king",
+			"kind": "damage",
+			"name": "Physical Damage",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Physical Damage",
+					"path": "res://images2.0/icons/Damage/Physical_Damage_For_the_King.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1635,6 +1817,20 @@
 			]
 		},
 		{
+			"id": "gold/copper_gunfire_reborn",
+			"kind": "gold",
+			"name": "Copper",
+			"game": "gunfire_reborn",
+			"images": [
+				{
+					"name": "Copper",
+					"path": "res://images2.0/icons/Gold/Copper_Gunfire_Reborn.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/crowns_battle_brothers",
 			"kind": "gold",
 			"name": "Crowns",
@@ -1741,6 +1937,62 @@
 				{
 					"name": "Gold",
 					"path": "res://images2.0/icons/Gold/Gold_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_dicefolk",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "dicefolk",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_dicey_dungeons",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_for_the_king",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_gnomes",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Gnomes.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1915,6 +2167,20 @@
 			]
 		},
 		{
+			"id": "gold/shills_griftlands",
+			"kind": "gold",
+			"name": "Shills",
+			"game": "griftlands",
+			"images": [
+				{
+					"name": "Shills",
+					"path": "res://images2.0/icons/Gold/Shills_Griftlands.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/across_the_obelisk",
 			"kind": "shield",
 			"name": "Shield / Block",
@@ -1963,6 +2229,20 @@
 			]
 		},
 		{
+			"id": "shield/armor_death_road_to_canada",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "death_road_to_canada",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Death_Road_to_Canada.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/armor_enter_the_gungeon",
 			"kind": "shield",
 			"name": "Armor",
@@ -1971,6 +2251,34 @@
 				{
 					"name": "Armor",
 					"path": "res://images2.0/icons/Shields/Armor_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_for_the_king",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_For_the_King.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_gnomes",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "gnomes",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Gnomes.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2041,6 +2349,20 @@
 				{
 					"name": "Block",
 					"path": "res://images2.0/icons/Shields/Block_Backpack_Battles.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/block_darkest_dungeon_2",
+			"kind": "shield",
+			"name": "Block",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Block",
+					"path": "res://images2.0/icons/Shields/Block_Darkest_Dungeon_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2151,6 +2473,34 @@
 			]
 		},
 		{
+			"id": "shield/shield_dicey_dungeons",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "dicey_dungeons",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Dicey_Dungeons.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_gunfire_reborn",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "gunfire_reborn",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Gunfire_Reborn.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/shield_into_the_breach",
 			"kind": "shield",
 			"name": "Shield",
@@ -2207,6 +2557,20 @@
 			]
 		},
 		{
+			"id": "hunger/chicken_dead_cells",
+			"kind": "hunger",
+			"name": "Chicken",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Chicken",
+					"path": "res://images2.0/icons/Hunger/Chicken_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "hunger/floor_chicken_vampire_survivors",
 			"kind": "hunger",
 			"name": "Floor Chicken",
@@ -2229,6 +2593,20 @@
 				{
 					"name": "Food",
 					"path": "res://images2.0/icons/Hunger/Food_Battle_Brothers.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "hunger/food_death_road_to_canada",
+			"kind": "hunger",
+			"name": "Food",
+			"game": "death_road_to_canada",
+			"images": [
+				{
+					"name": "Food",
+					"path": "res://images2.0/icons/Hunger/Food_Death_Road_to_Canada.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2291,6 +2669,20 @@
 			]
 		},
 		{
+			"id": "hunger/hunger_darkest_dungeon_2",
+			"kind": "hunger",
+			"name": "Hunger",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Hunger",
+					"path": "res://images2.0/icons/Hunger/Hunger_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "hunger/meat_barony",
 			"kind": "hunger",
 			"name": "Meat",
@@ -2313,6 +2705,20 @@
 				{
 					"name": "Hourglass of Undoing",
 					"path": "res://images2.0/icons/Timer/Hourglass_of_Undoing_Aethermancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "timer/slowed_time_dead_cells",
+			"kind": "timer",
+			"name": "Slowed Time",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Slowed Time",
+					"path": "res://images2.0/icons/Timer/Slowed_Time_Dead_Cells.png",
 					"min": 0,
 					"max": 10
 				}
@@ -2991,6 +3397,21 @@
 			"status": true
 		},
 		{
+			"id": "burn/fire_ftl",
+			"kind": "burn",
+			"name": "Fire",
+			"game": "ftl",
+			"images": [
+				{
+					"name": "Fire",
+					"path": "res://images2.0/icons/Statuses/Burn/Fire_FTL.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "burn/heat_cobalt_core",
 			"kind": "burn",
 			"name": "Heat",
@@ -3014,6 +3435,21 @@
 				{
 					"name": "Dexterity",
 					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Barony.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "dexterity/dexterity_elden_ring_nightreign",
+			"kind": "dexterity",
+			"name": "Dexterity",
+			"game": "elden_ring_nightreign",
+			"images": [
+				{
+					"name": "Dexterity",
+					"path": "res://images2.0/icons/Statuses/Dexterity/Dexterity_Elden_Ring_Nightreign.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3156,6 +3592,21 @@
 			"status": true
 		},
 		{
+			"id": "poison/blight_darkest_dungeon",
+			"kind": "poison",
+			"name": "Blight",
+			"game": "darkest_dungeon",
+			"images": [
+				{
+					"name": "Blight",
+					"path": "res://images2.0/icons/Statuses/Poison/Blight_Darkest_Dungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "poison/corrode_cobalt_core",
 			"kind": "poison",
 			"name": "Corrode",
@@ -3164,6 +3615,21 @@
 				{
 					"name": "Corrode",
 					"path": "res://images2.0/icons/Statuses/Poison/Corrode_Cobalt_Core.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "poison/corrosion_gunfire_reborn",
+			"kind": "poison",
+			"name": "Corrosion",
+			"game": "gunfire_reborn",
+			"images": [
+				{
+					"name": "Corrosion",
+					"path": "res://images2.0/icons/Statuses/Poison/Corrosion_Gunfire_Reborn.png",
 					"min": 0,
 					"max": 10
 				}
@@ -3711,6 +4177,21 @@
 			"status": true
 		},
 		{
+			"id": "speed/speed_darkest_dungeon_2",
+			"kind": "speed",
+			"name": "Speed",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Speed",
+					"path": "res://images2.0/icons/Statuses/Speed/Speed_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "speed/speed_dead_cells",
 			"kind": "speed",
 			"name": "Speed",
@@ -3951,6 +4432,21 @@
 			"status": true
 		},
 		{
+			"id": "strength/strength_darkest_dungeon_2",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "darkest_dungeon_2",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Darkest_Dungeon_2.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
 			"id": "strength/strength_death_road_to_canada",
 			"kind": "strength",
 			"name": "Strength",
@@ -3974,6 +4470,36 @@
 				{
 					"name": "Strength",
 					"path": "res://images2.0/icons/Statuses/Strength/Strength_Dicefolk.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_elden_ring_nightreign",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "elden_ring_nightreign",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_Elden_Ring_Nightreign.png",
+					"min": 0,
+					"max": 10
+				}
+			],
+			"status": true
+		},
+		{
+			"id": "strength/strength_for_the_king",
+			"kind": "strength",
+			"name": "Strength",
+			"game": "for_the_king",
+			"images": [
+				{
+					"name": "Strength",
+					"path": "res://images2.0/icons/Statuses/Strength/Strength_For_the_King.png",
 					"min": 0,
 					"max": 10
 				}
