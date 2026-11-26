@@ -723,3 +723,22 @@ func test_the_timer_is_the_glyph_until_mewgenics_is_worn() -> void:
 	Cosmetics._unlocked[key] = "game:mewgenics"
 	assert_string_contains(Cosmetics.timer_art().resource_path, "Timer_Mewgenics")
 	Cosmetics.set_icon("timer", "")
+
+# A SHIELD SET SPLITS THE TWO POOLS (25 Nov 2026): Cobalt Core's Shield and Temp
+# Shield are one unlock, the Shield drawn for the pool that stays and the Temp
+# Shield for the one that expires with the game (Cosmetics.shield_art(true)).
+func test_a_shield_set_draws_the_temporary_shield_apart() -> void:
+	var key := "shield/cobalt_core"
+	var e := CosmeticCatalog.entry(key)
+	assert_eq((e.get("images", []) as Array).size(), 2, "one unlock, two pictures")
+	Cosmetics._unlocked[key] = "game:cobalt_core"
+	Cosmetics.set_icon("shield", key)
+	assert_string_contains(Cosmetics.shield_art().resource_path, "/Shield_Cobalt_Core_0-0")
+	assert_string_contains(Cosmetics.shield_art(true).resource_path, "Temp_Shield_Cobalt_Core_1-1")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][0]), "Shield")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][1]), "Temporary Shield")
+	# A set of ONE picture draws it for both pools.
+	var one := "shield/shield_brutal_orchestra"
+	Cosmetics._unlocked[one] = "game:brutal_orchestra"
+	Cosmetics.set_icon("shield", one)
+	assert_eq(Cosmetics.shield_art(true), Cosmetics.shield_art(), "one picture, both pools")

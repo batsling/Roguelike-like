@@ -1251,9 +1251,12 @@ func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
 	GameState.dash_charges = 1
 	_ui._build_choices()
 	var capped: int = _ui._choices.size()
+	# Every connected game a Dash can name: not bashed, and not a RIFT game
+	# (docs/rifts-design.md §7, `_dash_list`). Path rifts sit on the start routes,
+	# so counting a rift here failed whenever the start happened to touch one.
 	var all_nbrs: int = 0
 	for gid in RunGraph.neighbors(GameState.current_game_id):
-		if not GameLoop2.is_bashed(gid):
+		if not GameLoop2.is_bashed(gid) and not RunGraph.is_rift_game(StringName(gid)):
 			all_nbrs += 1
 	_ui.dash()
 	assert_true(_ui._dash_mode, "dash mode is on")
@@ -7888,6 +7891,12 @@ func test_a_reroll_on_the_haul_rolls_every_open_chest_again() -> void:
 # on the screen where the player is deciding whether to take it.
 func test_every_relic_on_offer_is_drawn_with_a_picture() -> void:
 	_pick_enemies(0)
+	# ARRANGED, not hoped for: whether the report pays a chest of its own depends on
+	# the random offering, and in a full run of this file it sometimes paid none
+	# ("there was a relic on offer to check" failed, PR #375). Queued before the
+	# report, as the chest-table tests do, so there is always one to open.
+	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(0)[0],
+		Data.reward_item2_pool_of(1)[0]]})
 	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()

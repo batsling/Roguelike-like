@@ -9,6 +9,7 @@ as a candidate for the owner to say yes or no to, and move a yes into the game.
     python3 tools/icon_research.py add Gold Coin "Into the Breach" path/or/url.png --page https://…
     python3 tools/icon_research.py add Chests "Bronze Chest" "Rogue Legacy 2" bronze.png --range 0-0   # one of a set
     python3 tools/icon_research.py sheet            # a numbered contact sheet of everything waiting
+    python3 tools/icon_research.py sheet --start 49 # …continuing numbers the owner has already seen
     python3 tools/icon_research.py answer 1, 4, 13-16   # the owner's numbers OFF THAT PICTURE: yes, the rest no
     python3 tools/icon_research.py apply            # after `research.py sync`: every yes into images2.0/icons/
 
@@ -185,15 +186,15 @@ def cmd_sheet(args):
         art = art.resize((max(1, round(art.width * k)), max(1, round(art.height * k))),
                          Image.NEAREST if k >= 1 else Image.LANCZOS)
         sheet.alpha_composite(art, (x + (cell - art.width) // 2, y + 8 + (112 - art.height) // 2))
-        draw.text((x + 6, y + 124), f"{n + 1}. {r['Kind']}: {r['Name']}", fill=(255, 255, 255, 255))
+        draw.text((x + 6, y + 124), f"{n + args.start}. {r['Kind']}: {r['Name']}", fill=(255, 255, 255, 255))
         draw.text((x + 6, y + 140), f"{r['Game']}  {r['Size']}"[:26], fill=(170, 170, 185, 255))
-        print(f"{n + 1}. {r['Kind']}: {r['Name']} ({r['Game']}) {r['Size']}  {r['ID']}")
+        print(f"{n + args.start}. {r['Kind']}: {r['Name']} ({r['Game']}) {r['Size']}  {r['ID']}")
     os.makedirs(WORK, exist_ok=True)
     out = args.out or os.path.join(WORK, "to_review.png")
     sheet.save(out)
     # The numbers the owner reads are the PICTURE's, so the picture's own
     # numbering is what `answer` goes by, never a list written out afterwards.
-    R.save_json(NUMBERS, {"sheet": out, "ids": [r["ID"] for r in rows]})
+    R.save_json(NUMBERS, {"sheet": out, "ids": [r["ID"] for r in rows], "start": args.start})
     print("->", out)
     print("Send THIS picture, and take the owner's numbers with `answer`. A candidate added,\n"
           "dropped or renamed after this point means a new sheet before anything is sent.")
@@ -226,14 +227,19 @@ def cmd_answer(args):
         sys.exit("the candidates changed since the sheet was drawn, so its numbers are not theirs any more"
                  + (f"\n  gone: {gone}" if gone else "") + (f"\n  new: {new}" if new else "")
                  + "\nrun `sheet` again, show the NEW picture, and ask again")
+    # A sheet CONTINUED from an earlier one keeps its numbers (`sheet --start 49`,
+    # 26 Nov 2026: the owner had the rest of a batch in front of them as 49-188
+    # while answering 1-48), so the owner's numbers are read from where it starts.
+    first = int(R.load_json(NUMBERS, {}).get("start", 1))
     yes, skip = numbers(args.yes), numbers(args.skip or [])
-    bad = sorted(n for n in yes | skip if not 1 <= n <= len(drawn))
+    bad = sorted(n for n in yes | skip if not first <= n < first + len(drawn))
     if bad or yes & skip:
-        sys.exit(f"not on the sheet (1-{len(drawn)}): {bad}" if bad else f"both yes and skipped: {sorted(yes & skip)}")
+        sys.exit(f"not on the sheet ({first}-{first + len(drawn) - 1}): {bad}" if bad
+                 else f"both yes and skipped: {sorted(yes & skip)}")
     rows = R.read_rows("icons")
     for r in rows:
         if r["ID"] in drawn:
-            n = drawn.index(r["ID"]) + 1
+            n = drawn.index(r["ID"]) + first
             if n in skip:  # stays waiting: not a no, and it is offered again
                 continue
             r["Owner"] = "yes" if n in yes else "no"
@@ -287,6 +293,8 @@ def main():
     p.set_defaults(fn=cmd_add)
     p = sub.add_parser("sheet", help="a numbered contact sheet of the candidates waiting")
     p.add_argument("--out")
+    p.add_argument("--start", type=int, default=1,
+                   help="the first number, when this sheet continues one the owner has already seen")
     p.set_defaults(fn=cmd_sheet)
     p = sub.add_parser("answer", help="the owner's numbers off the sheet: these yes, the rest no")
     p.add_argument("yes", nargs="*", help="numbers and ranges, as the owner wrote them: 1, 21, 24-25")

@@ -441,7 +441,10 @@ python3 tools/icon_research.py apply                           # after the owner
   sent. (13 Nov 2026: a row was dropped between two drawings of one sheet, nobody
   could say afterwards which drawing the owner had answered from, and five
   right icons were swapped out for five wrong ones before the picture was
-  looked at again.) After
+  looked at again.) **A batch the owner has seen whole but answers in parts
+  keeps its numbers**: answer the first part with `--skip` for the rest, then
+  `sheet --start <n>` draws what is left numbered from where it was (26 Nov
+  2026: 49-188 stayed 49-188 after 1-48 were answered). After
   `answer`, read the yes list back to the owner by name.
 - **`apply`** moves every `yes` into `images2.0/icons/<Kind>/` and rebuilds
   `data/cosmetics.json`; a `no` loses its picture and keeps its row, so it is
@@ -455,6 +458,10 @@ python3 tools/icon_research.py apply                           # after the owner
   number drawn in (Griftlands) and spell art (Spellmasons) were all taken. What
   was turned down: the wiki's tinted-monster pictures (Isaac, Gungeon), framed
   skill icons, cards, items and characters. Offer the tiles; drop the rest.
+- **A game's lasting and temporary shields are ONE set** (the owner, 25 Nov
+  2026: Cobalt Core's Shield and Temp Shield, Across the Obelisk's Shield and
+  Block). The lasting one's `File` ends `_0-0`, the temporary one's `_1-1`
+  (customization.md §4), so they are paired without asking; say so on the sheet.
 - **A picture with a background is cleaned before it is offered as final.**
   Loop Hero's chest came on black: the background was flood-filled away from
   the border at the art's native size, keeping the 1px outline.

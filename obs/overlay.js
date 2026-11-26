@@ -212,7 +212,8 @@ function drawShields(vitals, art) {
                       : 'Shield — nothing takes it but a hit';
       const img = document.createElement('img');
       img.alt = 'shield';
-      img.src = art.shield;
+      /* a shield set can draw the Temporary Shield apart (Cosmetics.shield_art) */
+      img.src = (timed && art.shield_temp) ? art.shield_temp : art.shield;
       s.appendChild(img);
       if (timed && art.timer) {
         const clock = document.createElement('img');

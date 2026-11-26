@@ -3511,7 +3511,7 @@ func _fill_shields() -> void:
 	for _i in range(bonus):
 		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, false))
 	for _i in range(left):
-		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, true))
+		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(true), SHIELD_PIP, true))
 	_hero_shields.visible = left + bonus > 0
 	_hero_shields.tooltip_text = ("%s (the ones with a clock on them) — each stops "
 		+ "one hit outright, however big, and they go when you report this game.") \
