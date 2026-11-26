@@ -33,6 +33,14 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     un-bashed neighbour; path rifts sit on the start routes, so it failed
     whenever the start happened to touch one. It now counts what a Dash can
     name: un-bashed and not `RunGraph.is_rift_game`.
+  - `test_overworld2.gd::test_every_relic_on_offer_is_drawn_with_a_picture`
+    (PR #375, 26 Nov 2026) failed "there was a relic on offer to check" once in
+    a local full-suite run and never in 15 runs of it alone, so what the earlier
+    tests change is part of it. A chest that is rolled always holds a relic
+    (`Data.roll_chest` falls back to the whole pool, `Locations.pick` never
+    draws nothing from a full one), so the screen had no chest at all: the test
+    HOPED the random report would pay one. It now queues a chest before the
+    report, as `test_every_chest_the_report_dropped_is_on_the_screen_together` does.
   - **The GUT job crashing on "Message queue out of memory"** (PR #375, 26 Nov
     2026), in `Container::_sort_children` during
     `test_overworld2.gd::test_the_popup_opens_clear_of_the_header_bar`, then

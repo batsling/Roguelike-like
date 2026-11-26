@@ -7891,6 +7891,12 @@ func test_a_reroll_on_the_haul_rolls_every_open_chest_again() -> void:
 # on the screen where the player is deciding whether to take it.
 func test_every_relic_on_offer_is_drawn_with_a_picture() -> void:
 	_pick_enemies(0)
+	# ARRANGED, not hoped for: whether the report pays a chest of its own depends on
+	# the random offering, and in a full run of this file it sometimes paid none
+	# ("there was a relic on offer to check" failed, PR #375). Queued before the
+	# report, as the chest-table tests do, so there is always one to open.
+	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(0)[0],
+		Data.reward_item2_pool_of(1)[0]]})
 	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
