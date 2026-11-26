@@ -26,6 +26,22 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     you use a Card, +1 Temporary Shield"), it pays a shield on the same play.
     Putting an After Image in the pack first reproduces the 3 every time. The
     test now counts the After Images the play dealt out of the total.
+  - `test_overworld2.gd::test_dash_offers_every_connected_game_and_spends_a_charge`
+    (PR #375, 26 Nov 2026) got 3 Dash targets where it counted 4, on a branch
+    that never touched the offering. The Dash list leaves RIFT games out
+    (docs/rifts-design.md §7, `_dash_list`) and the test counted every
+    un-bashed neighbour; path rifts sit on the start routes, so it failed
+    whenever the start happened to touch one. It now counts what a Dash can
+    name: un-bashed and not `RunGraph.is_rift_game`.
+  - **The GUT job crashing on "Message queue out of memory"** (PR #375, 26 Nov
+    2026), in `Container::_sort_children` during
+    `test_overworld2.gd::test_the_popup_opens_clear_of_the_header_bar`, then
+    signal 11. No assertion failed, and the same commit passed on the next run.
+    The 5,000 log lines before it are the previous test's orphan list, so the
+    cause is NOT caught yet. It sits with the signal-11 crashes below: deep in
+    `test_overworld2`, once its orphans number in the thousands. Raising
+    `memory/limits/message_queue/max_size_mb` would hide it rather than find it;
+    if it recurs, log the queue's size per test to see which one fills it.
   - **CI's GUT job crashing with signal 11** (main on 19 Nov 2026, PR #366
     twice on 20 Nov), at a random point after `test_overworld2`'s orphan
     list, with no failed assertion. Each crash log that reaches back far enough

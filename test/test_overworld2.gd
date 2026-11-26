@@ -1251,9 +1251,12 @@ func test_dash_offers_every_connected_game_and_spends_a_charge() -> void:
 	GameState.dash_charges = 1
 	_ui._build_choices()
 	var capped: int = _ui._choices.size()
+	# Every connected game a Dash can name: not bashed, and not a RIFT game
+	# (docs/rifts-design.md §7, `_dash_list`). Path rifts sit on the start routes,
+	# so counting a rift here failed whenever the start happened to touch one.
 	var all_nbrs: int = 0
 	for gid in RunGraph.neighbors(GameState.current_game_id):
-		if not GameLoop2.is_bashed(gid):
+		if not GameLoop2.is_bashed(gid) and not RunGraph.is_rift_game(StringName(gid)):
 			all_nbrs += 1
 	_ui.dash()
 	assert_true(_ui._dash_mode, "dash mode is on")
