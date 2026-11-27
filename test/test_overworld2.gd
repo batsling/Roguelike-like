@@ -12153,12 +12153,18 @@ func test_the_stat_badges_grow_with_the_board_cells() -> void:
 
 # A PLAIN NOTICE GOES TO HISTORY ONLY; an announcement pops up too.
 func test_a_plain_notice_pops_nothing_up() -> void:
+	# SETTLED FIRST: the setup's unlocks are drawn and announced at the end of its
+	# frame (Radio / TitleUnlocks / Cosmetics refresh once a frame), and on a fresh
+	# profile that is a burst of toasts that would otherwise land inside the wait.
+	await wait_process_frames(2)
 	var toasts: NotificationToasts = _ui._toasts
-	var before: int = toasts._stack.get_child_count()
 	var from: int = Notifications.history.size()
 	Notifications.notify("Spider walked on.", Color.GOLD)
 	await wait_frames(2)
-	assert_eq(toasts._stack.get_child_count(), before, "no toast for an ordinary line")
+	# BY ITS TEXT, not a count of toasts: a toast from the setup can expire inside
+	# the wait, which moved the count the other way.
+	assert_false(Page.text_of(toasts._stack).contains("Spider walked on."),
+		"no toast for an ordinary line")
 	assert_eq(Notifications.history.size(), from + 1, "but History has it")
 
 func test_a_toast_burst_never_stands_more_than_the_cap() -> void:

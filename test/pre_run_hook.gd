@@ -43,3 +43,30 @@ func run() -> void:
 	# Costumes and icons (Customization) are drawn the same way, into a scratch file.
 	Cosmetics.path_override = "user://test_customization.json"
 	Cosmetics.reset_for_tests()
+	_take_shard()
+
+# ONE SHARD OF THE SUITE, when `tools/gut.sh --parallel` asked for one (the owner,
+# 27 Nov 2026: the suite took ~25 minutes on one core). GUT_SHARD="k/n" keeps
+# every n-th test, offset k, counted across EVERY file in collection order — so
+# each of the n processes takes a slice of every file, test_overworld2's ten
+# minutes included, and they finish at about the same time. Each process has its
+# own user:// (gut.sh points XDG_DATA_HOME at a folder per shard), so the save
+# slots and profiles the tests write never race. Unset, nothing is dropped.
+func _take_shard() -> void:
+	var spec: String = OS.get_environment("GUT_SHARD")
+	if spec == "":
+		return
+	var parts: PackedStringArray = spec.split("/")
+	if parts.size() != 2 or not parts[0].is_valid_int() or not parts[1].is_valid_int():
+		push_error("GUT_SHARD must be k/n, got %s" % spec)
+		return
+	var k: int = int(parts[0])
+	var n: int = maxi(1, int(parts[1]))
+	var i: int = 0
+	for script in gut.get_test_collector().scripts:
+		var kept: Array = []
+		for t in script.tests:
+			if i % n == k:
+				kept.append(t)
+			i += 1
+		script.tests = kept
