@@ -161,23 +161,52 @@ func _load_dir(path: String, target: Dictionary) -> void:
 		from_file[id] = fn
 		target[id] = res
 
-# THE SONGS ARE ONE FILE (SongLibrary, tools/generate_song_tres.py), not a
-# folder: 3,112 separate .tres were the biggest single cost of the boot. The same
-# checks as `_load_dir`, so a slip in the sheet is as loud as it was.
-const SONGS_PATH := "res://data/songs.tres"
+# THE SONGS ARE ONE FILE (tools/generate_song_tres.py), not a folder: 3,112
+# separate .tres were the biggest single cost of the boot. And COLUMNS IN JSON,
+# one array per field (row i of each is song i), not a .tres of 3,112 SongData
+# sub-resources: that took ~190 ms to parse at every boot, this ~20 ms to parse
+# and build the same SongData (27 Nov 2026). The same checks as `_load_dir`, so a
+# slip in the sheet is as loud as it was.
+const SONGS_PATH := "res://data/songs.json"
+const SONG_COLUMNS := ["id", "title", "artist", "album", "year", "game_id", "file", "tags"]
 
 func _load_songs(path: String) -> void:
-	var lib: Resource = load(path) if ResourceLoader.exists(path) else null
-	if lib == null or lib.get("songs") == null:
-		push_error("[Data] '%s' would not load as a SongLibrary — the radio will have no songs" % path)
+	var lib = JSON.parse_string(FileAccess.get_file_as_string(path)) \
+		if FileAccess.file_exists(path) else null
+	if not (lib is Dictionary):
+		push_error("[Data] '%s' would not load as the song columns — the radio will have no songs" % path)
 		return
-	for res in lib.songs:
-		if not (res is SongData) or (res as SongData).id == &"":
+	var count: int = int(lib.get("count", -1))
+	for col in SONG_COLUMNS:
+		if not (lib.get(col) is Array) or (lib[col] as Array).size() != count:
+			push_error("[Data] '%s' has no %s column of %d songs — the radio will have no songs"
+				% [path, col, count])
+			return
+	var ids: Array = lib["id"]
+	var titles: Array = lib["title"]
+	var artists: Array = lib["artist"]
+	var albums: Array = lib["album"]
+	var years: Array = lib["year"]
+	var games: Array = lib["game_id"]
+	var files: Array = lib["file"]
+	var tags: Array = lib["tags"]
+	for i in range(count):
+		var id := StringName(String(ids[i]))
+		if id == &"":
 			push_error("[Data] '%s' holds a song with no id" % path)
 			continue
-		if _songs.has(res.id):
-			push_error("[Data] duplicate song id '%s' in %s" % [res.id, path])
-		_songs[res.id] = res
+		if _songs.has(id):
+			push_error("[Data] duplicate song id '%s' in %s" % [id, path])
+		var song := SongData.new()
+		song.id = id
+		song.title = String(titles[i])
+		song.artist = String(artists[i])
+		song.album = String(albums[i])
+		song.year = int(years[i])
+		song.game_id = StringName(String(games[i]))
+		song.file = String(files[i])
+		song.tags = PackedStringArray(tags[i])
+		_songs[id] = song
 
 # --- Scrolls (2.0) ---------------------------------------------------------
 func get_scroll(id: StringName) -> ScrollData:

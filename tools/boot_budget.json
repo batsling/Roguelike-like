@@ -99,10 +99,10 @@
   "files": 5,
   "kb": 3
  },
- "data/songs.tres": {
+ "data/songs.json": {
   "eager_art_kb": 0,
   "files": 2,
-  "kb": 1550
+  "kb": 708
  },
  "data/statuses2.0/": {
   "eager_art_kb": 103,

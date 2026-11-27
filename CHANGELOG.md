@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Two more off the boot (27 Nov 2026).** The owner: "are there any more
+  efficiencies that we can work towards?" Measured first: a bare Godot starts in
+  87 ms, this project in ~2.4 s, and the time is ~1.7 s of compiling scripts
+  before any autoload runs plus ~460 ms of `Data` loading content — of which the
+  song catalog and the 1,019 game files were 191 and 182 ms.
+  - **The songs are columns.** `data/songs.tres` held 3,112 `SongData`
+    sub-resources and took ~190 ms to parse at every boot. `data/songs.json`
+    holds one array per field and `Data._load_songs` builds the same `SongData`
+    in ~20 ms (all 24,896 fields checked equal against the old file). The
+    generator keeps its name and every check it made; `SongLibrary` is gone.
+  - **The developer panel is not an autoload.** Its thousand lines were compiled
+    on every boot for a tool a normal session never opens. `DevTools` is now a
+    stub that owns the backtick and loads `scripts/dev/DevPanel.gd` by path the
+    first time it is pressed, forwarding what the tests reach for: ~170 ms off.
+  Together with the lazy item and character art earlier today, a headless boot
+  went from ~2.7 s to ~1.9 s best (~2.1 s median).
+
 - **One unlock refresh a frame (27 Nov 2026).** The owner, on the one improvement
   the review left: "if you could cut to a single refresh that seems like it would
   be a good thing". A report fires `GameStats.changed` five times and Radio,

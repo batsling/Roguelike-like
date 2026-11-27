@@ -209,7 +209,7 @@ func _defeat_distinct(game: StringName, n: int) -> void:
 
 func test_the_generated_songs_load_as_songs() -> void:
 	# Against the real catalog, not the injected one: every song in
-	# data/songs.tres is a SongData whose game is a game.
+	# data/songs.json is a SongData whose game is a game.
 	for s in _saved_songs.values():
 		assert_true(s is SongData, "%s is a SongData" % s)
 		var song: SongData = s

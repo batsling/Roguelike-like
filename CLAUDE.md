@@ -334,7 +334,8 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
     never an ExtResource Texture2D, which decodes at boot whether a run shows it
     or not;
   - a catalog of thousands of rows is **one file**, not a file per row
-    (`data/songs.tres`, a `SongLibrary`);
+    (`data/songs.json`, the songs as columns that `Data._load_songs` builds into
+    `SongData` — as a `.tres` of 3,112 sub-resources it cost ~190 ms a boot);
   - a screen the run page only opens on demand is reached **by path**, not
     `preload` or a class name (`test_page_load.gd` holds it);
   - anything connected to **`GameStats.changed`** has to be cheap: a report
