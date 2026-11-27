@@ -175,7 +175,7 @@ the checkout, not what a full clone downloads.
 tools/gut.sh test_gameloop2            # ONE file, ~5 s (test_overworld2 is the slow one: 10+ min)
 tools/gut.sh test_overworld2 crash     # only the tests in it whose name contains "crash"
 tools/gut.sh                           # the whole suite: 90 scripts, ~3850 tests, ~25 min
-tools/gut.sh --parallel                # the same suite in one shard per core: ~6 min on 4 (CI runs this)
+tools/gut.sh --parallel                # the same suite in one shard per core: ~3.5 min on 4 (CI runs this)
 python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file's sections + funcs, with lines
 ```
 
