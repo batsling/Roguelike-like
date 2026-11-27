@@ -36,8 +36,14 @@ if [ "${1:-}" = "--parallel" ]; then
 		PIDS+=($!)
 	done
 	STATUS=0
-	for pid in "${PIDS[@]}"; do
-		wait "$pid" || STATUS=1
+	for ((k = 0; k < N; k++)); do
+		wait "${PIDS[$k]}"
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			STATUS=1
+			# 128+n is a process killed by signal n: a crash, not failing tests.
+			[ $rc -gt 128 ] && echo "shard $k/$N CRASHED (signal $((rc - 128))): see $WORK/shard$k.log"
+		fi
 	done
 	: > "$LOG"
 	for ((k = 0; k < N; k++)); do
@@ -50,7 +56,9 @@ if [ "${1:-}" = "--parallel" ]; then
 		END{printf "Tests %d  Passing %d  Failing %d  Risky/Pending %d  (%d shards)\n", a, p, f, r, '"$N"'}' \
 		"$WORK"/shard*.log
 	grep -hE "SCRIPT ERROR|Parse Error|\[Failed\]|at line" "$WORK"/shard*.log | head -60
-	rm -rf "$WORK"
+	# Kept when anything failed, so a crash's own log (and the shard's user://)
+	# can still be read; removed on a clean run.
+	if [ $STATUS -eq 0 ]; then rm -rf "$WORK"; else echo "(shard logs kept in $WORK)"; fi
 	echo "(exit $STATUS, full log: $LOG)"
 	exit $STATUS
 fi

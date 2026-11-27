@@ -62,6 +62,10 @@ func _take_shard() -> void:
 		return
 	var k: int = int(parts[0])
 	var n: int = maxi(1, int(parts[1]))
+	# GUT_FILES="test_a,test_b": run only these files' share of the shard, the
+	# share counted over the WHOLE suite as above — so a failure that only shows
+	# inside one shard can be bisected down to the earlier test that causes it.
+	var only: PackedStringArray = OS.get_environment("GUT_FILES").split(",", false)
 	var i: int = 0
 	for script in gut.get_test_collector().scripts:
 		var kept: Array = []
@@ -69,4 +73,6 @@ func _take_shard() -> void:
 			if i % n == k:
 				kept.append(t)
 			i += 1
+		if not only.is_empty() and not only.has(String(script.path).get_file().get_basename()):
+			kept = []
 		script.tests = kept

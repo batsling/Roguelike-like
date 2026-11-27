@@ -49,9 +49,12 @@ var map_spec: Dictionary = default_spec()
 var start_spec: Dictionary = default_spec()
 var amulet_spec: Dictionary = default_spec()
 
-# The run length, in games from the start to the amulet.
-var min_path: int = 5
-var max_path: int = 8
+# The run length, in games from the start to the amulet. RunGraph's band, the
+# same numbers `reset()` puts back: this said 5 while `reset()` said 4, so a
+# screen read before the first run of a session saw a different band from every
+# run after it.
+var min_path: int = RunGraph.MIN_PATH_LENGTH
+var max_path: int = RunGraph.MAX_PATH_LENGTH
 
 # An explicit target: the run is a search for THIS game. Empty for "roll one from
 # whatever the amulet filter left". A named target still respects the band — the

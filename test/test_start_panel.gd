@@ -27,6 +27,9 @@ func after_each() -> void:
 	GameStats.last_starts = _saved_starts
 	GameState.start_gear_enabled = _saved_gear_on
 	RunConfig.reset()
+	# Two tests here apply a save, which leaves a resume pending for whatever page
+	# is built next — in this file's order nothing builds one, in a shard it can.
+	SaveSystem.cancel_pending_resume()
 
 # --- the shape _strict_starts_for returns, built by hand -----------------------
 
