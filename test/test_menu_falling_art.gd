@@ -885,6 +885,12 @@ func test_each_kind_falls_at_its_share() -> void:
 	for k in _art._pool:
 		for e in _art._pool[k]:
 			pool[int(e["group"])] = int(pool.get(int(e["group"]), 0)) + 1
+	# SEEDED: the share is a sample, ~1.1 points of standard error over this many
+	# draws, and an unseeded run fell outside a two-point band about one time in
+	# twenty. The seed makes it the same sample every run; the band below is wide
+	# enough for any seed and still far narrower than a wrong mix (a kind that lost
+	# its weight would be off by its whole share).
+	_art._rng.seed = 20261127
 	var pieces: Array = []
 	for i in _art.piece_count():
 		pieces.append(_art._spawn())
@@ -906,7 +912,7 @@ func test_each_kind_falls_at_its_share() -> void:
 			assert_lt(got, want, "group %d has %d pictures and falls short of its share" % [g, pool.get(g, 0)])
 		else:
 			# At least its share: what a short kind leaves goes to the others.
-			assert_gt(got, want - 0.02, "group %d gets its share (%.3f of %.3f)" % [g, got, want])
+			assert_gt(got, want - 0.04, "group %d gets its share (%.3f of %.3f)" % [g, got, want])
 			assert_lt(got, want + 0.06, "and only the spare room on top (%.3f of %.3f)" % [got, want])
 	for p in pieces:
 		_art._release(p)
