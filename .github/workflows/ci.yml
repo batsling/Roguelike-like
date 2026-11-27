@@ -41,7 +41,8 @@ jobs:
   tests:
     name: GUT suite
     runs-on: ubuntu-latest
-    # ~7 minutes locally; the ceiling is for a hang, not for a slow runner.
+    # The suite runs in parallel shards (tools/gut.sh --parallel), one per core;
+    # the ceiling is for a hang, not for a slow runner.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
@@ -78,7 +79,18 @@ jobs:
         run: ~/.local/godot/godot --headless --editor --quit || true
 
       - name: GUT
-        run: ~/.local/godot/godot --headless -s addons/gut/gut_cmdln.gd
+        # One shard per core, each with its own user:// (CLAUDE.md): the same
+        # 3,800-odd tests, about a quarter of the wall time on a 4-core runner.
+        # gut.sh calls `godot`, so the cached engine goes on the PATH first.
+        run: |
+          export PATH="$HOME/.local/godot:$PATH"
+          GUT_LOG="$RUNNER_TEMP/gut.log" tools/gut.sh --parallel
+
+      - name: GUT log (on failure)
+        # gut.sh prints the totals and the failures; the rest of the shards'
+        # output — a crash's backtrace, a parse error's context — is here.
+        if: failure()
+        run: tail -n 400 "$RUNNER_TEMP/gut.log" || true
 
   content:
     name: Content pipeline
