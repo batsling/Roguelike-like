@@ -44,6 +44,7 @@ func run() -> void:
 	Cosmetics.path_override = "user://test_customization.json"
 	Cosmetics.reset_for_tests()
 	_take_shard()
+	_time_tests()
 
 # ONE SHARD OF THE SUITE, when `tools/gut.sh --parallel` asked for one (the owner,
 # 27 Nov 2026: the suite took ~25 minutes on one core). GUT_SHARD="k/n" keeps
@@ -76,3 +77,23 @@ func _take_shard() -> void:
 		if not only.is_empty() and not only.has(String(script.path).get_file().get_basename()):
 			kept = []
 		script.tests = kept
+
+# GUT_TIMES=1: print every test slower than a second as `SLOW <ms> <script> <test>`,
+# for balancing shards and finding what a slow run spends its time on. GUT keeps
+# no per-test clock of its own; this reads its start_test / end_test signals.
+var _test_started: int = 0
+var _test_name: String = ""
+var _script_name: String = ""
+
+func _time_tests() -> void:
+	if OS.get_environment("GUT_TIMES") == "":
+		return
+	gut.start_script.connect(func(obj):
+		_script_name = String(obj.get_script().resource_path.get_file()) if obj != null and obj.get_script() != null else "")
+	gut.start_test.connect(func(test_name):
+		_test_name = String(test_name)
+		_test_started = Time.get_ticks_msec())
+	gut.end_test.connect(func():
+		var ms: int = Time.get_ticks_msec() - _test_started
+		if ms >= 1000:
+			print("SLOW %d %s %s" % [ms, _script_name, _test_name]))
