@@ -37,7 +37,7 @@ func _ready() -> void:
 	_rng.randomize()
 	_load()
 	refresh_unlocks(false)
-	GameStats.changed.connect(func() -> void: refresh_unlocks(true))
+	GameStats.changed.connect(_queue_unlocks)
 	Profiles.profile_switched.connect(_on_profile_changed)
 	Profiles.profile_wiped.connect(_on_profile_changed)
 	Settings.unlock_everything_changed.connect(func(_on: bool) -> void: changed.emit())
@@ -45,6 +45,7 @@ func _ready() -> void:
 # Every letter on a test profile (Settings.unlock_everything); nothing is drawn
 # for it, so drawn_for and unlocked_keys still count only what ranks earned.
 func is_unlocked(key: String) -> bool:
+	_flush_unlocks()
 	return Settings.unlock_everything or _unlocked.has(key)
 
 func is_seen(key: String) -> bool:
@@ -61,12 +62,14 @@ func mark_seen(keys: Array) -> void:
 		_save()
 
 func unlocked_keys() -> Array:
+	_flush_unlocks()
 	var out: Array = _unlocked.keys()
 	out.sort()
 	return out
 
 # How many letters have been drawn FOR `owner` (a RankRewards key).
 func drawn_for(owner: String) -> int:
+	_flush_unlocks()
 	var n: int = 0
 	for k in _unlocked:
 		if String(_unlocked[k]) == owner:
@@ -75,7 +78,25 @@ func drawn_for(owner: String) -> int:
 
 # Draw every letter owed. Games first (each from its own logo, in id order), then
 # characters (from any logo, in id order).
+# ONE REFRESH PER FRAME, NOT PER `GameStats.changed` (the owner, 27 Nov 2026). A
+# report fires `changed` five times and each refresh walks every title letter of every game, so the
+# signal only marks the unlocks dirty and one refresh runs at the end of the
+# frame. Anything that READS the unlocks first catches up (`_flush_unlocks`), so a
+# caller asking straight after the signal still sees what it earned.
+var _unlocks_dirty: bool = false
+
+func _queue_unlocks() -> void:
+	if _unlocks_dirty:
+		return
+	_unlocks_dirty = true
+	_flush_unlocks.call_deferred()
+
+func _flush_unlocks() -> void:
+	if _unlocks_dirty:
+		refresh_unlocks(true)
+
 func refresh_unlocks(announce: bool = true) -> void:
+	_unlocks_dirty = false
 	RankRewards.batch(func() -> void: _refresh_unlocks(announce))
 
 func _refresh_unlocks(announce: bool) -> void:
@@ -177,6 +198,7 @@ func _save() -> void:
 
 # For tests: forget every draw (the file too).
 func reset_for_tests() -> void:
+	_unlocks_dirty = false
 	_unlocked = {}
 	_seen = {}
 	_save()

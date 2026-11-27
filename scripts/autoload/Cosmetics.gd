@@ -52,7 +52,7 @@ func _ready() -> void:
 	_rng.randomize()
 	_load()
 	refresh_unlocks(false)
-	GameStats.changed.connect(func() -> void: refresh_unlocks(true))
+	GameStats.changed.connect(_queue_unlocks)
 	Profiles.profile_switched.connect(_on_profile_changed)
 	Profiles.profile_wiped.connect(_on_profile_changed)
 	Settings.unlock_everything_changed.connect(func(_on: bool) -> void: changed.emit())
@@ -61,14 +61,17 @@ func _ready() -> void:
 # --- earned ---------------------------------------------------------------------
 
 func is_unlocked(key: String) -> bool:
+	_flush_unlocks()
 	return Settings.unlock_everything or _unlocked.has(key)
 
 func unlocked_keys() -> Array:
+	_flush_unlocks()
 	var out: Array = _unlocked.keys()
 	out.sort()
 	return out
 
 func drawn_for(owner: String) -> int:
+	_flush_unlocks()
 	var n: int = 0
 	for k in _unlocked:
 		if String(_unlocked[k]) == owner:
@@ -77,9 +80,28 @@ func drawn_for(owner: String) -> int:
 
 # Who drew `key` ("game:hades"), or "" while it is locked.
 func drawn_by(key: String) -> String:
+	_flush_unlocks()
 	return String(_unlocked.get(key, ""))
 
+# ONE REFRESH PER FRAME, NOT PER `GameStats.changed` (the owner, 27 Nov 2026). A
+# report fires `changed` five times and each refresh walks every look of every game, so the
+# signal only marks the unlocks dirty and one refresh runs at the end of the
+# frame. Anything that READS the unlocks first catches up (`_flush_unlocks`), so a
+# caller asking straight after the signal still sees what it earned.
+var _unlocks_dirty: bool = false
+
+func _queue_unlocks() -> void:
+	if _unlocks_dirty:
+		return
+	_unlocks_dirty = true
+	_flush_unlocks.call_deferred()
+
+func _flush_unlocks() -> void:
+	if _unlocks_dirty:
+		refresh_unlocks(true)
+
 func refresh_unlocks(announce: bool = true) -> void:
+	_unlocks_dirty = false
 	RankRewards.batch(func() -> void: _refresh_unlocks(announce))
 
 func _refresh_unlocks(announce: bool) -> void:
@@ -155,6 +177,7 @@ func note_escape_streak(streak: int) -> void:
 
 # Unlock `key` outside the ranks; true if it was not already. Toasted like a rank's.
 func unlock_special(key: String) -> bool:
+	_flush_unlocks()
 	if _unlocked.has(key) or CosmeticCatalog.entry(key).is_empty():
 		return false
 	_unlocked[key] = SPECIAL_OWNER
@@ -192,6 +215,7 @@ func choice(slot_key: String) -> String:
 
 # The unit a slot shows now — a RANDOM slot's roll — or "" for the default.
 func _shown_key(slot_key: String) -> String:
+	_flush_unlocks()
 	var key := choice(slot_key)
 	if key == RANDOM:
 		if not _rolled.has(slot_key):
@@ -273,6 +297,7 @@ func _choose(slot_key: String, key: String) -> void:
 # except an ICON slot, whose default (the basic glyph or status picture) is not
 # from a game and is rolled only when no game icon is unlocked for it.
 func options(slot_key: String) -> Array:
+	_flush_unlocks()
 	var parts := slot_key.split(":")
 	var pool: Array = []
 	if parts[0] == "costume":
@@ -309,9 +334,11 @@ func roll_random() -> void:
 
 # Drawn by a rank and not yet shown where it can be worn: it glows.
 func is_new(key: String) -> bool:
+	_flush_unlocks()
 	return _unlocked.has(key) and not _seen.has(key)
 
 func mark_seen(keys: Array) -> void:
+	_flush_unlocks()
 	var moved := false
 	for k in keys:
 		if _unlocked.has(String(k)) and not _seen.has(String(k)):
@@ -748,6 +775,7 @@ func _save() -> void:
 		"letters_off": off, "games_off": goff, "rolled": _rolled, "seen": seen}, "  ", true))
 
 func reset_for_tests() -> void:
+	_unlocks_dirty = false
 	_unlocked = {}
 	_worn = {}
 	_letters_off = {}

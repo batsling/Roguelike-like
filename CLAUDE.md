@@ -339,7 +339,10 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
     `preload` or a class name (`test_page_load.gd` holds it);
   - anything connected to **`GameStats.changed`** has to be cheap: a report
     fires it five times. A loop over every game that scans every song is
-    songs × games — `RankRewards.batch` is how the unlock refreshes avoid it.
+    songs × games — `RankRewards.batch` is how the unlock refreshes avoid it,
+    and they run once a frame however often it fires (`_queue_unlocks`; a
+    read catches up first through `_flush_unlocks`, so a new reader of
+    `_unlocked` calls it too).
   `python3 tools/check_boot_load.py` (CI) counts what boot loads against
   `tools/boot_budget.json` and fails a folder that newly embeds its art;
   `--report` prints the numbers, `--update` accepts a deliberate rise.

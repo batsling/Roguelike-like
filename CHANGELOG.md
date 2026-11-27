@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **One unlock refresh a frame (27 Nov 2026).** The owner, on the one improvement
+  the review left: "if you could cut to a single refresh that seems like it would
+  be a good thing". A report fires `GameStats.changed` five times and Radio,
+  TitleUnlocks and Cosmetics each re-walked their whole catalog on every one.
+  They mark themselves dirty now and refresh once at the end of the frame
+  (`_queue_unlocks`), and every read catches up first (`_flush_unlocks`), so
+  nothing asking straight after a change sees stale unlocks. Five changes cost
+  ~56 ms where they cost ~240 ms. A song's toast comes at the end of the frame
+  its change landed in rather than mid-report.
+
 - **A code review pass: freed captures, dead code, lazy art (27 Nov 2026).** The
   owner asked for a search through the whole code for issues and optimizations.
   The suite's own log was the best lead: 3,846 green tests were raising ~170
