@@ -289,7 +289,10 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   `check_turn_order`, `check_data_sync`, `map_calc --check`, `check_map_sync` (informational — it drifts in both
   directions by design) and `check_overlay.js`. Three jobs, so a red build says
   which KIND of thing broke — the game, the content pipeline, or the browser page
-  GUT cannot see. The engine version is pinned there and in
+  GUT cannot see. The GUT job runs on TWO machines at once, four shards each of
+  an eight-way split (`GUT_SHARD_TOTAL` / `GUT_SHARD_OFFSET` for
+  `tools/gut.sh --parallel`), and keeps Godot's asset import in the Actions cache
+  between runs. The engine version is pinned there and in
   `.claude/hooks/session-start.sh`; keep the two the same as `project.godot`.
 - **GUT cannot see the OBS overlay, because the overlay is a browser page.**
   `test_obs_companion.gd` pins the payload and stops at the file; everything past

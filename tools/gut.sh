@@ -25,13 +25,19 @@ LOG="${GUT_LOG:-/tmp/gut_last.log}"
 # its own user:// through XDG_DATA_HOME, which is where Godot keeps it on Linux,
 # so no two of them touch the same save slot. The logs are concatenated into $LOG
 # and the totals summed; the run fails if any shard does.
+#
+# ACROSS MACHINES TOO: GUT_SHARD_TOTAL (default N) and GUT_SHARD_OFFSET (default
+# 0) make this machine's N processes shards OFFSET..OFFSET+N-1 of TOTAL, so CI's
+# two runners each take half of an 8-way split (.github/workflows/ci.yml).
 if [ "${1:-}" = "--parallel" ]; then
 	N="${2:-$(nproc)}"
+	TOTAL="${GUT_SHARD_TOTAL:-$N}"
+	OFFSET="${GUT_SHARD_OFFSET:-0}"
 	WORK="$(mktemp -d "${TMPDIR:-/tmp}/gut_parallel.XXXXXX")"
 	PIDS=()
 	for ((k = 0; k < N; k++)); do
 		mkdir -p "$WORK/data$k"
-		XDG_DATA_HOME="$WORK/data$k" GUT_SHARD="$k/$N" \
+		XDG_DATA_HOME="$WORK/data$k" GUT_SHARD="$((OFFSET + k))/$TOTAL" \
 			godot --headless -s addons/gut/gut_cmdln.gd > "$WORK/shard$k.log" 2>&1 &
 		PIDS+=($!)
 	done
@@ -42,18 +48,18 @@ if [ "${1:-}" = "--parallel" ]; then
 		if [ $rc -ne 0 ]; then
 			STATUS=1
 			# 128+n is a process killed by signal n: a crash, not failing tests.
-			[ $rc -gt 128 ] && echo "shard $k/$N CRASHED (signal $((rc - 128))): see $WORK/shard$k.log"
+			[ $rc -gt 128 ] && echo "shard $((OFFSET + k))/$TOTAL CRASHED (signal $((rc - 128))): see $WORK/shard$k.log"
 		fi
 	done
 	: > "$LOG"
 	for ((k = 0; k < N; k++)); do
-		echo "===== shard $k/$N =====" >> "$LOG"
+		echo "===== shard $((OFFSET + k))/$TOTAL =====" >> "$LOG"
 		cat "$WORK/shard$k.log" >> "$LOG"
 	done
 	# Totals, summed over the shards' own "Totals" blocks.
 	awk '/^Totals/{t=1} t && /^Tests /{a+=$2} t && /^Passing Tests/{p+=$3} \
 		t && /^Failing Tests/{f+=$3} t && /^(Risky|Pending)/{r+=$NF} \
-		END{printf "Tests %d  Passing %d  Failing %d  Risky/Pending %d  (%d shards)\n", a, p, f, r, '"$N"'}' \
+		END{printf "Tests %d  Passing %d  Failing %d  Risky/Pending %d  (%d of %d shards)\n", a, p, f, r, '"$N"', '"$TOTAL"'}' \
 		"$WORK"/shard*.log
 	grep -hE "SCRIPT ERROR|Parse Error|\[Failed\]|at line" "$WORK"/shard*.log | head -60
 	# Kept when anything failed, so a crash's own log (and the shard's user://)
