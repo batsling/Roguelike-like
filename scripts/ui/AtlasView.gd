@@ -583,12 +583,38 @@ func on_route(i: int) -> bool:
 		return true
 	return _route_stars.has(i)
 
+# Is the line a-b a step of the OPTIMAL PATH (the road ahead, `_trail`), either
+# way round? With a == b: is that game on the optimal path at all. Built once per
+# route off `_trail` and wiped with the other route caches.
+var _trail_keys: Dictionary = {}
+
+func on_optimal_path(a: int, b: int) -> bool:
+	if _trail_keys.is_empty() and not _trail.is_empty():
+		for seg in _trail:
+			var p: int = int(seg[0])
+			var q: int = int(seg[1])
+			_trail_keys[Vector2i(p, q)] = true
+			_trail_keys[Vector2i(q, p)] = true
+			_trail_keys[Vector2i(p, p)] = true
+			_trail_keys[Vector2i(q, q)] = true
+	return _trail_keys.has(Vector2i(a, b))
+
+# A game's TYPE colour as the drawn map's paper shows it: the four type colours
+# are pastel, made to read on the game's dark panels, so they are darkened a
+# third to hold up as an outline on parchment.
+func map_type_color(i: int) -> Color:
+	var game: GameData = game_at(i) if i >= 0 else null
+	if game == null:
+		return MAP_INK
+	return RunGraph.type_color(game.type).darkened(0.3)
+
 # Wipe the route caches together. There are four places that invalidate the road
 # — the two builders, the explicit refresh, and a relayout — and three things to
 # wipe at each of them, so it is one call rather than three lines copied four
 # times. A partition that outlives its set is a sky drawing last hop's route.
 func _clear_route_cache() -> void:
 	_route_stars.clear()
+	_trail_keys.clear()
 	_stars_off_route = PackedInt32Array()
 	_stars_on_route = PackedInt32Array()
 
@@ -1128,6 +1154,8 @@ var _rift_curves_key: String = ""
 var _box_grid: Dictionary = {}
 var _selected_rift: int = -1
 var _hovered_rift: int = -1
+# The rift whose card the drawn map is showing on hover (-1: a box's, or none).
+var _hover_card_rift: int = -1
 
 func rift_curves() -> Array:
 	if pure_catalog or not has_layout() or not layout.is_drawn_map():
@@ -1654,6 +1682,7 @@ func select(i: int) -> void:
 		_selected_edge = -1
 	else:
 		_hover_card = -1
+		_hover_card_rift = -1
 	_near.clear()
 	if i >= 0:
 		_near[i] = true
@@ -1694,15 +1723,11 @@ func _build() -> void:
 	root.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	add_child(root)
 
+	# THE TWO SWITCHES of the run's drawn map — back to the Optimal Path (when the
+	# run opened this as its full map), and All games / Owned games — sit IN the
+	# header row (the owner, 26 Nov 2026: one bar of options along the top, not
+	# two). `_build_header` makes their holder.
 	root.add_child(_build_header())
-	# THE TWO SWITCHES of the run's drawn map: back to the Optimal Path (when the
-	# run opened this as its full map), and All games / Owned games.
-	if not pure_catalog and layout.is_drawn_map():
-		_mode_strip = PanelContainer.new()
-		_mode_strip.name = "MapMode"
-		_mode_strip.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 6, 0))
-		root.add_child(_mode_strip)
-		_rebuild_mode_strip()
 	if pure_catalog:
 		_filter_bar = PanelContainer.new()
 		_filter_bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
@@ -1858,11 +1883,21 @@ func _build_header() -> Control:
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	bar.add_child(row)
 
-	var title := Label.new()
-	title.text = "✦  Constellations" if pure_catalog else "✦  Atlas"
-	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
-	title.add_theme_color_override("font_color", UITheme.GOLD)
-	row.add_child(title)
+	var switches: bool = not pure_catalog and has_layout() and layout.is_drawn_map()
+	if switches:
+		# The switches stand where the title was: "Full map", lit, says which
+		# page this is.
+		_mode_strip = PanelContainer.new()
+		_mode_strip.name = "MapMode"
+		_mode_strip.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		row.add_child(_mode_strip)
+		_rebuild_mode_strip()
+	else:
+		var title := Label.new()
+		title.text = "✦  Constellations" if pure_catalog else "✦  Atlas"
+		title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
+		title.add_theme_color_override("font_color", UITheme.GOLD)
+		row.add_child(title)
 
 	_hud = Label.new()
 	_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1877,7 +1912,7 @@ func _build_header() -> Control:
 
 	_search = LineEdit.new()
 	_search.placeholder_text = "Find a game…"
-	_search.custom_minimum_size.x = 150
+	_search.custom_minimum_size.x = 120 if switches else 150
 	_search.text_submitted.connect(_on_search)
 	row.add_child(_search)
 
@@ -1900,7 +1935,7 @@ func _build_header() -> Control:
 	# the run, and "Close" on a page that replaced everything reads as ambiguous at
 	# exactly the moment the player wants out of it.
 	var close := Button.new()
-	close.text = "✕  Close" if pure_catalog else "←  Back to the run"
+	close.text = "✕  Close" if pure_catalog else ("←  Back" if switches else "←  Back to the run")
 	close.tooltip_text = "Leave the chart (Esc)."
 	close.add_theme_color_override("font_color", UITheme.GOLD)
 	close.pressed.connect(_finish)
@@ -2116,6 +2151,10 @@ func _refresh_card() -> void:
 		return
 	if _selected_rift >= 0 and has_layout() and _selected_rift < rift_curves().size():
 		_fill_rift_card(rift_curves()[_selected_rift])
+		return
+	if _selected < 0 and _hover_card_rift >= 0 and has_layout() and layout.is_drawn_map() \
+			and _hover_card_rift < rift_curves().size():
+		_fill_rift_card(rift_curves()[_hover_card_rift])
 		return
 	var sel: int = card_star()
 	if sel < 0 or not has_layout():
@@ -2379,9 +2418,16 @@ func _fill_connection_card() -> void:
 	proof_label.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	_card_box.add_child(proof_label)
 
+	# THE PROOF ITSELF, when there is one on file (the owner, 26 Nov 2026): the
+	# screenshot, or a clip's poster with a ▶ on it, as the game card shows it.
+	var shot: Control = _proof_picture(from_game.id, to_game.id)
+	if shot != null:
+		_card_box.add_child(shot)
+
 	var source: String = String(d.get("source", "")).strip_edges()
 	if source == "":
-		_card_box.add_child(_proof_note("No source recorded for this connection yet."))
+		if shot == null:
+			_card_box.add_child(_proof_note("No source recorded for this connection yet."))
 	elif GameData.is_openable_source(source):
 		var open_btn := Button.new()
 		open_btn.text = "🔗  Open source"
@@ -2410,10 +2456,11 @@ func _fill_connection_card() -> void:
 func _connection_side(game: GameData) -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	col.custom_minimum_size.x = 132
+	# Smaller than they were (132 x 150), to leave the card room for the proof.
+	col.custom_minimum_size.x = 104
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if game.cover_image != null:
-		var cover := card_art(game.cover_image, 132.0, 150.0)
+		var cover := card_art(game.cover_image, 96.0, 104.0)
 		UITheme.attach_tier_badge(cover, game.id)
 		col.add_child(cover)
 	var name_label := Label.new()
@@ -2436,6 +2483,31 @@ func _connection_side(game: GameData) -> Control:
 	jump.pressed.connect(func(): focus_game(game.id))
 	col.add_child(jump)
 	return col
+
+# The proof's thumbnail at the card's width, its top PROOF_THUMB_H tall at most
+# (ProofView.thumb, as the game card shows it). A click opens it over the map.
+const PROOF_THUMB_H := 190.0
+const PROOF_MARGIN := Vector2(48, 56)
+
+func _proof_picture(from_id: StringName, to_id: StringName) -> Control:
+	return ProofView.thumb(from_id, to_id, PROOF_THUMB_H, _open_proof_view)
+
+# The proof over the whole map (ProofView.overlay); a click outside a playing
+# clip, its ✕, or Escape puts it away.
+var _proof_view: Control = null
+
+func _open_proof_view(tex: Texture2D, video: VideoStream) -> void:
+	_close_proof_view()
+	_proof_view = ProofView.overlay(self, tex, video, tex.get_size(), PROOF_MARGIN,
+		func(): _close_proof_view())
+
+func _close_proof_view() -> bool:
+	if _proof_view == null or not is_instance_valid(_proof_view):
+		_proof_view = null
+		return false
+	_proof_view.queue_free()
+	_proof_view = null
+	return true
 
 func _proof_note(text: String) -> Control:
 	var l := Label.new()
@@ -2768,19 +2840,17 @@ func _rebuild_mode_strip() -> void:
 	for c in _mode_strip.get_children():
 		_mode_strip.remove_child(c)
 		c.queue_free()
-	var mid := CenterContainer.new()
-	_mode_strip.add_child(mid)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", UITheme.GAP_BREAK)
-	mid.add_child(row)
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	_mode_strip.add_child(row)
 	if to_optimal.is_valid():
 		row.add_child(map_mode_toggle(true, func():
 			var go: Callable = to_optimal
 			_finish()
-			go.call(), Callable()))
-	var games := segmented(["All games", "Owned games"], ["AllGames", "OwnedGames"],
+			go.call(), Callable(), true))
+	var games := segmented(["All games", "Owned"], ["AllGames", "OwnedGames"],
 		1 if owned_only else 0, [func(): set_owned_only(false), func(): set_owned_only(true)],
-		["Every game on the map.", "Only the games you own, and the lines between them."])
+		["Every game on the map.", "Only the games you own, and the lines between them."], true)
 	games.name = "OwnedToggle"
 	row.add_child(games)
 
@@ -2792,18 +2862,21 @@ func _rebuild_mode_strip() -> void:
 const MODE_W := 230.0
 const MODE_H := 42.0
 
-static func map_mode_toggle(full: bool, to_optimal_cb: Callable, to_full_cb: Callable) -> Control:
+static func map_mode_toggle(full: bool, to_optimal_cb: Callable, to_full_cb: Callable,
+		compact: bool = false) -> Control:
 	var row: Control = segmented(["→  Optimal path", "🗺  Full map"], ["Optimal", "Full"],
 		1 if full else 0, [to_optimal_cb, to_full_cb],
 		["The shortest road to the goal, decision by decision.",
-			"The whole drawn map, with your route on it."])
+			"The whole drawn map, with your route on it."], compact)
 	row.name = "MapModeToggle"
 	return row
 
 # A row of joined buttons, one of them lit gold: the map's switches. Pressing the
 # lit one does nothing; pressing another calls its callback.
+# `compact`: sized to its labels at body text, to share a header row with the
+# map's other tools.
 static func segmented(labels: Array, names: Array, selected: int, callbacks: Array,
-		tips: Array = []) -> Control:
+		tips: Array = [], compact: bool = false) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -2813,8 +2886,8 @@ static func segmented(labels: Array, names: Array, selected: int, callbacks: Arr
 		var b := Button.new()
 		b.name = String(names[k])
 		b.text = String(labels[k])
-		b.custom_minimum_size = Vector2(MODE_W, MODE_H)
-		b.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+		b.custom_minimum_size = Vector2(0, 0) if compact else Vector2(MODE_W, MODE_H)
+		b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT if compact else UITheme.FONT_SUB)
 		b.toggle_mode = true
 		b.button_pressed = on
 		b.focus_mode = Control.FOCUS_NONE
@@ -2822,7 +2895,7 @@ static func segmented(labels: Array, names: Array, selected: int, callbacks: Arr
 		var edge: Color = UITheme.GOLD if on else UITheme.BORDER
 		for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
 			var sb := UITheme.flat(fill if state != "hover" or on else UITheme.PANEL_HI,
-				0, 10, 2, edge)
+				0, 8 if compact else 10, 2, edge)
 			sb.corner_radius_top_left = 10 if k == 0 else 0
 			sb.corner_radius_bottom_left = 10 if k == 0 else 0
 			sb.corner_radius_top_right = 10 if k == n - 1 else 0
@@ -2845,7 +2918,9 @@ static func segmented(labels: Array, names: Array, selected: int, callbacks: Arr
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-		if _selected >= 0 or _selected_edge >= 0:
+		if _close_proof_view():
+			pass
+		elif _selected >= 0 or _selected_edge >= 0:
 			select(-1)
 			select_edge(-1)
 		else:
@@ -2913,12 +2988,19 @@ func _on_canvas_input(event: InputEvent) -> void:
 				_hovered_rift = over_rift
 				_canvas.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND \
 					if over_rift >= 0 else Control.CURSOR_ARROW
+				# A RIFT PUTS ITS CARD UP ON HOVER, as a box does (the owner, 26 Nov
+				# 2026), and it stays up until another box or rift is hovered.
+				if over_rift >= 0 and over_rift != _hover_card_rift and layout.is_drawn_map():
+					_hover_card_rift = over_rift
+					if _selected < 0 and _selected_edge < 0 and _selected_rift < 0:
+						_refresh_card()
 				_redraw()
 			if hit != _hovered:
 				_hovered = hit
-				if hit >= 0 and hit != _hover_card and layout.is_drawn_map():
+				if hit >= 0 and (hit != _hover_card or _hover_card_rift >= 0) and layout.is_drawn_map():
 					_hover_card = hit
-					if _selected < 0 and _selected_edge < 0:
+					_hover_card_rift = -1
+					if _selected < 0 and _selected_edge < 0 and _selected_rift < 0:
 						_refresh_card()
 				_redraw()
 
@@ -3021,6 +3103,9 @@ class StarCanvas extends Control:
 		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
 		var width: float = clampf(sc * 0.55, 0.7, 1.5)
 		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 10.0)
+		# The picked game's own lines are held back and drawn over the roads below,
+		# in the picked game's TYPE colour (the owner, 26 Nov 2026).
+		var picked_lines: Array = []
 		for pair in range(lay.edge_count()):
 			var a: int = lay.edges[pair * 2]
 			var b: int = lay.edges[pair * 2 + 1]
@@ -3032,22 +3117,12 @@ class StarCanvas extends Control:
 			if not vis.grow(head).intersects(Rect2(pa, Vector2.ZERO).expand(pb)):
 				continue
 			var col: Color = AtlasView.MAP_BLUE if lay.is_dev_edge(pair) else AtlasView.MAP_INK
-			var w: float = width
-			var incident: bool = focused and (a == view._selected or b == view._selected)
-			if incident:
-				col = AtlasView.MAP_PICK
-				w = width + 1.5
-			elif focused or view.off_run(a) or view.off_run(b):
+			if focused and (a == view._selected or b == view._selected):
+				picked_lines.append([pa, pb, view.on_optimal_path(a, b)])
+				continue
+			if focused or view.off_run(a) or view.off_run(b):
 				col = Color(col, AtlasView.MAP_FADE)
-			draw_line(pa, pb, col, w, true)
-			var d: Vector2 = pb - pa
-			if d.length() > head * 1.5:
-				var dir: Vector2 = d.normalized()
-				var perp := Vector2(-dir.y, dir.x)
-				_polygon_at(pb, PackedVector2Array([Vector2.ZERO,
-					-dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
-					-dir * head * 0.75,
-					-dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
+			_draw_map_line(pa, pb, col, width, head)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
 		var curves: Array = view.rift_curves()
@@ -3059,6 +3134,17 @@ class StarCanvas extends Control:
 
 		# The run's roads, over the lines and under the boxes.
 		_draw_roads()
+		# The picked game's lines, over the roads: its type colour, and a line that
+		# is also a step of the optimal path cased in the road's orange, so "this
+		# connection is on my way to the Amulet" reads at a glance.
+		if not picked_lines.is_empty():
+			var pick_col: Color = view.map_type_color(view._selected)
+			var pick_w: float = width + 1.8
+			for line in picked_lines:
+				if bool(line[2]):
+					draw_line(line[0], line[1], AtlasView.COL_TRAIL_CASING, pick_w + 7.0, true)
+					draw_line(line[0], line[1], AtlasView.COL_TRAIL, pick_w + 4.5, true)
+				_draw_map_line(line[0], line[1], pick_col, pick_w, head + 1.5)
 		_draw_picked_edge(lay)
 
 		# The boxes.
@@ -3081,9 +3167,17 @@ class StarCanvas extends Control:
 				fill = AtlasView.MAP_BOX.lerp(AtlasView.MAP_PICK, 0.22)
 				ink = AtlasView.MAP_INK
 				draw_rect(r.grow(3.0), Color(AtlasView.MAP_PICK, 0.35), false, 4.0)
+			# A neighbour of the picked game that is on the optimal path wears the
+			# road's orange outside its own outline.
+			if focused and not lit and view._near.has(i) and view.on_optimal_path(i, i):
+				draw_rect(r.grow(3.0), AtlasView.COL_TRAIL, false, 3.0)
 			draw_rect(r, fill)
-			var edge_col: Color = ink
-			var edge_w: float = 1.0
+			# EVERY BOX IS OUTLINED IN ITS GAME'S TYPE COLOUR (the owner, 26 Nov
+			# 2026), the colours the legend and every card use for the four types.
+			var edge_col: Color = view.map_type_color(i)
+			var edge_w: float = clampf(sc * 0.9, 1.5, 2.5)
+			if faded:
+				edge_col = Color(edge_col, 0.4)
 			if lit:
 				edge_col = AtlasView.MAP_PICK
 				edge_w = 2.5
@@ -3106,7 +3200,22 @@ class StarCanvas extends Control:
 				_rift_alpha(k, curves[k], focused_any),
 				k == view._selected_rift or k == view._hovered_rift)
 
-		_draw_run_markers(lay)
+		# Rings only, no captions (the owner, 26 Nov 2026: the "you are here" and
+		# "the Amulet" boxes made the map hard to see). The legend names both
+		# rings by colour, and the header's 📍 You / 🏆 Amulet find them.
+		_draw_run_markers(lay, false)
+
+	# One of the map's lines with draw.io's filled arrowhead where it enters.
+	func _draw_map_line(pa: Vector2, pb: Vector2, col: Color, w: float, head: float) -> void:
+		draw_line(pa, pb, col, w, true)
+		var d: Vector2 = pb - pa
+		if d.length() > head * 1.5:
+			var dir: Vector2 = d.normalized()
+			var perp := Vector2(-dir.y, dir.x)
+			_polygon_at(pb, PackedVector2Array([Vector2.ZERO,
+				-dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
+				-dir * head * 0.75,
+				-dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
 
 	# A seam fades with the other lines when something else is picked.
 	func _rift_alpha(k: int, seam: Dictionary, focused: bool) -> float:
@@ -3592,7 +3701,7 @@ class StarCanvas extends Control:
 	# the spot is (and, for the Amulet, how many steps are left). A marker whose
 	# star is off screen becomes an arrow at the edge pointing the way, so the
 	# answer to "where am I" is never "somewhere off that way, keep panning".
-	func _draw_run_markers(lay: AtlasLayout) -> void:
+	func _draw_run_markers(lay: AtlasLayout, captions: bool = true) -> void:
 		var cur: int = view.current_index()
 		var goal: int = view.amulet_index()
 		var considering: int = view.preview_index()
@@ -3602,24 +3711,26 @@ class StarCanvas extends Control:
 		# The Amulet first, so the you-are-here badge wins any overlap — the map
 		# is read from where you stand.
 		if goal >= 0 and goal != cur and goal != considering:
-			_draw_marker(lay, goal, view.marker_text(goal), AtlasView.COL_GOAL, taken)
+			_draw_marker(lay, goal, view.marker_text(goal), AtlasView.COL_GOAL, taken, captions)
 		if considering >= 0:
 			_draw_marker(lay, considering, view.marker_text(considering),
-				AtlasView.COL_CONSIDERING, taken)
+				AtlasView.COL_CONSIDERING, taken, captions)
 		if cur >= 0:
-			_draw_marker(lay, cur, view.marker_text(cur), AtlasView.COL_YOU, taken)
+			_draw_marker(lay, cur, view.marker_text(cur), AtlasView.COL_YOU, taken, captions)
 
 	func _draw_marker(lay: AtlasLayout, i: int, text: String, col: Color,
-			taken: Array[Rect2]) -> void:
+			taken: Array[Rect2], caption: bool = true) -> void:
 		var p: Vector2 = view.to_screen(lay.position_of(i))
 		if not Rect2(Vector2.ZERO, size).has_point(p):
-			_draw_offscreen_marker(p, text, col, taken)
+			_draw_offscreen_marker(p, text if caption else "", col, taken)
 			return
 		var r: float = maxf(11.0, view.drawn_half_height(i) + 7.0)
 		draw_arc(p, r + 7.0, 0.0, TAU, 40, Color(col, 0.22), 9.0, true)
 		draw_arc(p, r, 0.0, TAU, 40, AtlasView.COL_TRAIL_CASING, 5.5, true)
 		draw_arc(p, r, 0.0, TAU, 40, col, 2.6, true)
 		draw_arc(p, r + 6.0, 0.0, TAU, 40, Color(col, 0.75), 1.4, true)
+		if not caption:
+			return
 		# Above the star by preference, below it when that spot is already spoken
 		# for — a badge that lands on another badge names neither anchor.
 		var box: Rect2 = _badge_rect(Vector2(p.x, p.y - r - 8.0), text)

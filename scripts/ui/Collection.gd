@@ -1218,8 +1218,12 @@ func _fit_detail_height() -> void:
 	_fit_gen += 1
 	var gen: int = _fit_gen
 	_detail_scroll.custom_minimum_size = Vector2(0, maxf(120.0, cap))
-	await get_tree().process_frame
-	await get_tree().process_frame
+	# Two frames on, through connections this screen owns rather than `await`s:
+	# an awaiting fit resumed after the Collection had been closed and Godot
+	# reported "class instance is gone" (_after_frames).
+	_after_frames(2, _fit_detail_measured.bind(gen, cap))
+
+func _fit_detail_measured(gen: int, cap: float) -> void:
 	# A newer entry has been opened since: that call does the fitting.
 	if gen != _fit_gen or _detail_scroll == null or not is_instance_valid(_detail_scroll) \
 			or _detail_box == null or not is_instance_valid(_detail_box):
@@ -1228,10 +1232,40 @@ func _fit_detail_height() -> void:
 	_detail_scroll.custom_minimum_size = Vector2(0, clampf(want, 120.0, maxf(120.0, cap)))
 	# One more frame for the row to re-centre the card at its fitted size, so the
 	# slide starts from where it will rest.
-	await get_tree().process_frame
+	_after_frames(1, _fit_detail_reveal.bind(gen))
+
+func _fit_detail_reveal(gen: int) -> void:
 	if gen != _fit_gen:
 		return
 	_reveal_detail()
+
+# Call `then` `frames` frames from now. Each job waits in `_frame_jobs`, served by
+# ONE connection to this node's own method: if the screen is freed first, the
+# connection goes with it and nothing runs. (One connection, not one per job:
+# Godot counts a method as already connected whatever is bound to it.)
+var _frame_jobs: Array = []
+
+func _after_frames(frames: int, then: Callable) -> void:
+	if frames <= 0:
+		then.call()
+		return
+	if not is_inside_tree():
+		return
+	_frame_jobs.append([frames, then])
+	if not get_tree().process_frame.is_connected(_run_frame_jobs):
+		get_tree().process_frame.connect(_run_frame_jobs)
+
+func _run_frame_jobs() -> void:
+	var due: Array = []
+	var waiting: Array = []
+	for job in _frame_jobs:
+		job[0] = int(job[0]) - 1
+		(due if int(job[0]) <= 0 else waiting).append(job)
+	_frame_jobs = waiting
+	if _frame_jobs.is_empty() and get_tree().process_frame.is_connected(_run_frame_jobs):
+		get_tree().process_frame.disconnect(_run_frame_jobs)
+	for job in due:
+		(job[1] as Callable).call()
 
 # Show the fitted card: a short slide in from the side of the arrow pressed (the
 # next entry comes from the right), or a plain fade when it was opened from the grid.

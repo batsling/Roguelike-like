@@ -281,14 +281,12 @@ func test_no_two_pieces_show_the_same_picture() -> void:
 
 func test_a_recycled_piece_gives_its_picture_back() -> void:
 	_seed()
-	var before: int = _art._free[MenuFallingArt.Kind.SMALL].size() \
-		+ _art._free[MenuFallingArt.Kind.COVER].size()
+	var before: int = _art.free_count()
 	# Drive it long enough that pieces fall off the bottom and are replaced. In
 	# SECONDS: a frame's step is capped at `MAX_STEP` however big a delta it is
 	# handed, so a loop of 400 x 0.1 is 13 seconds of falling, not 40.
 	_run_for(60.0)
-	var after: int = _art._free[MenuFallingArt.Kind.SMALL].size() \
-		+ _art._free[MenuFallingArt.Kind.COVER].size()
+	var after: int = _art.free_count()
 	assert_eq(after, before,
 		"the free list neither leaks nor grows as pieces recycle")
 	var seen := {}
@@ -860,7 +858,64 @@ func test_unlocked_icons_are_only_a_small_share_of_the_pool() -> void:
 	assert_gt(all_icons, _art.icon_pool(), "more icons exist than the share holds")
 	assert_eq(icons, _art.icon_pool(), "the icons fill their share and no more")
 	var share: float = float(icons) / float(small + _art.cover_pool())
-	assert_almost_eq(share, MenuFallingArt.ICON_SHARE, 0.03, "about a tenth of the pieces")
+	assert_almost_eq(share, MenuFallingArt.ICON_SHARE, 0.03, "about their share of the pieces")
+	_drain()
+
+# EVERY KIND HAS ITS OWN SHARE (the owner, 27 Nov 2026): the shares add up to the
+# whole screen, and a screen dealt and recycled over and over holds each kind at
+# its share — short only where a kind has too few pictures to fill it, as the
+# twelve characters do, and the room it leaves shared out among the rest.
+func test_the_shares_add_up_to_the_whole_screen() -> void:
+	var total: float = 0.0
+	for g in MenuFallingArt.SHARES:
+		total += float(MenuFallingArt.SHARES[g])
+	assert_almost_eq(total, 1.0, 0.0001)
+
+func test_each_kind_falls_at_its_share() -> void:
+	var was := Settings.unlock_everything
+	var seen_was := GameStats.seen_bypass
+	Settings.unlock_everything = true
+	GameStats.seen_bypass = true
+	_art._fill_queue()
+	Settings.unlock_everything = was
+	GameStats.seen_bypass = seen_was
+	while not _art._queue.is_empty():
+		_art._bake(_art._queue.pop_back())
+	var pool := {}
+	for k in _art._pool:
+		for e in _art._pool[k]:
+			pool[int(e["group"])] = int(pool.get(int(e["group"]), 0)) + 1
+	# SEEDED: the share is a sample, ~1.1 points of standard error over this many
+	# draws, and an unseeded run fell outside a two-point band about one time in
+	# twenty. The seed makes it the same sample every run; the band below is wide
+	# enough for any seed and still far narrower than a wrong mix (a kind that lost
+	# its weight would be off by its whole share).
+	_art._rng.seed = 20261127
+	var pieces: Array = []
+	for i in _art.piece_count():
+		pieces.append(_art._spawn())
+	var counts := {}
+	var n: int = 0
+	for step in 1500:
+		for p in pieces:
+			var g: int = int(_art._pool[p["kind"]][p["index"]]["group"])
+			counts[g] = int(counts.get(g, 0)) + 1
+			n += 1
+		var j: int = step % pieces.size()
+		_art._release(pieces[j])
+		pieces[j] = _art._spawn()
+	for g in MenuFallingArt.SHARES:
+		var want: float = float(MenuFallingArt.SHARES[g])
+		var cap: float = float(pool.get(g, 0)) / float(_art.piece_count())
+		var got: float = float(counts.get(g, 0)) / float(n)
+		if cap < want:
+			assert_lt(got, want, "group %d has %d pictures and falls short of its share" % [g, pool.get(g, 0)])
+		else:
+			# At least its share: what a short kind leaves goes to the others.
+			assert_gt(got, want - 0.04, "group %d gets its share (%.3f of %.3f)" % [g, got, want])
+			assert_lt(got, want + 0.06, "and only the spare room on top (%.3f of %.3f)" % [got, want])
+	for p in pieces:
+		_art._release(p)
 	_drain()
 
 func test_locked_icons_do_not_fall() -> void:

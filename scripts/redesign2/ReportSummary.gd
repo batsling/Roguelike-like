@@ -98,7 +98,7 @@ func setup(screen: Node) -> void:
 	go.size_flags_horizontal = Control.SIZE_SHRINK_END
 	go.pressed.connect(proceed)
 	col.add_child(go)
-	go.grab_focus.call_deferred()
+	UITheme.focus_soon(go)
 	_fit.call_deferred()
 
 func _ready() -> void:

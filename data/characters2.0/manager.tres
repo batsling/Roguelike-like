@@ -1,8 +1,6 @@
-[gd_resource type="Resource" script_class="CharacterData" load_steps=4 format=3 uid="uid://char2_manager"]
+[gd_resource type="Resource" script_class="CharacterData" load_steps=2 format=3 uid="uid://char2_manager"]
 
 [ext_resource type="Script" path="res://scripts/resources/CharacterData.gd" id="1_char"]
-[ext_resource type="Texture2D" path="res://images2.0/characters/Full/Manager.png" id="2_portrait"]
-[ext_resource type="Texture2D" path="res://images2.0/characters/Icon/Manager.png" id="3_icon"]
 
 [resource]
 script = ExtResource("1_char")
@@ -26,5 +24,5 @@ level_up_stats = {
 level_up_reward_type = &"none"
 level_up_reward_amount = 0
 file = "Manager"
-portrait = ExtResource("2_portrait")
-icon = ExtResource("3_icon")
+portrait_path = "res://images2.0/characters/Full/Manager.png"
+icon_path = "res://images2.0/characters/Icon/Manager.png"

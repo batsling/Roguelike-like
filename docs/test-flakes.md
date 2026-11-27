@@ -19,6 +19,22 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - **Shard-only failures** (27 Nov 2026, `tools/gut.sh --parallel`). Running
+    the suite in shards drops the tests between two tests of a file, and two
+    turned out to pass only because one in between cleaned up:
+    `test_camp.gd::test_the_page_makes_camp_with_a_game_in_play` failed every
+    time in shard 3/4 because `test_the_record_rides_the_save` applies a save
+    and left a resume pending, so the next page built resumed it instead of
+    dealing a run (`test_start_panel.gd` had the same leak). Bisected with
+    `GUT_SHARD=3/4 GUT_FILES=test_camp` (the shard's share of one file), then
+    by stubbing the tests ahead of it one at a time. And
+    `test_overworld2.gd::test_a_plain_notice_pops_nothing_up` failed on a fresh
+    `user://`: the unlocks the setup earns are announced at the end of its
+    frame, inside the test's wait. It settles first and checks by text now.
+    And `test_events2.gd::test_the_bag_deals_every_event_before_repeating_one`
+    failed once ("devil_room came round again"): its pass is as long as the
+    Common pool, and the three-event Rare rung could be dealt out and refill
+    inside it. Each rung's record starts again once all of it has been dealt.
   - `test_loot_upgrade.gd::test_an_upgraded_shield_card_gives_one_more_shield`
     (20 Nov 2026) got 3 shields instead of 2 on CI. Shrug it Off is "+1
     Temporary Shield and +1 Random Card", and the random card lands in the pack

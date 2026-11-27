@@ -25,9 +25,9 @@
   "kb": 39
  },
  "data/characters2.0/": {
-  "eager_art_kb": 2033,
+  "eager_art_kb": 0,
   "files": 15,
-  "kb": 17
+  "kb": 14
  },
  "data/curses2.0/": {
   "eager_art_kb": 0,
@@ -55,9 +55,9 @@
   "kb": 1138
  },
  "data/items2.0/": {
-  "eager_art_kb": 1553,
+  "eager_art_kb": 0,
   "files": 109,
-  "kb": 74
+  "kb": 68
  },
  "data/locations/": {
   "eager_art_kb": 0,
@@ -99,10 +99,10 @@
   "files": 5,
   "kb": 3
  },
- "data/songs.tres": {
+ "data/songs.json": {
   "eager_art_kb": 0,
   "files": 2,
-  "kb": 1550
+  "kb": 708
  },
  "data/statuses2.0/": {
   "eager_art_kb": 103,

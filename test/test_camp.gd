@@ -15,6 +15,11 @@ var _ui = null
 var _left: int = 0
 
 func before_each() -> void:
+	# A test that applies a save (the record riding it) leaves a resume pending,
+	# and the next page built would resume that save rather than start — found
+	# by running the suite in shards (tools/gut.sh --parallel), where the test
+	# that used to clear it in between was in another shard.
+	SaveSystem.cancel_pending_resume()
 	GameState.reset_run()
 	GameLoop2.reset()
 	GameState.max_hp = 10

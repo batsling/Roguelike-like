@@ -4,8 +4,8 @@ extends Resource
 # ONE SONG ON ROGUELIKE RADIO (docs/roguelike-radio.md).
 #
 # Source of truth is the `radio` sheet of tools/Roguelikes.xlsx, generated into
-# data/songs.tres (one SongLibrary) by tools/generate_song_tres.py. Edit the sheet,
-# not that.
+# data/songs.json (every song as columns, built into SongData by Data._load_songs)
+# by tools/generate_song_tres.py. Edit the sheet, not that.
 #
 # THE AUDIO IS NOT PART OF THE RESOURCE. It is the player's own music, sitting
 # in their radio folder (Radio.FOLDER) on their own machine, and `file` is only

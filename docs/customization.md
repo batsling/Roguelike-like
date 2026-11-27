@@ -265,12 +265,15 @@ cards whose pictures sit in `items/`, and the scrolls (art "Identify", id
 back fall once any of their kind has been seen. Covers are matched by each game's
 own `cover_path`. `test_menu_falling_art.gd` marks everything seen and requires
 every picture in those folders to match, so a new picture whose name matches
-nothing fails CI. Every unlocked costume and hat falls too, taken
-whole like the characters, and a character falls in the costume it wears.
-Unlocked ICONS fall as about a tenth of the pieces (`MenuFallingArt.ICON_SHARE`,
-the owner, 25 Nov 2026: "a small percentage"), drawn at random each launch:
-taken whole like the rest, the ~400 of them pushed the loot off the menu. On a
-brand-new profile nothing falls until something has been seen.
+nothing fails CI. Unlocked costumes and hats fall too, and a character falls in
+the costume it wears. EACH KIND HAS ITS OWN SHARE of the pieces on screen
+(`MenuFallingArt.SHARES`; the owner, 27 Nov 2026): covers 30%, enemies and bosses
+27%, loot 25%, characters 10%, costumes and hats 4.5%, earned icons 3.5%. A
+piece picks its kind by those weights, and a kind with too few pictures to fill
+its share (the twelve characters, capped near 8% at 150 pieces) leaves the room
+to the others. The costumes, hats and icons are drawn at random from the
+unlocked ones each launch. On a brand-new profile nothing falls until something
+has been seen.
 
 ## 7. Hats: what a player wears
 

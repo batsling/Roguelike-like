@@ -174,7 +174,8 @@ the checkout, not what a full clone downloads.
 ```bash
 tools/gut.sh test_gameloop2            # ONE file, ~5 s (test_overworld2 is the slow one: 10+ min)
 tools/gut.sh test_overworld2 crash     # only the tests in it whose name contains "crash"
-tools/gut.sh                           # the whole suite: 65 scripts, ~3200 tests, ~25 min
+tools/gut.sh                           # the whole suite: 90 scripts, ~3850 tests, ~25 min
+tools/gut.sh --parallel                # the same suite in one shard per core: ~3.5 min on 4 (CI runs this)
 python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file's sections + funcs, with lines
 ```
 
@@ -182,7 +183,12 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   narrow a run here: `.gutconfig.json` names `res://test/` and GUT adds the file on
   top of it, so `godot ... -gtest=res://test/test_x.gd` quietly runs all ~3,100
   tests. `tools/gut.sh` passes `-gconfig=` to drop the directory and hands the
-  pre-run hook back by hand. Run the full suite once, before pushing.
+  pre-run hook back by hand. Run the full suite once, before pushing —
+  `--parallel` counts: each shard keeps every N-th test of every file
+  (`GUT_SHARD`, read by `test/pre_run_hook.gd`) in its own `user://`
+  (`XDG_DATA_HOME`), so they never race on a save slot. A test that fails only
+  in a shard leans on a test that ran before it in file order; bisect it with
+  `GUT_SHARD=k/n GUT_FILES=test_x` (that shard's share of one file).
 - **Shared test helpers live in `test/helpers/`, so use them rather than writing
   another copy.** `run_page.gd` (`const Page := preload(...)`) builds the game page
   and stands it where a test wants it: `Page.build(self)`, `Page.play_opening(_ui)`,
@@ -283,7 +289,10 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   `check_turn_order`, `check_data_sync`, `map_calc --check`, `check_map_sync` (informational — it drifts in both
   directions by design) and `check_overlay.js`. Three jobs, so a red build says
   which KIND of thing broke — the game, the content pipeline, or the browser page
-  GUT cannot see. The engine version is pinned there and in
+  GUT cannot see. The GUT job runs on TWO machines at once, four shards each of
+  an eight-way split (`GUT_SHARD_TOTAL` / `GUT_SHARD_OFFSET` for
+  `tools/gut.sh --parallel`), and keeps Godot's asset import in the Actions cache
+  between runs. The engine version is pinned there and in
   `.claude/hooks/session-start.sh`; keep the two the same as `project.godot`.
 - **GUT cannot see the OBS overlay, because the overlay is a browser page.**
   `test_obs_companion.gd` pins the payload and stops at the file; everything past
@@ -329,16 +338,21 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   rules, each from a regression that grew in with the content
   (`docs/performance-backlog.md` §8):
   - a content `.tres` names its picture by **PATH** and loads it on first read
-    (`GameData.cover_image`, `GoalEnemyData.image`, `LocationData.image`) —
+    (`GameData.cover_image`, `GoalEnemyData.image`, `LocationData.image`,
+    `ItemData.image`, `CharacterData.portrait` / `icon`) —
     never an ExtResource Texture2D, which decodes at boot whether a run shows it
     or not;
   - a catalog of thousands of rows is **one file**, not a file per row
-    (`data/songs.tres`, a `SongLibrary`);
+    (`data/songs.json`, the songs as columns that `Data._load_songs` builds into
+    `SongData` — as a `.tres` of 3,112 sub-resources it cost ~190 ms a boot);
   - a screen the run page only opens on demand is reached **by path**, not
     `preload` or a class name (`test_page_load.gd` holds it);
   - anything connected to **`GameStats.changed`** has to be cheap: a report
     fires it five times. A loop over every game that scans every song is
-    songs × games — `RankRewards.batch` is how the unlock refreshes avoid it.
+    songs × games — `RankRewards.batch` is how the unlock refreshes avoid it,
+    and they run once a frame however often it fires (`_queue_unlocks`; a
+    read catches up first through `_flush_unlocks`, so a new reader of
+    `_unlocked` calls it too).
   `python3 tools/check_boot_load.py` (CI) counts what boot loads against
   `tools/boot_budget.json` and fails a folder that newly embeds its art;
   `--report` prints the numbers, `--update` accepts a deliberate rise.

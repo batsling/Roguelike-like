@@ -162,7 +162,7 @@ func _build() -> void:
 	go.add_theme_color_override("font_color", ACCENT.lerp(Color.WHITE, 0.5))
 	go.pressed.connect(close)
 	root.add_child(go)
-	go.grab_focus.call_deferred()
+	UITheme.focus_soon(go)
 
 
 # The bosses on the table, once each — the same boss can stand on two cards, and

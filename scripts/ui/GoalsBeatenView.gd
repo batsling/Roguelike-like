@@ -334,17 +334,10 @@ static func open(host: Control, g: GameData) -> Control:
 	var max_h: float = maxf(200.0, free.size.y - 32.0)
 	var w: float = minf(POPUP_W, free.size.x - 32.0)
 	panel.custom_minimum_size = Vector2(w, 0)
-	var fit := func():
-		if not is_instance_valid(panel):
-			return
-		var chrome: float = 28.0 + title.get_combined_minimum_size().y \
-			+ close.get_combined_minimum_size().y + UITheme.GAP_SNUG * 2
-		scroll.custom_minimum_size = Vector2(0,
-			clampf(list.get_combined_minimum_size().y, 60.0, maxf(60.0, max_h - chrome)))
-		var h: float = minf(panel.get_combined_minimum_size().y, max_h)
-		panel.size = Vector2(w, h)
-		panel.position = Vector2(free.position.x + (free.size.x - w) * 0.5,
-			free.position.y + maxf(16.0, (free.size.y - h) * 0.5))
+	# A STATIC METHOD WITH ITS NODES BOUND, NOT A LAMBDA: this is a static func, so
+	# a lambda made here has no owner, and its deferred and next-frame calls ran
+	# after the popup had been closed ("Lambda capture at index 0 was freed").
+	var fit := _fit_popup.bind(panel, title, close, scroll, list, max_h, w, free)
 	fit.call()
 	# Again once the flows have laid out: a flow's height is only true once it
 	# knows its width, which is a layout pass after it is added.
@@ -352,6 +345,20 @@ static func open(host: Control, g: GameData) -> Control:
 		host.get_tree().process_frame.connect(fit, CONNECT_ONE_SHOT)
 	fit.call_deferred()
 	return shade
+
+static func _fit_popup(panel: Variant, title: Variant, close: Variant, scroll: Variant,
+		list: Variant, max_h: float, w: float, free: Rect2) -> void:
+	for n in [panel, title, close, scroll, list]:
+		if not is_instance_valid(n):
+			return
+	var chrome: float = 28.0 + (title as Control).get_combined_minimum_size().y \
+		+ (close as Control).get_combined_minimum_size().y + UITheme.GAP_SNUG * 2
+	(scroll as Control).custom_minimum_size = Vector2(0,
+		clampf((list as Control).get_combined_minimum_size().y, 60.0, maxf(60.0, max_h - chrome)))
+	var h: float = minf((panel as Control).get_combined_minimum_size().y, max_h)
+	(panel as Control).size = Vector2(w, h)
+	(panel as Control).position = Vector2(free.position.x + (free.size.x - w) * 0.5,
+		free.position.y + maxf(16.0, (free.size.y - h) * 0.5))
 
 static func _empty_note() -> Label:
 	var l := Label.new()

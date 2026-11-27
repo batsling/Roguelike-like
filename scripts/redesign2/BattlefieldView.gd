@@ -348,6 +348,27 @@ const FIELD_HEIGHT_BUDGET_SHARED: int = 190
 # caller measures against and it is a static answer to "how big is a cell on a
 # board this wide" — there is only ever one board on screen.
 static var _height_budget: int = FIELD_HEIGHT_BUDGET
+# A ceiling on the GRID's height set from the room the page actually has
+# (Overworld2._fit_board_to_room), or -1 for none. The budgets above are sized for
+# a 720-tall canvas with the header at its usual height, and the right column fit
+# that with 2 px to spare: a header a few pixels taller (a Fracture chip, a taller
+# route strip) put a scroll bar down the page (the owner, 26 Nov 2026). The page
+# measures what the column is over by and the board gives up exactly that much.
+static var _height_cap: int = -1
+
+# Set (or, with -1, lift) the cap. True when it moved, so the caller refits only
+# when there is something to refit.
+static func set_height_cap(px: int) -> bool:
+	if px == _height_cap:
+		return false
+	_height_cap = px
+	return true
+
+static func height_cap() -> int:
+	return _height_cap
+
+static func is_sharing_column() -> bool:
+	return _height_budget == FIELD_HEIGHT_BUDGET_SHARED
 
 # Tell the board it is sharing its column (or has stopped). Returns true when the
 # budget actually moved, so the caller only rebuilds when there is something to
@@ -374,7 +395,8 @@ static func fitted_cell(cols: int, rows: int = -1) -> int:
 		return CELL_MAX
 	var r: int = rows if rows > 0 else cols
 	var per_w: float = float(FIELD_WIDTH_BUDGET - (cols - 1) * CELL_SEP) / float(cols)
-	var per_h: float = float(_height_budget - (r - 1) * CELL_SEP) / float(r)
+	var budget: int = _height_budget if _height_cap < 0 else mini(_height_budget, _height_cap)
+	var per_h: float = float(budget - (r - 1) * CELL_SEP) / float(r)
 	return clampi(int(floor(minf(per_w, per_h))), CELL_MIN, CELL_MAX)
 # Shields (§3) share the overworld's steel blue.
 const SHIELD_BLUE := Color(0.62, 0.78, 0.95)
@@ -614,6 +636,11 @@ func _field_size() -> Vector2:
 # size. `_rebuild_cells` short-circuits on unchanged dimensions — right when the
 # trigger is the board gaining a column, wrong when the trigger is the COLUMN IT
 # LIVES IN being shared with a shop or a machine.
+# The grid's drawn height in px at the cell it is fitted to now.
+func grid_height() -> int:
+	var rows: int = maxi(1, _cells_drawn.y)
+	return rows * _cell + (rows - 1) * CELL_SEP
+
 func refit() -> void:
 	_cells_drawn = Vector2i(-1, -1)
 	_rebuild_cells()
@@ -3482,11 +3509,16 @@ func _paint_hero_cards() -> void:
 		_hero_frame.tooltip_text = ch.display_name if ch != null else ""
 		_hero_frame.set_meta(&"character_card", ch != null)
 
-# Icon edge for one shield sprite over the hero. The status pips beside them are
-# STATUS_PIP_HERO and these match: the two rows are read in one glance and a
-# shield drawn larger than a status would claim a rank over it that it does not
-# have.
-const SHIELD_PIP := 22
+# THE HERO'S PIPS — the shields over the portrait and the statuses beside them —
+# ARE ONE SIZE. The two rows are read in one glance, and a shield drawn larger
+# than a status would claim a rank over it that it does not have. Both were 22
+# until the owner asked for bigger shields so the clock on a temporary one reads
+# (26 Nov 2026), then for the two to match again (27 Nov 2026): at 22 the clock
+# was held at TIMER_MIN, a 14 px smudge. Both are HERO_PIP now, and a clock on
+# either is HERO_CLOCK of it (18 px) rather than the usual half.
+const HERO_PIP := 30
+const HERO_CLOCK := 0.6
+const SHIELD_PIP := HERO_PIP
 
 # One SPRITE per shield: each is one INSTANCE of damage it stops dead, whatever
 # that instance was for (§3). Nothing is drawn hollow any more — a lost run
@@ -3511,7 +3543,8 @@ func _fill_shields() -> void:
 	for _i in range(bonus):
 		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, false))
 	for _i in range(left):
-		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(true), SHIELD_PIP, true))
+		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(true), SHIELD_PIP, true,
+			HERO_CLOCK))
 	_hero_shields.visible = left + bonus > 0
 	_hero_shields.tooltip_text = ("%s (the ones with a clock on them) — each stops "
 		+ "one hit outright, however big, and they go when you report this game.") \
@@ -3531,7 +3564,7 @@ func _fill_shields() -> void:
 # with the tier (fitted_cell) but the pips do not: a status is read, not measured,
 # and shrinking it with the board makes it unreadable exactly when the board is
 # busiest.
-const STATUS_PIP_HERO := 22
+const STATUS_PIP_HERO := HERO_PIP
 # Smaller than the hero's. It was 16 under the box, where two statuses covered
 # the head of whatever stood below; 14 for the stream pass (at 11, with a 9px
 # count, a status was a speck on a 1080p capture); and 12 since the strip moved to
@@ -3681,7 +3714,9 @@ func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
 		# non-zero only for a row out of the timed layer, and that is the whole of
 		# what the badge says: this one is going away. The hover still carries the
 		# count — the corner is the flag, not the number.
-		var art := UITheme.timed_art(Cosmetics.status_art(status), size, games > 0)
+		# The hero's clock matches the one on the shields beside it (HERO_CLOCK).
+		var art := UITheme.timed_art(Cosmetics.status_art(status), size, games > 0,
+			HERO_CLOCK if size == STATUS_PIP_HERO else UITheme.TIMER_FRACTION)
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(art)
 	var count := Label.new()
@@ -3695,18 +3730,6 @@ func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(count)
 	return chip
-
-# The statuses this body is CARRYING AND IGNORING, as a set of ids. Only a boss
-# has any: its goal is the only way it comes off the board, so an `instead` on one
-# buys nothing (§7.1) — and the pip is drawn either way, because the stacks are
-# real and the player put them there.
-func _nullified_ids(entry: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	for row in GameLoop2.nullified_alternatives_for(entry):
-		var sd: StatusData = row["status"]
-		if sd != null:
-			out[sd.id] = true
-	return out
 
 # The hover model for one status pip. A thin wrapper over StatusData's own
 # `hover_card`, so the board, the enemy card and the hero strip cannot describe

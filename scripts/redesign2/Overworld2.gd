@@ -3815,6 +3815,51 @@ func _sync_board_budget() -> void:
 	if BattlefieldView.set_sharing_column(shared) and _board != null:
 		_board.refit()
 
+# THE BOARD FITS THE ROOM THE PAGE HAS (the owner, 26 Nov 2026: a scroll bar down
+# the page). The right column is the board, and its budgets were sized for a
+# 720-tall canvas with the header at its usual height — with 2 px to spare, so a
+# header a few px taller put the page over. The column's overflow is measured and
+# the grid is capped by exactly that much (BattlefieldView.set_height_cap), plus
+# BOARD_SLACK so a pixel of rounding never brings the bar back. The cap is lifted
+# and measured again whenever the room, the grid or the column sharing changes,
+# so a window or a header with room to spare gets the full-size board.
+const BOARD_SLACK := 4.0
+var _board_fit_queued: bool = false
+var _board_fit_sig: String = ""
+
+func _queue_fit_board() -> void:
+	if _board_fit_queued:
+		return
+	_board_fit_queued = true
+	_fit_board_to_room.call_deferred()
+
+func _fit_board_to_room() -> void:
+	_board_fit_queued = false
+	if _board == null or not is_instance_valid(_board) or _scroll == null \
+			or _right_col == null or _scroll.get_child_count() == 0:
+		return
+	var room: float = _scroll.size.y
+	if room <= 0.0:
+		return
+	var sig: String = "%d|%d|%d|%d" % [int(room), GameLoop2.grid_cols(), GameLoop2.grid_rows(),
+		int(BattlefieldView.is_sharing_column())]
+	if sig != _board_fit_sig:
+		_board_fit_sig = sig
+		if BattlefieldView.set_height_cap(-1):
+			_board.refit()
+	var page: Control = _scroll.get_child(0)
+	var main_row: Control = _right_col.get_parent()
+	var outside: float = page.get_combined_minimum_size().y - main_row.get_combined_minimum_size().y
+	var over: float = outside + _right_col.get_combined_minimum_size().y + BOARD_SLACK - room
+	if over <= 0.0:
+		return
+	var cap: int = int(floor(_board.grid_height() - over))
+	var current: int = BattlefieldView.height_cap()
+	if current >= 0:
+		cap = mini(cap, current)
+	if BattlefieldView.set_height_cap(maxi(cap, 0)):
+		_board.refit()
+
 # The shop closes when you travel on, which is what leaving a shop has always
 # meant: the pop-up if it is open, and the button. Also called by _set_shop_here,
 # which is replacing one rather than leaving the node — which is why this stays
@@ -8313,6 +8358,8 @@ func _build_ui() -> void:
 	# previous run's shop would leave every later board fitted for a column it is
 	# no longer sharing.
 	BattlefieldView.set_sharing_column(false)
+	# …and no cap from the last page's room: this page measures its own.
+	BattlefieldView.set_height_cap(-1)
 	add_child(UITheme.bat_backdrop())
 	# The page is taller than a screen (HUD, choices, play panel, battlefield, log),
 	# so host it in a ScrollContainer — everything stays reachable and the battlefield
@@ -8333,6 +8380,9 @@ func _build_ui() -> void:
 	# to reach it is worse than the bar. SHOW_NEVER keeps the axis scrollable — by
 	# wheel, by drag, by code — and simply never draws the bar.
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	# The vertical bar stays AUTO: the page is made to fit (the checklist by
+	# _fit_checklist, the board by _fit_board_to_room), and a bar that does turn
+	# up is the honest sign that something no longer does.
 	add_child(scroll)
 	_scroll = scroll
 	var root := VBoxContainer.new()
@@ -8821,6 +8871,8 @@ func _build_ui() -> void:
 	_left_col.minimum_size_changed.connect(_queue_fit_checklist)
 	# …and the window: a resize is a different amount of room.
 	_scroll.resized.connect(_queue_fit_checklist)
+	_scroll.resized.connect(_queue_fit_board)
+	_right_col.minimum_size_changed.connect(_queue_fit_board)
 	# Built here rather than in _ready: it fills these two containers, so it cannot
 	# exist before they do.
 	_checklist = ReportChecklist.new(self, _verify_box, _launch_row)

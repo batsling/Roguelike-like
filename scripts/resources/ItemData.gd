@@ -652,7 +652,27 @@ func smelts() -> bool:
 # so the sheet stays the source of truth for a pool that has no reader yet.
 @export var pools: PackedStringArray = PackedStringArray()
 
-@export var image: Texture2D
+# THE PICTURE LOADS ON FIRST READ, from `image_path` — the pattern game covers and
+# enemies already follow (GameData.cover_image, GoalEnemyData.image). It was an
+# exported Texture2D, which Godot resolves the moment the .tres loads, so every
+# item's sprite (87, ~1.4 MB) was decoded at every boot and every headless test
+# run whether a run showed it or not (docs/performance-backlog.md §8). Reading and
+# assigning `image` work as before.
+@export var image_path: String = ""
+var _image: Texture2D = null
+var _image_loaded: bool = false
+var image: Texture2D:
+	get:
+		if not _image_loaded:
+			_image_loaded = true
+			_image = GoalEnemyData.load_art(image_path)
+		return _image
+	set(value):
+		_image = value
+		_image_loaded = true
+		# Kept by path too, so a duplicate() (which copies exports only) has it.
+		if value != null and value.resource_path != "":
+			image_path = value.resource_path
 
 # Per-instance upgrade level. Lives on the duplicated Resource owned by
 # a single inventory slot — see GameState.add_item. Signed: +N upgrades

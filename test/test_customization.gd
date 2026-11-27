@@ -701,7 +701,11 @@ func test_the_icons_tab_splits_into_symbols_and_statuses() -> void:
 	await wait_frames(2)
 	var bar: Control = screen.find_child("SubTabs", true, false)
 	assert_true(bar.visible, "the Icons tab shows its sub-tabs")
-	assert_eq(bar.get_child_count(), CustomizeScreen.ICON_SUBS.size())
+	var subs: int = 0
+	for c in bar.get_children():
+		if String(c.name).begins_with("IconSub"):
+			subs += 1
+	assert_eq(subs, CustomizeScreen.ICON_SUBS.size())
 	assert_not_null(screen.find_child("Kind_key", true, false), "Symbols first: the keys")
 	assert_null(screen.find_child("Kind_poison", true, false), "and no status on that page")
 	(screen.find_child("IconSub1", true, false) as Button).pressed.emit()
@@ -710,7 +714,37 @@ func test_the_icons_tab_splits_into_symbols_and_statuses() -> void:
 	assert_null(screen.find_child("Kind_key", true, false), "and no symbol on that page")
 	(screen.find_child("Tab0", true, false) as Button).pressed.emit()
 	await wait_frames(1)
-	assert_false(bar.visible, "another tab has no sub-tabs")
+	assert_null(bar.find_child("IconSub0", false, false), "another tab has no sub-tabs")
+	screen.queue_free()
+
+# 🎲 RANDOM ALL (the owner, 26 Nov 2026): one button on each tab with looks to
+# wear, setting every choice on that page to Random — and only that page.
+func test_random_all_sets_every_choice_on_the_page_to_random() -> void:
+	var screen := CustomizeScreen.open(self, CustomizeScreen.TAB_ICONS)
+	await wait_frames(2)
+	var slots: Array = screen.tab_slots()
+	assert_eq(slots.size(), CosmeticCatalog.KINDS.size(), "the Symbols page is one slot per kind")
+	var status_slot := Cosmetics.icon_slot(String(Data.all_statuses()[0].id))
+	var before_status := Cosmetics.choice(status_slot)
+	var before: Dictionary = {}
+	for k in slots:
+		before[k] = Cosmetics.choice(k)
+	var btn: Button = screen.find_child("RandomAll", true, false)
+	assert_not_null(btn, "the page has the button")
+	btn.pressed.emit()
+	for k in slots:
+		assert_eq(Cosmetics.choice(k), Cosmetics.RANDOM, "%s is Random" % k)
+	assert_eq(Cosmetics.choice(status_slot), before_status, "the Statuses page is left alone")
+	for k in slots:
+		Cosmetics.choose(k, String(before[k]))
+	for tab in [0, 1, CustomizeScreen.TAB_ICONS]:
+		(screen.find_child("Tab%d" % tab, true, false) as Button).pressed.emit()
+		await wait_frames(1)
+		assert_not_null(screen.find_child("RandomAll", true, false), "tab %d has Random all" % tab)
+	(screen.find_child("Tab%d" % CustomizeScreen.TAB_LETTERS, true, false) as Button).pressed.emit()
+	await wait_frames(1)
+	assert_false((screen.find_child("SubTabs", true, false) as Control).visible,
+		"Title Letters are switches, with nothing random to choose")
 	screen.queue_free()
 
 # THE TIMER (the owner, 22 Nov 2026): the basic ⏱ until Mewgenics' stopwatch is

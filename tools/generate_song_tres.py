@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
 Generate the songs of ROGUELIKE RADIO (docs/roguelike-radio.md) from the `radio`
-sheet of tools/Roguelikes.xlsx into ONE file, data/songs.tres: a SongLibrary
-holding a SongData per row. One file, not one per song: 3,112 separate .tres were
-the biggest single cost of the game's boot, and one file loads in half the time.
+sheet of tools/Roguelikes.xlsx into ONE file, data/songs.json: the songs as
+COLUMNS (one array per field, row i of each is song i), which Data turns into a
+SongData per song. One file, not one per song: 3,112 separate .tres were the
+biggest single cost of the game's boot. Columns in JSON, not a .tres of
+sub-resources: a SongLibrary of 3,112 SongData sub-resources took ~190 ms to
+parse at every boot, the columns ~20 ms to parse and build (27 Nov 2026,
+docs/performance-backlog.md §8). The script keeps its old name.
 
   radio: Name | Artist | Album | Year | Game | File | Tags
 
@@ -24,12 +28,13 @@ The file is REWRITTEN whole: a row deleted from the sheet takes its song with
 it, so the example row the sheet was created with goes away the moment it is
 deleted. (The old data/songs/ folder is removed if it is still there.)
 
-  python3 tools/generate_song_tres.py           # write data/songs.tres
+  python3 tools/generate_song_tres.py           # write data/songs.json
   python3 tools/generate_song_tres.py --list    # print the parse, write nothing
 """
 
 import argparse
 import glob
+import json
 import os
 import re
 import shutil
@@ -42,7 +47,10 @@ import generate_status_tres as dsl  # noqa: E402  (slugify, gd_str, rows)
 
 PROJECT_ROOT = dsl.PROJECT_ROOT
 XLSX_PATH = dsl.XLSX_PATH
-OUT_PATH = os.path.join(PROJECT_ROOT, "data", "songs.tres")
+OUT_PATH = os.path.join(PROJECT_ROOT, "data", "songs.json")
+OLD_LIBRARY = os.path.join(PROJECT_ROOT, "data", "songs.tres")  # a SongLibrary, before 27 Nov 2026
+# The columns, in the order the file lists them. Data reads them by name.
+COLUMNS = ("id", "title", "artist", "album", "year", "game_id", "file", "tags")
 OLD_DIR = os.path.join(PROJECT_ROOT, "data", "songs")   # one .tres per song, before Nov 2026
 GAMES_DIR = os.path.join(PROJECT_ROOT, "data", "games")
 SHEET = "radio"
@@ -94,7 +102,7 @@ def _int(raw, what: str, name: str) -> int:
         raise ValueError("radio %s: %s %r is not a number" % (name, what, raw))
 
 
-def song_tres(row, games: dict) -> tuple:
+def song_row(row, games: dict) -> tuple:
     name = _clean(row.get("Name"))
     artist = _clean(row.get("Artist"))
     if not name:
@@ -120,39 +128,30 @@ def song_tres(row, games: dict) -> tuple:
             raise ValueError("radio %s: tag %r may not start with * (the radio keeps "
                              "those for its own stations, like *favorites)" % (name, t))
 
-    lines = [
-        'script = ExtResource("1_song")',
-        'id = &"%s"' % sid,
-        'title = "%s"' % dsl.gd_str(name),
-        'artist = "%s"' % dsl.gd_str(artist),
-        'album = "%s"' % dsl.gd_str(_clean(row.get("Album"))),
-        "year = %d" % _int(row.get("Year"), "Year", name),
-        'game_id = &"%s"' % game_id,
-        'file = "%s"' % dsl.gd_str(file),
-        "tags = PackedStringArray(%s)" % ", ".join('"%s"' % dsl.gd_str(t) for t in tags),
-    ]
-    return sid, "\n".join(lines) + "\n"
+    return sid, {
+        "id": sid,
+        "title": name,
+        "artist": artist,
+        "album": _clean(row.get("Album")),
+        "year": _int(row.get("Year"), "Year", name),
+        "game_id": game_id,
+        "file": file,
+        "tags": tags,
+    }
 
 
-def library_tres(songs: dict) -> str:
-    """The whole library: one sub-resource per song, in id order (the order Data
-    used to load the per-song files in, so every list of songs keeps its order)."""
+def library_json(songs: dict) -> str:
+    """The whole library as columns, in id order (the order Data always listed
+    songs in, so every list of songs keeps its order). One line per column, so a
+    diff of the file still says which field moved."""
     ids = sorted(songs)
-    out = [
-        '[gd_resource type="Resource" script_class="SongLibrary" load_steps=%d '
-        'format=3 uid="uid://song_library"]' % (len(ids) + 3),
-        "",
-        '[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]',
-        '[ext_resource type="Script" path="res://scripts/resources/SongLibrary.gd" id="2_lib"]',
-        "",
-    ]
-    for sid in ids:
-        out.append('[sub_resource type="Resource" id="%s"]' % sid)
-        out.append(songs[sid][1])
-    out.append("[resource]")
-    out.append('script = ExtResource("2_lib")')
-    out.append("songs = [%s]" % ", ".join('SubResource("%s")' % sid for sid in ids))
-    return "\n".join(out) + "\n"
+    lines = ['{"format": 1, "count": %d,' % len(ids)]
+    for i, col in enumerate(COLUMNS):
+        values = [songs[sid][1][col] for sid in ids]
+        tail = "," if i < len(COLUMNS) - 1 else ""
+        lines.append(' "%s": %s%s' % (col, json.dumps(values, ensure_ascii=False), tail))
+    lines.append("}")
+    return "\n".join(lines) + "\n"
 
 
 def main():
@@ -176,7 +175,7 @@ def main():
     games = game_index()
     songs = {}
     for row in dsl.rows(wb[SHEET]):
-        sid, text = song_tres(row, games)
+        sid, text = song_row(row, games)
         if sid in songs:
             raise ValueError("radio: two rows make the song id %r — give them "
                              "different names or artists" % sid)
@@ -184,13 +183,15 @@ def main():
 
     if args.list:
         for sid, (_row, text) in songs.items():
-            print("=== %s ===\n%s" % (sid, text))
+            print("=== %s ===\n%s" % (sid, json.dumps(text, ensure_ascii=False, indent=1)))
         return
 
     with open(OUT_PATH, "w", encoding="utf-8") as f:
-        f.write(library_tres(songs))
+        f.write(library_json(songs))
     if os.path.isdir(OLD_DIR):
         shutil.rmtree(OLD_DIR)
+    if os.path.exists(OLD_LIBRARY):
+        os.remove(OLD_LIBRARY)
     print("Wrote %d songs to %s" % (len(songs), OUT_PATH))
     for sid in songs:
         print("  -", sid)

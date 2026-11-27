@@ -1143,13 +1143,25 @@ func _hold_arrival() -> void:
 		_overworld.hold_arrival()
 
 # A held teleport lands when the screen goes, however it goes.
+var _arrival_released: bool = false
+
 func _release_arrival() -> void:
+	_arrival_released = true
 	if _overworld != null and is_instance_valid(_overworld) \
 			and _overworld.has_method("release_arrival"):
 		_overworld.release_arrival()
 
+# Taken down without _finish: release on the PAGE's next idle step, not here. Here
+# the tree is busy removing this screen, and the arrival opens the game's card —
+# an add_child Godot refuses mid-removal ("Parent node is busy setting up
+# children"), so the card the teleport owed never appeared.
 func _exit_tree() -> void:
-	_release_arrival()
+	if _arrival_released:
+		return
+	_arrival_released = true
+	if _overworld != null and is_instance_valid(_overworld) \
+			and _overworld.has_method("release_arrival"):
+		_overworld.release_arrival.call_deferred()
 
 func _finish() -> void:
 	_release_arrival()

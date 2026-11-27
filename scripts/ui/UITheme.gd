@@ -704,7 +704,10 @@ const TIMER_OVERHANG: float = 0.3
 # `tex` at `size`, with the clock in its corner when `timed`. Returns the plain
 # TextureRect otherwise, so an untimed icon costs exactly what it did before this
 # badge existed.
-static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
+# `clock_fraction`: the clock's edge as a share of the art's (TIMER_FRACTION
+# unless a caller wants a larger clock, as the hero's shields do).
+static func timed_art(tex: Texture2D, size: int, timed: bool,
+		clock_fraction: float = TIMER_FRACTION) -> Control:
 	# A BIG PICTURE IS SHRUNK FIRST (the owner, 22 Nov 2026: the status icons should
 	# "look a little cleaner"). Mipmaps average a 256 px icon down in coarse steps,
 	# which fused the outlines of the basic status icons into blobs at the 16-22 px
@@ -724,7 +727,7 @@ static func timed_art(tex: Texture2D, size: int, timed: bool) -> Control:
 	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrap.add_child(art)
 	# The WORN timer (Cosmetics.timer_art), shrunk to its screen size like the art.
-	var badge_side: int = maxi(TIMER_MIN, int(round(size * TIMER_FRACTION)))
+	var badge_side: int = maxi(TIMER_MIN, int(round(size * clock_fraction)))
 	var clock: Texture2D = Cosmetics.timer_art()
 	var shown_clock: Texture2D = clock
 	if clock != null and not is_small_art(clock):
@@ -1216,6 +1219,18 @@ const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
 const BATS_ART := preload("res://images2.0/custom/menu_bat.png")
 
 
+# Focus `c` once it is in the tree — a button built before its row is mounted
+# has no focus to grab yet. Deferred, and only if it is still there and in the
+# tree by then: a modal closed in the same frame would otherwise make Godot
+# complain (`!is_inside_tree()`). A bound static method, not a lambda, so a freed
+# button fails `is_instance_valid` quietly.
+static func focus_soon(c: Control) -> void:
+	_focus_if_in_tree.bind(c).call_deferred()
+
+static func _focus_if_in_tree(c: Variant) -> void:
+	if is_instance_valid(c) and (c as Control).is_inside_tree():
+		(c as Control).grab_focus()
+
 static func bat_backdrop() -> ColorRect:
 	var rect := ColorRect.new()
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1559,6 +1574,14 @@ static func make_theme() -> Theme:
 	t.set_stylebox("hover", "CheckBox", clear)
 	t.set_stylebox("pressed", "CheckBox", clear)
 	t.set_stylebox("focus", "CheckBox", clear)
+	# HOVER_PRESSED TOO. A ticked box under the mouse draws `hover_pressed`, and
+	# with it unset that state fell back to Godot's stock stylebox, whose 4 px
+	# content margin pushed the label right inside a box sized without it — the
+	# last letter of a ticked game's name was cut off while hovered (the owner,
+	# 26 Nov 2026, on Customization's Title Letters). Only that state: `disabled`
+	# still falls back to the Button's, which is what sets every CheckBox's height,
+	# and the owner asked that nothing else change (27 Nov 2026).
+	t.set_stylebox("hover_pressed", "CheckBox", clear)
 	t.set_color("font_color", "CheckBox", TEXT)
 	t.set_color("font_hover_color", "CheckBox", GOLD)
 	# Godot's stock check glyphs are a thin grey outline drawn for a light theme,

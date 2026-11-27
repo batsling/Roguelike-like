@@ -451,3 +451,118 @@ func test_the_full_map_shows_owned_games_by_default_and_can_show_all() -> void:
 	assert_false(atlas.hidden(unowned), "and the game is back")
 	ui._dismiss_route_map()
 	AtlasView.owned_only = was
+
+# --- 26 Nov 2026: the owner's map pass ------------------------------------------
+
+# HOVERING A RIFT puts up its card, as hovering a box does — and a box hovered
+# after it takes the card back.
+func test_hovering_a_rift_shows_its_card() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view := _open_run_view()
+	if view.rift_curves().is_empty():
+		pending("this run laid no rift on the drawn map")
+		return
+	view.focus_game(view.star_id(view.rift_curves()[0]["a"]))
+	view.select(-1)
+	var at: Vector2 = view.rift_badge_at(0)
+	if view.pick(at) >= 0:
+		pending("a box sits under this rift's badge at this zoom")
+		return
+	var move := InputEventMouseMotion.new()
+	move.position = at
+	view._on_canvas_input(move)
+	var game: GameData = Data.get_game(StringName(view.rift_curves()[0]["game"]))
+	assert_true(view._card.visible, "the card is up")
+	assert_true(_text(view._card).contains(game.display_name), "and it is the rift's: %s" % _text(view._card))
+	assert_eq(view.selected_rift(), -1, "a hover picks nothing")
+	var box: int = int(view.rift_curves()[0]["a"])
+	move.position = view.screen_box(box).get_center()
+	if view.pick(move.position) != box:
+		pending("the rift's game is covered at this zoom")
+		return
+	view._on_canvas_input(move)
+	var shown: GameData = view.game_at(box)
+	assert_true(_text(view._card).contains(shown.display_name), "a box takes the card back")
+
+# EVERY BOX IS OUTLINED IN ITS TYPE COLOUR, and the picked game's lines are drawn
+# in it: the type's own colour, darkened to hold up on the paper.
+func test_a_box_wears_its_type_colour() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view := _open_run_view()
+	for i in range(mini(view.layout.star_count(), 40)):
+		var g: GameData = view.game_at(i)
+		assert_eq(view.map_type_color(i), RunGraph.type_color(g.type).darkened(0.3), g.display_name)
+	assert_eq(view.map_type_color(-1), AtlasView.MAP_INK, "no game, the ink")
+
+# A LINE ON THE OPTIMAL PATH is known either way round, and so is a game on it.
+func test_the_optimal_path_is_known_line_by_line() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view := _open_run_view()
+	if view._trail.is_empty():
+		pending("this run's road is not on the drawn map")
+		return
+	var seg: Array = view._trail[0]
+	assert_true(view.on_optimal_path(int(seg[0]), int(seg[1])), "the road's first step")
+	assert_true(view.on_optimal_path(int(seg[1]), int(seg[0])), "either way round")
+	assert_true(view.on_optimal_path(int(seg[0]), int(seg[0])), "and the game it starts from")
+	var off: int = -1
+	for i in range(view.layout.star_count()):
+		if not view.route_stars().has(i):
+			off = i
+			break
+	if off >= 0:
+		assert_false(view.on_optimal_path(off, off), "a game off the road is not on it")
+
+# ONE BAR ALONG THE TOP: the map's switches sit in the header row with its tools,
+# not in a second bar under it.
+func test_the_switches_share_the_header_row() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	var ui = _start_run()
+	var atlas = ui.open_full_map()
+	await wait_frames(2)
+	var strip: Control = atlas.find_child("MapMode", true, false)
+	var owned: Control = atlas.find_child("OwnedToggle", true, false)
+	var search: Control = atlas._search
+	assert_not_null(strip, "the switches are on the map")
+	assert_eq(strip.get_parent(), search.get_parent(), "in the same row as the search box")
+	assert_true(strip.is_ancestor_of(owned), "Owned is among them")
+	assert_true(atlas.get_global_rect().size.x >= search.get_parent().get_combined_minimum_size().x,
+		"and the one row fits the window")
+	ui._dismiss_route_map()
+
+# A CONNECTION'S CARD SHOWS ITS PROOF when there is one on file.
+func test_a_connection_card_shows_its_proof() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view := _open_run_view()
+	var found: int = -1
+	for e in range(view.layout.edge_count()):
+		var d: Dictionary = view.edge_details(e)
+		if not d.is_empty() and GameChoiceModal.proof_texture(d["from"].id, d["to"].id) != null:
+			found = e
+			break
+	if found < 0:
+		pending("no drawn line has a proof screenshot")
+		return
+	view.select_edge(found)
+	var shot: Control = view._card.find_child("ProofFrame", true, false)
+	assert_not_null(shot, "the proof is on the card")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	shot.gui_input.emit(click)
+	assert_not_null(view.find_child("ProofView", true, false), "a click opens it full size")
+	assert_true(view._close_proof_view(), "and it puts away")

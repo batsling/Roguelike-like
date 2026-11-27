@@ -21,9 +21,6 @@ func after_each() -> void:
 func _start(player: StringName = &"basic") -> void:
 	GameLoop2.start_run(Data.get_character2(&"zagreus"), player)
 
-func _devil_item() -> ItemData:
-	return DealRooms.pool_of(DealRooms.DEVIL)[0]
-
 
 # --- content ------------------------------------------------------------------
 

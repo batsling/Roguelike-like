@@ -209,7 +209,7 @@ func _defeat_distinct(game: StringName, n: int) -> void:
 
 func test_the_generated_songs_load_as_songs() -> void:
 	# Against the real catalog, not the injected one: every song in
-	# data/songs.tres is a SongData whose game is a game.
+	# data/songs.json is a SongData whose game is a game.
 	for s in _saved_songs.values():
 		assert_true(s is SongData, "%s is a SongData" % s)
 		var song: SongData = s
@@ -505,13 +505,33 @@ func test_an_unlock_is_announced_once_and_plays_next() -> void:
 	watch_signals(Radio)
 	_rank(GAME, 2)
 	GameStats.changed.emit()
+	# One refresh a frame (Radio._queue_unlocks): the announcement comes at the end
+	# of the frame the change landed in, however many changes it carried.
+	await wait_process_frames(1)
 	assert_signal_emit_count(Radio, "song_unlocked", 1)
 	assert_true(Notifications.history.any(func(n): return String(n["text"]).contains("Fresh")),
 		"a toast names it")
 	Radio.next()
 	assert_eq(Radio.current, fresh.id, "the new unlock jumps the queue")
 	GameStats.changed.emit()
+	await wait_process_frames(1)
 	assert_signal_emit_count(Radio, "song_unlocked", 1, "and is not announced twice")
+
+# FIVE CHANGES IN A FRAME ARE ONE REFRESH (the owner, 27 Nov 2026): a report fires
+# GameStats.changed five times, and each refresh walks every song of every game.
+# A read in between still sees what was earned, without waiting for the frame.
+func test_a_burst_of_changes_is_one_refresh_and_a_read_catches_up() -> void:
+	_song("first")
+	var fresh := _locked("fresh")
+	_rank(GAME, 1)
+	Radio.refresh_unlocks(false)
+	assert_false(Radio.is_unlocked(fresh))
+	_rank(GAME, 2)
+	for i in range(5):
+		GameStats.changed.emit()
+	assert_true(Radio._unlocks_dirty, "five changes, one refresh waiting")
+	assert_true(Radio.is_unlocked(fresh), "and a read straight after sees the unlock")
+	assert_false(Radio._unlocks_dirty, "having run that one refresh")
 
 func test_unlocks_already_earned_are_taken_quietly() -> void:
 	_locked("old")

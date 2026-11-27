@@ -11,6 +11,119 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The suite in parallel, here and on CI (27 Nov 2026).** The owner asked for
+  the 25-minute suite to be faster, then for CI too. `tools/gut.sh --parallel`
+  runs one shard per core, each keeping every N-th test of every file
+  (`GUT_SHARD`, read by `test/pre_run_hook.gd`) in its own `user://`
+  (`XDG_DATA_HOME`): ~3.5 min on four cores. CI splits the suite eight ways over
+  two runners and keeps Godot's asset import in the Actions cache; a push went
+  from ~11 min of CI to ~4. Per-test times (`GUT_TIMES=1`) found
+  `test_no_two_covers_can_overlap` decoding every cover in the catalog for its
+  aspect ratio, 112 s — it reads the PNG and JPEG headers now and takes under a
+  second. Sharding also exposed four tests that leaned on their neighbours or
+  were only usually true (docs/test-flakes.md): two that left a save's resume
+  pending, one counting toasts across a frame, and the event bag's, which read a
+  small rung refilling inside its pass as a repeat. And a real default:
+  `RunConfig.min_path` said 5 where every run uses RunGraph's 4.
+
+- **Two more off the boot (27 Nov 2026).** The owner: "are there any more
+  efficiencies that we can work towards?" Measured first: a bare Godot starts in
+  87 ms, this project in ~2.4 s, and the time is ~1.7 s of compiling scripts
+  before any autoload runs plus ~460 ms of `Data` loading content — of which the
+  song catalog and the 1,019 game files were 191 and 182 ms.
+  - **The songs are columns.** `data/songs.tres` held 3,112 `SongData`
+    sub-resources and took ~190 ms to parse at every boot. `data/songs.json`
+    holds one array per field and `Data._load_songs` builds the same `SongData`
+    in ~20 ms (all 24,896 fields checked equal against the old file). The
+    generator keeps its name and every check it made; `SongLibrary` is gone.
+  - **The developer panel is not an autoload.** Its thousand lines were compiled
+    on every boot for a tool a normal session never opens. `DevTools` is now a
+    stub that owns the backtick and loads `scripts/dev/DevPanel.gd` by path the
+    first time it is pressed, forwarding what the tests reach for: ~170 ms off.
+  Together with the lazy item and character art earlier today, a headless boot
+  went from ~2.7 s to ~1.9 s best (~2.1 s median).
+
+- **One unlock refresh a frame (27 Nov 2026).** The owner, on the one improvement
+  the review left: "if you could cut to a single refresh that seems like it would
+  be a good thing". A report fires `GameStats.changed` five times and Radio,
+  TitleUnlocks and Cosmetics each re-walked their whole catalog on every one.
+  They mark themselves dirty now and refresh once at the end of the frame
+  (`_queue_unlocks`), and every read catches up first (`_flush_unlocks`), so
+  nothing asking straight after a change sees stale unlocks. Five changes cost
+  ~56 ms where they cost ~240 ms. A song's toast comes at the end of the frame
+  its change landed in rather than mid-report.
+
+- **A code review pass: freed captures, dead code, lazy art (27 Nov 2026).** The
+  owner asked for a search through the whole code for issues and optimizations.
+  The suite's own log was the best lead: 3,846 green tests were raising ~170
+  engine errors nobody saw, every one a real bug.
+  - **Ownerless lambdas outliving what they captured.** A lambda made in a
+    `static` func (or one that never touches `self`) belongs to no object, so a
+    connection or deferred call made with it is never cleaned up. LootGrid's
+    deferred button placement raised "Lambda capture at index 0 was freed" on
+    every haul screen closed; GoalsBeatenView's fit and LootDropModal's bin row
+    could too. Each is a bound method now, whose freed arguments only fail
+    `is_instance_valid`.
+  - **Awaits that resumed after their screen was gone.** `EventModal2._fit` and
+    the Collection's detail fit waited a frame with `await` and woke up after an
+    event had ended the run, or the Collection had closed. They wait through
+    connections the node owns now (`Collection._after_frames`).
+  - **A teleport's game card that never appeared.** Closing the loot-use screen
+    without its Continue released the held arrival from `_exit_tree`, where
+    Godot refuses an `add_child`; the release waits for the page's next idle
+    step. Deferred focus grabs go through `UITheme.focus_soon`, which checks the
+    button is still in the tree.
+  - **Enemies compared by object** in `OfferingCards` (CLAUDE.md asks for ids),
+    and **dead code** the documented scan found: PostCombatScreen's tally panel
+    (still refreshing on every Health change with nothing to draw into) and a
+    chest-roll path nothing filled, `BattlefieldView._nullified_ids`, and two
+    test helpers.
+  - **Item and character art loads on first read**, from a path, as covers and
+    enemies already did (`ItemData.image_path`, `CharacterData.portrait_path` /
+    `icon_path`; the generators write them). Boot's eager art went from 3,412 KB
+    to 153 KB and a headless cold start from ~2.7 s to ~2.4 s, on every launch
+    and every test file run.
+
+- **The page fits instead of hiding its scroll bar (27 Nov 2026).** The owner, on
+  the review of the 26 Nov pass: "do the honest fix not removing the scroll bar".
+  The bar came from the board's column, sized for a 720-tall canvas with 2 px to
+  spare, so a header a few px taller put the page over. The vertical bar is back
+  on AUTO, and `Overworld2._fit_board_to_room` measures the column's overflow and
+  caps the grid by exactly that much plus 4 px (`BattlefieldView.set_height_cap`),
+  lifting the cap whenever the room, the grid or the column sharing changes. The
+  hero's statuses are 30 px like its shields again (`HERO_PIP`, one constant for
+  both, clocks at `HERO_CLOCK`). The CheckBox fix now sets `hover_pressed` only:
+  setting `disabled` too had made every CheckBox 16 px shorter. And the proof
+  viewer the game card and the map's connection card each carried is one file,
+  `scripts/ui/ProofView.gd`; the menu art's free lists are kept per kind of art,
+  so a spawn picks from six lists rather than scanning the pool.
+
+- **The menu's art mix, swapped (27 Nov 2026).** The owner: "swap the
+  percentages for costumes and hats with the enemies and bosses, and swap the
+  earned icons with the characters". Only covers (30%) and icons (10%) had a
+  number before; everything else was the room left over (costumes and hats
+  ~27%, enemies ~4.5%, characters ~3.6%). Every kind has its own share now
+  (`MenuFallingArt.SHARES`) and a piece picks its kind by them: covers 30%,
+  enemies and bosses 27%, loot 25%, characters 10%, costumes and hats 4.5%,
+  icons 3.5%. The characters are twelve pictures and none falls twice at once,
+  so at 150 pieces they top out near 8%.
+
+- **The map, the hero and Customization (26 Nov 2026).** The owner's list. On the
+  run's **full map**: every box is outlined in its game's type colour, and a
+  clicked game's lines are drawn over the roads in that colour, cased in orange
+  where the line is a step of the optimal path (a neighbour on it is ringed
+  orange too); hovering a rift's swirl puts up its card as a box does; the two
+  switches (Optimal | Full, All games | Owned) moved into the header row, so the
+  map has one bar of options; the "YOU ARE HERE" and "THE AMULET" captions are
+  gone (the rings stay); and a connection's card shows its proof screenshot or
+  clip poster, with the two covers smaller to make room. On the **run page**: the
+  character's icon sits a little smaller inside its badge on the player's
+  portrait, and the hero's shields are 30 px (from 22) with an 18 px clock. In
+  **Customization**, each tab with looks has 🎲 Random all (`Cosmetics.choose_all`),
+  and a ticked game's name in Title Letters no longer loses its last letter when
+  hovered: the theme never set CheckBox `hover_pressed`, which fell back to
+  Godot's stock style and its 4 px margin.
+
 - **Forge, the Sovereign Blade and Zoe's Courier's Board (25 Nov 2026).** The
   owner's upload changed four characters, Burning Blood, six boss footprints and the
   weapons' `cell` areas (now `1x1`), and added the Entomancer boss; the goals it

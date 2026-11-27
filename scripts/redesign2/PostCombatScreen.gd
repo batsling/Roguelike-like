@@ -135,7 +135,6 @@ var _open_chest: ItemDropModal = null
 var _loot_section: LootDropModal = null
 # The tally's tiles, held so they can be repainted when a stat moves UNDER the
 # screen — a potion read off the table, a Hollow Heart taken out of a chest.
-var _tally_flow: HFlowContainer = null
 
 
 func _init() -> void:
@@ -202,29 +201,11 @@ static func open(page: Node, snapshot: Dictionary, drops: Array,
 func _ready() -> void:
 	theme = UITheme.shared()
 	_build()
-	# LIVE, not a photograph of the report. The haul is where loot gets spent —
-	# a potion drunk here heals now — and a Health tile still quoting the number
-	# from before the drink reads as the potion not having worked.
-	for sig in [GameState.hp_changed, GameState.stats_changed]:
-		if not (sig as Signal).is_connected(_refresh_tally):
-			(sig as Signal).connect(_refresh_tally)
 
 func _exit_tree() -> void:
 	if _inv != null and is_instance_valid(_inv) and not _inv.is_inside_tree():
 		_inv.free()
 		_inv = null
-	for sig in [GameState.hp_changed, GameState.stats_changed]:
-		if (sig as Signal).is_connected(_refresh_tally):
-			(sig as Signal).disconnect(_refresh_tally)
-
-func _refresh_tally(_a = null, _b = null) -> void:
-	if _tally_flow == null or not is_instance_valid(_tally_flow):
-		return
-	for c in _tally_flow.get_children():
-		_tally_flow.remove_child(c)
-		c.queue_free()
-	for entry in tally():
-		_tally_flow.add_child(_tile(String(entry[0]), String(entry[1]), entry[2]))
 
 
 # ---------------------------------------------------------------------------
@@ -779,24 +760,6 @@ func _fill_sections() -> void:
 	_fill_payout()
 	_refresh_exit()
 
-func _tally_panel() -> Control:
-	var wrap := PanelContainer.new()
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 12, 1))
-	_tally_flow = HFlowContainer.new()
-	_tally_flow.add_theme_constant_override("h_separation", UITheme.GAP_BREAK)
-	_tally_flow.add_theme_constant_override("v_separation", UITheme.GAP)
-	wrap.add_child(_tally_flow)
-	_refresh_tally()
-	return wrap
-
-func _tile(key: String, value: String, color: Color) -> Control:
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", UITheme.GAP_NONE)
-	box.add_child(_line(key.to_upper(), UITheme.TEXT_FAINT, 10))
-	box.add_child(_line(value, color, 16))
-	return box
-
 # The right column: the payout, at the width its own offer-and-pack row needs.
 # Empty when the game paid nothing (an escape earns none), and then it says so
 # rather than leaving a hole where the loot would have been.
@@ -1069,38 +1032,6 @@ func _build_chests() -> void:
 		_mount_chest(_chests.pop_front())
 	_refresh_exit()
 
-# What the banked chests that landed here paid between them, and how many of
-# them paid it. The page pays it as each lands (taken or skipped); this screen
-# only says so, once, over the chests.
-var _chest_gold: int = 0
-var _chest_gold_from: int = 0
-var _chest_gold_line: Label = null
-
-# The line stays once there is gold to say: unlike the heading it does not go
-# when the last chest is answered, because the gold did not.
-func _sync_chest_gold() -> void:
-	if _chest_gold_line == null or not is_instance_valid(_chest_gold_line):
-		return
-	_chest_gold_line.visible = _chest_gold > 0
-	_chest_gold_line.text = ItemDropModal.gold_text(_chest_gold, _chest_gold_from)
-
-# HOW EACH CHEST WAS ROLLED, by the list it arrived as — kept beside `_chests`
-# rather than in it, because everything else that walks that list wants the items
-# alone. It is what a Reroll needs to ask the same question again: the boss pool
-# or not, a tagged pool or not. A chest with no entry offers named items (a relic
-# or an event handed them over) and is left alone by a re-roll.
-var _chest_rolls: Array = []
-var _chest_reroll: Button = null
-
-func _note_roll(items: Array, boss: bool, pool: String) -> void:
-	_chest_rolls.append({"items": items, "boss": boss, "pool": pool, "section": null})
-
-func _roll_of(items: Array) -> Dictionary:
-	for entry in _chest_rolls:
-		if is_same(entry["items"], items):
-			return entry
-	return {}
-
 # REROLL, ON THE HAUL. A Reroll charge was only ever spendable on the banked-chest
 # screen, so the chests a won game pays — most of the chests in a run — could not
 # be re-rolled at all. One charge re-rolls every rolled chest still open here,
@@ -1122,17 +1053,10 @@ func reroll_chests() -> void:
 			entry["offer"] = made["offer"]
 	_sync_chest_head()
 
-# The chests a re-roll would touch: rolled, mounted and still unanswered.
-func _rerollable() -> Array:
-	return _chest_rolls.filter(func(entry):
-		var section = entry["section"]
-		return section != null and is_instance_valid(section) and not section.answered_already())
-
+# A chest's items, as one more section on the table. Re-rolling is the table's
+# (reroll_chests), so a mounted section is offered as rolled.
 func _mount_chest(items: Array) -> void:
-	var how: Dictionary = _roll_of(items)
-	var section := ItemDropModal.embed(self, _chest_slot, items, true, String(how.get("pool", "")))
-	if not how.is_empty():
-		how["section"] = section
+	var section := ItemDropModal.embed(self, _chest_slot, items, true, "")
 	_chest_sections.append(section)
 	section.answered.connect(func(taken: bool, item: ItemData):
 		if taken and item != null:
@@ -1156,9 +1080,6 @@ func _sync_chest_head() -> void:
 		_chest_head.visible = showing
 	if _chest_why != null and is_instance_valid(_chest_why):
 		_chest_why.visible = showing
-	if _chest_reroll != null and is_instance_valid(_chest_reroll):
-		_chest_reroll.visible = not _rerollable().is_empty()
-		ItemDropModal.dress_reroll(_chest_reroll)
 
 # The sum, as one wrapping row of small chips: the win, then a face per body with
 # what it was worth, `+` between them, `=` and the chest at the end. Null when

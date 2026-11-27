@@ -33,17 +33,30 @@ enum Kind { SMALL, COVER }
 const PIECE_COUNT := 150
 const PIECE_COUNT_MIN := 50
 const PIECE_COUNT_MAX := 300
-# Of those, how many are game covers. The rest are characters, enemies, items and
-# loot — so the screen reads as the run's furniture with the games falling through
-# it, rather than as a wall of box art.
-const COVER_SHARE := 0.3
-# Of those, about how many are the player's earned ICONS (the owner, 25 Nov 2026:
-# "a small percentage of the main screen"). Costumes and hats are still taken
-# whole like the characters, but there are ~400 icons against a small pool of
-# ~230, and taken whole they pushed nearly all the loot off the menu once a
-# profile had earned enough of them. They are drawn at random from the unlocked
-# ones each launch, up to this share of the pieces (`icon_pool`).
-const ICON_SHARE := 0.1
+# THE MIX: what share of the pieces on screen each kind of art is (the owner,
+# 27 Nov 2026). It used to be two numbers — covers 30%, earned icons 10% — and
+# everything else was whatever room was left, which came out at ~27% costumes and
+# hats (taken whole, so the share grew with every unlock), ~25% loot, ~4.5%
+# enemies and ~3.6% characters. The owner swapped costumes & hats with enemies &
+# bosses, and icons with characters, and every kind now has its own number: a
+# piece picks its KIND by these weights (`_spawn`), then a picture of that kind
+# nothing else is falling with. They add up to 1.
+#
+# A kind with too few pictures to fill its share falls short and the others take
+# up the room: the CHARACTERS are twelve pictures, so at the default 150 pieces
+# their 10% (15) is capped at the 12 there are, about 8%. Early in a profile,
+# with little seen yet, the same is true of enemies and loot.
+enum Group { COVER, ENEMY, LOOT, CHARACTER, LOOK, ICON }
+const COVER_SHARE := 0.30          # game covers
+const ENEMY_SHARE := 0.27          # enemies and bosses
+const LOOT_SHARE := 0.25           # items, scrolls, pills, potions, trinkets, weapons, bags, cards, curses
+const CHARACTER_SHARE := 0.10      # the playable characters
+const LOOK_SHARE := 0.045          # earned costumes and hats
+const ICON_SHARE := 0.035          # earned icons (Customization's)
+const SHARES := {
+	Group.COVER: COVER_SHARE, Group.ENEMY: ENEMY_SHARE, Group.LOOT: LOOT_SHARE,
+	Group.CHARACTER: CHARACTER_SHARE, Group.LOOK: LOOK_SHARE, Group.ICON: ICON_SHARE,
+}
 
 # Draw sizes, in canvas pixels. A cover is drawn to its real 3:4; the small art
 # keeps its own aspect inside this box.
@@ -185,16 +198,24 @@ func piece_count() -> int:
 	return clampi(Settings.menu_falling_art_count, PIECE_COUNT_MIN, PIECE_COUNT_MAX)
 
 func cover_pool() -> int:
-	return ceili(piece_count() * COVER_SHARE * COVER_POOL_PER_COVER)
+	return group_pool(Group.COVER)
 
 func small_pool() -> int:
-	return ceili(piece_count() * (1.0 - COVER_SHARE) * SMALL_POOL_PER_SMALL)
+	var n: int = 0
+	for g in SHARES:
+		if g != Group.COVER:
+			n += group_pool(g)
+	return n
 
-# How many icon pictures the small pool holds at most. A piece draws its picture
-# from the pool at random, so a pool share of ICON_SHARE / (1 - COVER_SHARE) puts
-# about ICON_SHARE of everything on screen.
+# How many pictures of one kind the pool holds at most: its share of the pieces,
+# with the same headroom over what is on screen the old pools had, so the free
+# list of a kind rarely runs dry.
+func group_pool(group: int) -> int:
+	var per: float = COVER_POOL_PER_COVER if group == Group.COVER else SMALL_POOL_PER_SMALL
+	return ceili(piece_count() * float(SHARES[group]) * per)
+
 func icon_pool() -> int:
-	return ceili(piece_count() * ICON_SHARE * SMALL_POOL_PER_SMALL)
+	return group_pool(Group.ICON)
 
 var _rng := RandomNumberGenerator.new()
 var _pieces: Array[Dictionary] = []
@@ -207,7 +228,11 @@ var _pool := {Kind.SMALL: [], Kind.COVER: []}
 # be on screen twice at once — which on a screen of 72 pieces drawn from a pool of
 # ~146 would otherwise happen constantly, and reads as a glitch rather than as
 # variety.
-var _free := {Kind.SMALL: [], Kind.COVER: []}
+#
+# KEYED BY GROUP, not by kind: a piece picks its group by `SHARES` and then a free
+# picture of that group, so each group's list is what a spawn draws from (`_spawn`).
+# An index is into `_pool[kind_of(group)]`.
+var _free := _empty_free()
 var _pixel_layer: MenuFallingArtLayer
 var _smooth_layer: MenuFallingArtLayer
 var _running := false
@@ -296,7 +321,7 @@ func _on_setting_changed(enabled: bool) -> void:
 		_pieces.clear()
 		_queue.clear()
 		_pool = {Kind.SMALL: [], Kind.COVER: []}
-		_free = {Kind.SMALL: [], Kind.COVER: []}
+		_free = _empty_free()
 		_redraw()
 		return
 	_fill_queue()
@@ -309,15 +334,16 @@ func _on_setting_changed(enabled: bool) -> void:
 func _fill_queue() -> void:
 	# A queue entry is {tex OR path, kind, foot} — `foot` being the enemy's longest
 	# side in grid cells, and 1 for everything that does not stand on the grid.
-	var small: Array = []
-	for e in _enemy_jobs():
-		small.append(e)
+	# Each job is tagged with its GROUP, the kind `SHARES` weighs it as.
+	var enemies: Array = _enemy_jobs()
+	enemies.shuffle()
 	var seated: Array = []
+	var loot: Array = []
 	for group in _loot_groups():
 		group.shuffle()
 		seated.append_array(group.slice(0, LOOT_FLOOR))
-		small.append_array(group.slice(LOOT_FLOOR))
-	small.shuffle()
+		loot.append_array(group.slice(LOOT_FLOOR))
+	loot.shuffle()
 	var covers: Array = []
 	var seen_covers := _seen_covers()
 	for path in _pngs_in(COVER_DIR):
@@ -331,18 +357,44 @@ func _fill_queue() -> void:
 	# rather than about what the player is up against, and a menu that shows the
 	# roster some nights and not others is just a bug nobody can reproduce.
 	var chars: Array = _character_jobs()
-	chars.append_array(_cosmetic_jobs())
+	var looks: Array = _cosmetic_jobs()
+	looks.shuffle()
 	var icons: Array = _icon_jobs()
 	icons.shuffle()
-	chars.append_array(icons.slice(0, icon_pool()))
 	_queue.clear()
-	_queue.append_array(chars)
-	_queue.append_array(seated)
-	_queue.append_array(small.slice(0, maxi(0, small_pool() - chars.size() - seated.size())))
-	_queue.append_array(covers.slice(0, cover_pool()))
+	_queue.append_array(_tagged(chars, Group.CHARACTER))
+	_queue.append_array(_tagged(looks.slice(0, group_pool(Group.LOOK)), Group.LOOK))
+	_queue.append_array(_tagged(icons.slice(0, group_pool(Group.ICON)), Group.ICON))
+	_queue.append_array(_tagged(enemies.slice(0, group_pool(Group.ENEMY)), Group.ENEMY))
+	_queue.append_array(_tagged(seated, Group.LOOT))
+	_queue.append_array(_tagged(loot.slice(0,
+		maxi(0, group_pool(Group.LOOT) - seated.size())), Group.LOOT))
+	_queue.append_array(_tagged(covers.slice(0, cover_pool()), Group.COVER))
 	# Interleaved, so the first seconds are not all one kind.
 	_queue.shuffle()
 	_queue_total = _queue.size()
+
+static func _empty_free() -> Dictionary:
+	var out := {}
+	for g in SHARES:
+		out[g] = []
+	return out
+
+# The pool a group's pictures sit in: covers in COVER, everything else in SMALL.
+static func kind_of(group: int) -> int:
+	return Kind.COVER if group == Group.COVER else Kind.SMALL
+
+# How many pictures nothing is falling with, over every group.
+func free_count() -> int:
+	var n: int = 0
+	for g in _free:
+		n += (_free[g] as Array).size()
+	return n
+
+func _tagged(jobs: Array, group: int) -> Array:
+	for j in jobs:
+		j["group"] = group
+	return jobs
 
 # The loot art as one list of jobs per folder, so `_fill_queue` can seat some of
 # each kind before the random draw.
@@ -579,12 +631,18 @@ func _bake(job: Dictionary) -> void:
 			# resource the battlefield draws, and resizing it in place would shrink
 			# the enemy everywhere in the game.
 			if img.is_compressed() and img.decompress() != OK:
-				_add_to_pool(kind, tex, pixel, foot)
+				_add_to_pool(kind, tex, pixel, foot, _group_of(job))
 				return
 			var k: float = want / longest
 			_shrink_to(img, maxi(1, int(src.x * k)), maxi(1, int(src.y * k)))
 			tex = ImageTexture.create_from_image(img)
-	_add_to_pool(kind, tex, pixel, foot)
+	_add_to_pool(kind, tex, pixel, foot, _group_of(job))
+
+# A job's group; an untagged one (a test's) is a cover or loot by its kind.
+static func _group_of(job: Dictionary) -> int:
+	if job.has("group"):
+		return int(job["group"])
+	return Group.COVER if int(job.get("kind", Kind.SMALL)) == Kind.COVER else Group.LOOT
 
 # Shrink `img` to `w`x`h` IN PLACE, halving first and resampling last.
 #
@@ -625,11 +683,16 @@ func _pump_queue() -> int:
 			break
 	return done
 
-func _add_to_pool(kind: int, tex: Texture2D, pixel: bool, foot: int) -> void:
-	_pool[kind].append({"tex": tex, "pixel": pixel, "foot": foot})
+func _add_to_pool(kind: int, tex: Texture2D, pixel: bool, foot: int,
+		group: int = -1) -> void:
+	# A group must name the pool its picture is in (kind_of), or a spawn would
+	# read another pool's entry at this index.
+	if group < 0 or kind_of(group) != kind:
+		group = Group.COVER if kind == Kind.COVER else Group.LOOT
+	_pool[kind].append({"tex": tex, "pixel": pixel, "foot": foot, "group": group})
 	# Every entry starts free. `_free` is the list of pool indices nothing is
 	# currently falling with.
-	_free[kind].append(_pool[kind].size() - 1)
+	(_free[group] as Array).append(_pool[kind].size() - 1)
 
 # True when the art's border has any see-through pixel — that is, it is a sprite
 # cut out of its background rather than a tile with the background baked in.
@@ -658,18 +721,30 @@ func _is_cutout(tex: Texture2D) -> bool:
 
 func _spawn() -> Dictionary:
 	var size: Vector2 = get_viewport_rect().size
-	var kind: int = Kind.COVER if _rng.randf() < COVER_SHARE else Kind.SMALL
-	# NO PICTURE TWICE AT ONCE. Take an entry nothing else is currently falling
-	# with; if this kind has none left, the other kind serves instead rather than
-	# the screen repeating itself. (With 72 pieces against a pool near 146 the
-	# fallback is rare, but a run of recycles can bunch the covers.)
-	if _free[kind].is_empty():
-		kind = Kind.SMALL if kind == Kind.COVER else Kind.COVER
-	if _free[kind].is_empty():
+	# THE GROUP FIRST, BY ITS SHARE (`SHARES`), then a picture of that group.
+	# NO PICTURE TWICE AT ONCE: only pictures nothing else is falling with are on
+	# a free list, and a group whose list is empty is left out of the draw, so the
+	# others serve instead rather than the screen repeating itself.
+	var total: float = 0.0
+	for g in _free:
+		if not (_free[g] as Array).is_empty():
+			total += float(SHARES[g])
+	if total <= 0.0:
 		return {}
-	var slot: int = _rng.randi() % _free[kind].size()
-	var index: int = _free[kind][slot]
-	_free[kind].remove_at(slot)
+	var roll: float = _rng.randf() * total
+	var group: int = -1
+	for g in _free:
+		if (_free[g] as Array).is_empty():
+			continue
+		group = g
+		roll -= float(SHARES[g])
+		if roll < 0.0:
+			break
+	var list: Array = _free[group]
+	var slot: int = _rng.randi() % list.size()
+	var index: int = list[slot]
+	list.remove_at(slot)
+	var kind: int = kind_of(group)
 	var entry: Dictionary = _pool[kind][index]
 	var tex: Texture2D = entry["tex"]
 	var scale: float = 1.0 + _rng.randf_range(-SIZE_JITTER, SIZE_JITTER)
@@ -703,6 +778,7 @@ func _spawn() -> Dictionary:
 		"tex": tex,
 		"pixel": bool(entry["pixel"]),
 		"kind": kind,
+		"group": group,
 		"index": index,
 		"pos": pos,
 		"box": box,
@@ -748,12 +824,17 @@ func _rect_dim(p: Vector2, box: Vector2, rect: Rect2) -> float:
 
 # Hand a piece's pool entry back, so the picture it was using can fall again.
 func _release(piece: Dictionary) -> void:
-	if not piece.has("kind") or not piece.has("index"):
+	if not piece.has("group") or not piece.has("index"):
 		return
-	var kind: int = int(piece["kind"])
-	var index: int = int(piece["index"])
-	if not _free[kind].has(index):
-		_free[kind].append(index)
+	var list: Array = _free[int(piece["group"])]
+	if not list.has(int(piece["index"])):
+		list.append(int(piece["index"]))
+
+# Take a piece's picture back off its free list: it was released for a
+# replacement that never came, and is still on screen.
+func _retake(piece: Dictionary) -> void:
+	if piece.has("group") and piece.has("index"):
+		(_free[int(piece["group"])] as Array).erase(int(piece["index"]))
 
 # An x anywhere across the screen, with the whole piece on it. A piece wider than
 # the screen is pinned to the middle rather than letting the range invert.
@@ -839,8 +920,7 @@ func _process(delta: float) -> void:
 				# vanishing, and take the entry back off the free list so nothing
 				# else claims a picture that is still on screen.
 				piece["pos"] = Vector2(pos.x, _reentry_y(size, piece["box"]))
-				if _free[int(piece["kind"])].has(int(piece["index"])):
-					_free[int(piece["kind"])].erase(int(piece["index"]))
+				_retake(piece)
 			else:
 				fresh["pos"] = Vector2(_column_x(size, (fresh["box"] as Vector2).x),
 					_reentry_y(size, fresh["box"]))
@@ -868,8 +948,7 @@ func _sink_step(delta: float, size: Vector2) -> void:
 		if fresh.is_empty():
 			piece["pos"] = _edge_start(size, piece["box"], 0.33)
 			piece["age"] = 0.0
-			if _free[int(piece["kind"])].has(int(piece["index"])):
-				_free[int(piece["kind"])].erase(int(piece["index"]))
+			_retake(piece)
 		else:
 			fresh["pos"] = _edge_start(size, fresh["box"], 0.33)
 			piece.merge(fresh, true)

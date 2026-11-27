@@ -39,10 +39,18 @@ env:
 
 jobs:
   tests:
-    name: GUT suite
+    name: GUT suite (${{ matrix.half }}/2)
     runs-on: ubuntu-latest
-    # ~7 minutes locally; the ceiling is for a hang, not for a slow runner.
+    # TWO MACHINES, FOUR SHARDS EACH: the suite is split eight ways
+    # (tools/gut.sh --parallel with GUT_SHARD_TOTAL / GUT_SHARD_OFFSET), and each
+    # runner takes half — about two minutes of tests apiece where one runner took
+    # four. Both always finish (no fail-fast), so a red build lists every failure.
+    # The ceiling is for a hang, not for a slow runner.
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        half: [0, 1]
     steps:
       - uses: actions/checkout@v4
 
@@ -65,9 +73,25 @@ jobs:
           mv "/tmp/${name}" ~/.local/godot/godot
           chmod +x ~/.local/godot/godot
 
+      - name: Cache the import
+        # The import pass (every picture decoded and mipmapped) took ~75 s of each
+        # run. Its output — `.godot/imported` and the gitignored `*.import` beside
+        # each asset — is kept between runs, keyed on every asset and on
+        # project.godot (whose [importer_defaults] shape it). A changed picture
+        # misses the key, restores the last import and re-imports only what moved.
+        uses: actions/cache@v4
+        with:
+          path: |
+            .godot/imported
+            .godot/uid_cache.bin
+            **/*.import
+          key: godot-import-${{ env.GODOT_VERSION }}-${{ hashFiles('project.godot', '**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.webp', '**/*.svg', '**/*.ttf', '**/*.otf', '**/*.ogv', '**/*.ogg', '**/*.wav', '**/*.mp3') }}
+          restore-keys: |
+            godot-import-${{ env.GODOT_VERSION }}-
+
       - name: Import assets
-        # The first headless run otherwise pays the whole import pass inside the
-        # test timing. Best-effort: the cache rebuilds lazily if this is short.
+        # Only what the cache did not already hold. Best-effort: the cache
+        # rebuilds lazily if this is short.
         run: timeout 600 ~/.local/godot/godot --headless --import || true
 
       - name: Rescan for class_name
@@ -78,7 +102,19 @@ jobs:
         run: ~/.local/godot/godot --headless --editor --quit || true
 
       - name: GUT
-        run: ~/.local/godot/godot --headless -s addons/gut/gut_cmdln.gd
+        # One shard per core, each with its own user:// (CLAUDE.md): the same
+        # 3,800-odd tests, about a quarter of the wall time on a 4-core runner.
+        # gut.sh calls `godot`, so the cached engine goes on the PATH first.
+        run: |
+          export PATH="$HOME/.local/godot:$PATH"
+          GUT_LOG="$RUNNER_TEMP/gut.log" GUT_SHARD_TOTAL=8 \
+            GUT_SHARD_OFFSET=$(( ${{ matrix.half }} * 4 )) tools/gut.sh --parallel 4
+
+      - name: GUT log (on failure)
+        # gut.sh prints the totals and the failures; the rest of the shards'
+        # output — a crash's backtrace, a parse error's context — is here.
+        if: failure()
+        run: tail -n 400 "$RUNNER_TEMP/gut.log" || true
 
   content:
     name: Content pipeline

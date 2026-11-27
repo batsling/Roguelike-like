@@ -6,7 +6,7 @@ extends Node
 # THE SHAPE OF IT.
 #
 #   * The SONGS are content like everything else: rows of the `radio` sheet,
-#     generated into data/songs.tres (SongData). A row says which game the song
+#     generated into data/songs.json (built into SongData by Data). A row says which game the song
 #     belongs to, and nothing about how it unlocks.
 #   * The AUDIO is the player's own and never in the repo. It sits in FOLDER on
 #     their machine and a row only names the file.
@@ -120,7 +120,7 @@ func _ready() -> void:
 	# Unlocks the save already earned are taken QUIETLY at boot: a first launch
 	# on an old save could owe dozens of toasts, and none of them is news.
 	refresh_unlocks(false)
-	GameStats.changed.connect(func() -> void: refresh_unlocks(true))
+	GameStats.changed.connect(_queue_unlocks)
 	Profiles.profile_switched.connect(_on_profile_changed)
 	Profiles.profile_wiped.connect(_on_profile_changed)
 	# A test profile's toggle opens or closes every song, as Unlock all does.
@@ -204,12 +204,14 @@ func game_songs(game: StringName) -> Array:
 # Whether `song` plays as unlocked: drawn by its game's ranks, or every song
 # while UNLOCK ALL is on, or on a test profile (Settings.unlock_everything).
 func is_unlocked(song: SongData) -> bool:
+	_flush_unlocks()
 	return song != null and (unlock_all or Settings.unlock_everything or is_drawn(song))
 
 # Whether `song` has actually been DRAWN — earned by its game's ranks. What the
 # draw counts; Unlock all never changes it, so turning that off gives back
 # exactly what the ranks earned.
 func is_drawn(song: SongData) -> bool:
+	_flush_unlocks()
 	return song != null and _unlocked.has(String(song.id))
 
 # UNLOCK ALL SONGS (Settings, docs/games-first-redesign.md §20.6): every song
@@ -254,6 +256,7 @@ func _unlocks_moved() -> void:
 	changed.emit()
 
 func is_playable(song: SongData) -> bool:
+	_flush_unlocks()
 	return is_unlocked(song) and has_file(song)
 
 func on_station(song: SongData) -> bool:
@@ -290,6 +293,7 @@ func toggle_favorite(id: StringName) -> void:
 # out songs on the station, so it simply is not picked again. Starring one while
 # the favourites station stands silent starts it.
 func set_favorite(id: StringName, on: bool) -> void:
+	_flush_unlocks()
 	var song: SongData = Data.get_song(id)
 	if song == null or (on and not is_unlocked(song)) or is_favorite(song) == on:
 		return
@@ -320,6 +324,7 @@ func toggle_blocked(id: StringName) -> void:
 
 # Blacklisting the song that is playing moves on at once: a red ✕ is "not this".
 func set_blocked(id: StringName, on: bool) -> void:
+	_flush_unlocks()
 	var song: SongData = Data.get_song(id)
 	if song == null or is_blocked(song) == on:
 		return
@@ -395,6 +400,7 @@ func playable_songs() -> Array:
 	return out
 
 func current_song() -> SongData:
+	_flush_unlocks()
 	return Data.get_song(current) if current != &"" else null
 
 # ---------------------------------------------------------------------------
@@ -420,7 +426,25 @@ func current_song() -> SongData:
 # character its rank minus the songs IT drew, so neither eats the other's. Games
 # draw first, then characters in id order. A pool with nothing left to draw
 # draws nothing; the rank still stands.
+# ONE REFRESH PER FRAME, NOT PER `GameStats.changed` (the owner, 27 Nov 2026). A
+# report fires `changed` five times and each refresh walks every song of every game, so the
+# signal only marks the unlocks dirty and one refresh runs at the end of the
+# frame. Anything that READS the unlocks first catches up (`_flush_unlocks`), so a
+# caller asking straight after the signal still sees what it earned.
+var _unlocks_dirty: bool = false
+
+func _queue_unlocks() -> void:
+	if _unlocks_dirty:
+		return
+	_unlocks_dirty = true
+	_flush_unlocks.call_deferred()
+
+func _flush_unlocks() -> void:
+	if _unlocks_dirty:
+		refresh_unlocks(true)
+
 func refresh_unlocks(announce: bool = true) -> void:
+	_unlocks_dirty = false
 	RankRewards.batch(func() -> void: _refresh_unlocks(announce))
 
 func _refresh_unlocks(announce: bool) -> void:
@@ -518,6 +542,7 @@ func character_earned(character: StringName) -> int:
 
 # How many songs have been drawn FOR `character`.
 func character_drawn(character: StringName) -> int:
+	_flush_unlocks()
 	var n: int = 0
 	for id in _drawn_by.keys():
 		if String(_drawn_by[id]) == String(character):
@@ -557,6 +582,7 @@ func character_rank_line(character: StringName) -> String:
 # Which character a song was drawn for, or &"" when its game drew it (or it is
 # still locked).
 func drawn_for(song: SongData) -> StringName:
+	_flush_unlocks()
 	return StringName(_drawn_by.get(String(song.id), "")) if song != null else &""
 
 func _label(song: SongData) -> String:

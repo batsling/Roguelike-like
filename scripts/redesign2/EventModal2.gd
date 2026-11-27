@@ -727,10 +727,18 @@ func _same_objects(a: Array, b: Array) -> bool:
 # the modal is a card the size of its content; over it, the right column scrolls
 # and the art stays put beside it. This is what makes a two-option event and a
 # ten-option event both look deliberate.
+#
+# A FRAME LATER, BY A ONE-SHOT CONNECTION THIS MODAL OWNS, not an `await`. An
+# awaiting _fit resumed after the modal had been closed in that frame (an event
+# that ends the run) and Godot reported "class instance is gone"; a connection to
+# a method of this node goes with the node. Several calls in one frame fit once.
 func _fit() -> void:
-	if _panel == null or not is_instance_valid(_panel) or _right == null:
+	if _panel == null or not is_instance_valid(_panel) or _right == null or not is_inside_tree():
 		return
-	await get_tree().process_frame
+	if not get_tree().process_frame.is_connected(_fit_now):
+		get_tree().process_frame.connect(_fit_now, CONNECT_ONE_SHOT)
+
+func _fit_now() -> void:
 	if _panel == null or not is_instance_valid(_panel):
 		return
 	var wanted: float = _right.get_combined_minimum_size().y

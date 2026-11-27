@@ -149,12 +149,67 @@ func _refresh() -> void:
 	for c in _sub_bar.get_children():
 		_sub_bar.remove_child(c)
 		c.queue_free()
-	_sub_bar.visible = _tab == TAB_ICONS
+	# The bar under the status line holds the Icons tab's sub-tabs and, on every
+	# tab with looks to wear, 🎲 Random all at its right-hand end.
+	_sub_bar.visible = _tab != TAB_LETTERS
 	match _tab:
 		0: _build_characters()
 		1: _build_hats()
 		TAB_ICONS: _build_icons()
 		_: _build_letters()
+	if _tab != TAB_LETTERS:
+		var spacer := Control.new()
+		spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_sub_bar.add_child(spacer)
+		var all := Button.new()
+		all.name = "RandomAll"
+		all.text = "🎲  Random all"
+		all.tooltip_text = "Set every choice on this page to Random: a different look every run."
+		all.custom_minimum_size = Vector2(0, 30)
+		all.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+		all.pressed.connect(random_all)
+		_sub_bar.add_child(all)
+
+# 🎲 RANDOM ALL (the owner, 26 Nov 2026: "a random all option on each tab"):
+# every slot the page shows set to Random at once. On the Icons tab that is the
+# sub-tab on screen, Symbols or Statuses.
+func random_all() -> void:
+	Cosmetics.choose_all(tab_slots(), Cosmetics.RANDOM)
+	_refresh()
+	_say("Every choice on this page is Random now: each is rolled again at the start of every run.")
+
+# The slot keys the current tab (and sub-tab) shows tiles for.
+func tab_slots() -> Array:
+	var out: Array = []
+	match _tab:
+		0:
+			for ch in _costume_roster():
+				for slot in CosmeticCatalog.SLOTS:
+					out.append(Cosmetics.costume_slot(ch.id, slot))
+		1:
+			for pl in _hat_roster():
+				out.append(Cosmetics.hat_slot(pl.id))
+		TAB_ICONS:
+			if _icon_sub == ICON_SUB_STATUSES:
+				for st in Data.all_statuses():
+					out.append(Cosmetics.icon_slot(String(st.id)))
+			else:
+				for kind in CosmeticCatalog.KINDS:
+					out.append(Cosmetics.icon_slot(kind))
+	return out
+
+func _costume_roster() -> Array:
+	var roster: Array = Data.all_characters2().filter(func(ch) -> bool:
+		return not CosmeticCatalog.costumes_of(ch.id, "icon").is_empty() \
+			or not CosmeticCatalog.costumes_of(ch.id, "full").is_empty())
+	roster.sort_custom(func(a, b): return a.display_name < b.display_name)
+	return roster
+
+func _hat_roster() -> Array:
+	var roster: Array = Data.all_players().filter(func(pl) -> bool:
+		return pl is PlayerData and pl.portrait != null and pl.hat_spot.z > 0.0)
+	roster.sort_custom(func(a, b): return a.order < b.order)
+	return roster
 
 func _say(text: String) -> void:
 	_status.text = text
@@ -164,11 +219,7 @@ func _say(text: String) -> void:
 
 func _build_characters() -> void:
 	_say("Costumes are earned as rank-up rewards from the games they come from and the characters from those games. The icon and the full portrait are chosen separately.")
-	var roster: Array = Data.all_characters2().filter(func(ch) -> bool:
-		return not CosmeticCatalog.costumes_of(ch.id, "icon").is_empty() \
-			or not CosmeticCatalog.costumes_of(ch.id, "full").is_empty())
-	roster.sort_custom(func(a, b): return a.display_name < b.display_name)
-	for ch in roster:
+	for ch in _costume_roster():
 		var block := VBoxContainer.new()
 		block.name = "Character_%s" % ch.id
 		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
@@ -196,10 +247,7 @@ func _build_characters() -> void:
 func _build_hats() -> void:
 	# The Abandon Hat's sentence is its achievement's (the `achievements` sheet).
 	_say("Hats are worn by players. Super Auto Pets' hats are its rank-up rewards; the Abandon Hat is an achievement: %s" % Cosmetics.special_how(Cosmetics.ABANDON_HAT))
-	var roster: Array = Data.all_players().filter(func(pl) -> bool:
-		return pl is PlayerData and pl.portrait != null and pl.hat_spot.z > 0.0)
-	roster.sort_custom(func(a, b): return a.order < b.order)
-	for pl in roster:
+	for pl in _hat_roster():
 		var block := VBoxContainer.new()
 		block.name = "Player_%s" % pl.id
 		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)

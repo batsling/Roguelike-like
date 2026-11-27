@@ -590,7 +590,7 @@ before/after on one machine, not as what a player sees.
 | what | before | after | the fix |
 |---|---|---|---|
 | a `GameStats.changed` (a report fires **5**) | ~320 ms | ~19 ms | `RankRewards.batch`: one pass over songs and logo pieces per refresh, not one per game |
-| boot to first frame | ~2.95 s | ~2.3 s | enemy/boss art by path (`GoalEnemyData.image`), songs in one `data/songs.tres` |
+| boot to first frame | ~2.95 s | ~2.3 s | enemy/boss art by path (`GoalEnemyData.image`), songs in one file (then a `.tres`; columns in `data/songs.json` since 27 Nov) |
 | main menu → run page | ~1.8 s | ~0.7 s | `MainMenu._warm_run_page` loads the page on a worker thread |
 | first open of a run screen | +1.7 s of compile across them | ~0 | `Overworld2._warm_screens` compiles them on worker threads once the page is up |
 | building headings and buttons | +65 ms / 900 controls | +25 ms | Rogue's font applied as a control enters, settled at the end of the frame |
@@ -612,15 +612,25 @@ noisy to fail a build on; every regression above was visible in these counts.
 whatever moved it, with the reason in the message.
 
 **Still open, measured:**
-- `items2.0` (77 sprites, ~1.3 MB) and `characters2.0` (~1.7 MB) still embed
-  their art and decode it at boot (~35–75 and ~10–40 ms). The fix is the one
-  enemies had: a path in the generator, a lazy getter on the resource.
+- ~~`items2.0` and `characters2.0` still embed their art~~ — **fixed 27 Nov
+  2026**: both name their pictures by path (`ItemData.image_path`,
+  `CharacterData.portrait_path` / `icon_path`, written so by `item_dsl.py` and
+  `generate_character2_tres.py`) and load them on first read. Boot's eager art
+  went from 3,412 KB to 153 KB, and a headless cold start from ~2,715 ms to
+  ~2,430 ms.
+- **Fixed 27 Nov 2026, two more off the boot:** the songs are columns in
+  `data/songs.json`, not a `.tres` of 3,112 sub-resources (~190 ms → ~20 ms), and
+  the developer panel is no longer an autoload (`DevTools` is a stub that loads
+  `scripts/dev/DevPanel.gd` on the first backtick, ~170 ms of compiling saved).
 - The `games` catalog grows with every upload (~0.2 ms a file). One combined
   file would halve it, at the cost of the per-file `grep` the tools and docs
   rely on; the budget will say when it starts to matter.
-- A report's five `GameStats.changed` each still refresh Radio and
-  TitleUnlocks (~19 ms each). Coalescing to once a frame would save ~80 ms a
-  report, but several tests read the unlocks on the line after the signal.
+- ~~A report's five `GameStats.changed` each refresh Radio and TitleUnlocks~~
+  — **fixed 27 Nov 2026**: Radio, TitleUnlocks and Cosmetics mark their unlocks
+  dirty on the signal and refresh once at the end of the frame
+  (`_queue_unlocks`); every read catches up first (`_flush_unlocks`), so code
+  that asks on the line after the signal still sees what it earned. Five
+  changes went from ~240 ms to ~56 ms of refreshing.
 - The first open of the map and the Collection still builds ~300–500 ms of
   content (865 stars, covers) — content, not loading.
 

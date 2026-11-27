@@ -282,28 +282,68 @@ func test_no_two_covers_can_overlap() -> void:
 		if not grid.has(key):
 			grid[key] = []
 		(grid[key] as Array).append(i)
+	# THE COVERS' SIZES FROM THEIR FILE HEADERS, not by decoding them: this test
+	# used to load every cover in the catalog (~860 PNGs and JPEGs) to read each
+	# one's aspect, which was 112 s — the slowest test in the suite by 30x, and a
+	# whole shard's worth on its own. The aspect is all the check needs.
+	var sizes: Dictionary = {}
 	for i in range(lay.star_count()):
-		var tex_a: Texture2D = view.cover_texture(i)
-		if tex_a == null:
+		var g: GameData = view.game_at(i)
+		var px: Vector2i = _image_size(g.cover_path) if g != null else Vector2i.ZERO
+		if px.x > 0 and px.y > 0:
+			sizes[i] = px
+	for i in range(lay.star_count()):
+		if not sizes.has(i):
 			continue
-		var box_a := _world_cover_rect(view, lay, i, tex_a)
+		var box_a := _world_cover_rect(lay, i, sizes[i])
 		var base := Vector2i(int(floor(lay.xs[i] / cell)), int(floor(lay.ys[i] / cell)))
 		for ax in range(-1, 2):
 			for ay in range(-1, 2):
 				for j in grid.get(base + Vector2i(ax, ay), []):
-					if int(j) <= i:
-						continue
-					var tex_b: Texture2D = view.cover_texture(int(j))
-					if tex_b == null:
+					if int(j) <= i or not sizes.has(int(j)):
 						continue
 					checked += 1
-					if box_a.intersects(_world_cover_rect(view, lay, int(j), tex_b)):
+					if box_a.intersects(_world_cover_rect(lay, int(j), sizes[int(j)])):
 						overlaps += 1
 	assert_gt(checked, 0, "there are neighbouring covers to check")
 	assert_eq(overlaps, 0, "no two cover images overlap anywhere in the sky")
 
-func _world_cover_rect(view: AtlasView, lay: AtlasLayout, i: int, tex: Texture2D) -> Rect2:
-	var aspect: float = float(tex.get_height()) / float(tex.get_width())
+# A picture's pixel size off its file header: a PNG's IHDR, or a JPEG's frame
+# header (SOF0-SOF15, bar DHT/JPG/DAC). Anything else is decoded the slow way.
+static func _image_size(path: String) -> Vector2i:
+	if path == "" or not FileAccess.file_exists(path):
+		return Vector2i.ZERO
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null:
+		return Vector2i.ZERO
+	f.big_endian = true
+	var head: PackedByteArray = f.get_buffer(4)
+	if head.size() == 4 and head[0] == 0x89 and head[1] == 0x50:   # \x89PNG
+		f.seek(16)
+		return Vector2i(f.get_32(), f.get_32())
+	if head.size() >= 2 and head[0] == 0xFF and head[1] == 0xD8:   # JPEG SOI
+		f.seek(2)
+		while f.get_position() + 4 <= f.get_length():
+			if f.get_8() != 0xFF:
+				break
+			var marker: int = f.get_8()
+			while marker == 0xFF:
+				marker = f.get_8()
+			if marker == 0xD8 or marker == 0x01 or (marker >= 0xD0 and marker <= 0xD7):
+				continue
+			var seg: int = f.get_16()
+			if marker >= 0xC0 and marker <= 0xCF and not marker in [0xC4, 0xC8, 0xCC]:
+				f.get_8()                  # sample precision
+				var h: int = f.get_16()
+				var w: int = f.get_16()
+				return Vector2i(w, h)
+			f.seek(f.get_position() + seg - 2)
+		return Vector2i.ZERO
+	var tex := load(path) as Texture2D
+	return Vector2i(tex.get_width(), tex.get_height()) if tex != null else Vector2i.ZERO
+
+func _world_cover_rect(lay: AtlasLayout, i: int, px: Vector2i) -> Rect2:
+	var aspect: float = float(px.y) / float(px.x)
 	var reserved: float = AtlasLayout.star_radius(lay.degree_of(i))
 	var s: Vector2 = AtlasView.cover_size(reserved, aspect)
 	return Rect2(lay.position_of(i) - s * 0.5, s)

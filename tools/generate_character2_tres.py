@@ -345,12 +345,11 @@ def character_tres(row, catalog=None, games=None) -> tuple:
     portrait = ("res://images2.0/characters/Full/%s.png" % full_stem) if full_stem else None
     icon = ("res://images2.0/characters/Icon/%s.png" % icon_stem) if icon_stem else None
 
+    # The pictures are named by PATH and loaded on first read (CharacterData's
+    # portrait / icon), not ExtResources Data would decode at boot
+    # (performance-backlog §8).
     ext = ['[ext_resource type="Script" '
            'path="res://scripts/resources/CharacterData.gd" id="1_char"]']
-    if portrait:
-        ext.append('[ext_resource type="Texture2D" path="%s" id="2_portrait"]' % portrait)
-    if icon:
-        ext.append('[ext_resource type="Texture2D" path="%s" id="3_icon"]' % icon)
 
     lines = []
     lines.append(
@@ -394,9 +393,9 @@ def character_tres(row, catalog=None, games=None) -> tuple:
         lines.append("level_up_reward_chest_choices = %d" % chest_choices)
     lines.append('file = "%s"' % gd_str(file))
     if portrait:
-        lines.append('portrait = ExtResource("2_portrait")')
+        lines.append('portrait_path = "%s"' % portrait)
     if icon:
-        lines.append('icon = ExtResource("3_icon")')
+        lines.append('icon_path = "%s"' % icon)
     return cid, "\n".join(lines) + "\n"
 
 

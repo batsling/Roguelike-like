@@ -4718,6 +4718,39 @@ func test_the_page_never_shows_a_horizontal_scrollbar() -> void:
 	assert_false(_ui._scroll.get_h_scroll_bar().visible,
 		"nor after a game, when the checklist is at its longest")
 
+# THE PAGE FITS, AND THE VERTICAL BAR IS LEFT TO SAY SO WHEN IT DOES NOT (the
+# owner, 27 Nov 2026: "do the honest fix, not removing the scroll bar"). The board
+# fitted its column with 2 px to spare, so a header a few px taller put a bar
+# down the page; the board now gives up exactly what the column is over by.
+func test_the_page_keeps_its_vertical_scrollbar_as_the_last_resort() -> void:
+	assert_eq(_ui._scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_AUTO,
+		"a page that runs over still says so")
+
+#
+# Driven by hand, no frames waited: the page is squeezed by moving its top down
+# (what a taller header does, through _fit_page_under_header) and the fit is run
+# the way its signals run it.
+func test_the_board_gives_up_what_a_taller_header_takes() -> void:
+	var top: float = _ui._scroll.offset_top
+	var cell: int = _ui._board._cell
+	# Leave the board's column 24 px short of room.
+	_ui._scroll.offset_top = top + _ui._scroll.size.y \
+		- _ui._right_col.get_combined_minimum_size().y + 24.0
+	for i in range(3):
+		_ui._fit_board_to_room()
+	assert_lte(_ui._right_col.get_combined_minimum_size().y + Overworld2.BOARD_SLACK,
+		_ui._scroll.size.y + 0.5, "the column fits, with its slack, in the room left")
+	assert_lt(_ui._board._cell, cell, "because the board's cells gave the room up")
+	_ui._scroll.offset_top = top
+	_ui._fit_board_to_room()
+	assert_eq(_ui._board._cell, cell, "and took it back when the room came back")
+	assert_eq(BattlefieldView.height_cap(), -1, "with no cap left over")
+
+# THE HERO'S PIPS ARE ONE SIZE (the owner, 27 Nov 2026): a shield and a status
+# side by side read as equals, clocks included.
+func test_the_heros_shields_and_statuses_are_one_size() -> void:
+	assert_eq(BattlefieldView.SHIELD_PIP, BattlefieldView.STATUS_PIP_HERO)
+
 # The report checklist is the one place the player ANSWERS something, and Godot's
 # stock check glyphs are a hairline outline drawn for a light theme — against this
 # palette they read as an empty gap. The theme draws its own.
@@ -5899,15 +5932,6 @@ func _all_label_text(root: Node) -> String:
 		for c in n.get_children():
 			stack.append(c)
 	return " | ".join(out)
-
-# Every label on a card, joined — the distance line is a plain Label among
-# several, and which child it is is layout, not behaviour.
-func _card_text(card: Node) -> String:
-	var out: String = ""
-	for child in card.get_children():
-		if child is Label:
-			out += (child as Label).text + "\n"
-	return out
 
 # ---------------------------------------------------------------------------
 # The board gets to finish
@@ -12129,12 +12153,18 @@ func test_the_stat_badges_grow_with_the_board_cells() -> void:
 
 # A PLAIN NOTICE GOES TO HISTORY ONLY; an announcement pops up too.
 func test_a_plain_notice_pops_nothing_up() -> void:
+	# SETTLED FIRST: the setup's unlocks are drawn and announced at the end of its
+	# frame (Radio / TitleUnlocks / Cosmetics refresh once a frame), and on a fresh
+	# profile that is a burst of toasts that would otherwise land inside the wait.
+	await wait_process_frames(2)
 	var toasts: NotificationToasts = _ui._toasts
-	var before: int = toasts._stack.get_child_count()
 	var from: int = Notifications.history.size()
 	Notifications.notify("Spider walked on.", Color.GOLD)
 	await wait_frames(2)
-	assert_eq(toasts._stack.get_child_count(), before, "no toast for an ordinary line")
+	# BY ITS TEXT, not a count of toasts: a toast from the setup can expire inside
+	# the wait, which moved the count the other way.
+	assert_false(Page.text_of(toasts._stack).contains("Spider walked on."),
+		"no toast for an ordinary line")
 	assert_eq(Notifications.history.size(), from + 1, "but History has it")
 
 func test_a_toast_burst_never_stands_more_than_the_cap() -> void:

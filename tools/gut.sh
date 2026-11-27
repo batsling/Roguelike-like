@@ -4,6 +4,8 @@
 #   tools/gut.sh test_gameloop2                 # one file
 #   tools/gut.sh test_overworld2 crash          # the tests in it whose name contains "crash"
 #   tools/gut.sh                                # the whole suite (~25 min)
+#   tools/gut.sh --parallel [N]                 # the whole suite in N processes at
+#                                               # once (default: one per core)
 #
 # WHY `-gconfig=`: .gutconfig.json names `res://test/` as a directory to run, and
 # GUT adds a `-gtest` file ON TOP of it rather than instead of it — so
@@ -12,10 +14,61 @@
 # by hand, since it lived in the same file.
 #
 # Prints the totals and every failure; the full log is in $GUT_LOG (default under
-# /tmp). Never run two at once: they share user:// and race on the save slots.
+# /tmp). Never run two at once: they share user:// and race on the save slots —
+# except as --parallel, which gives each process its own (see below).
 set -u
 cd "$(dirname "$0")/.."
 LOG="${GUT_LOG:-/tmp/gut_last.log}"
+
+# --PARALLEL: the whole suite as N shards running side by side. Each process keeps
+# every N-th test of every file (GUT_SHARD, read by test/pre_run_hook.gd) and gets
+# its own user:// through XDG_DATA_HOME, which is where Godot keeps it on Linux,
+# so no two of them touch the same save slot. The logs are concatenated into $LOG
+# and the totals summed; the run fails if any shard does.
+#
+# ACROSS MACHINES TOO: GUT_SHARD_TOTAL (default N) and GUT_SHARD_OFFSET (default
+# 0) make this machine's N processes shards OFFSET..OFFSET+N-1 of TOTAL, so CI's
+# two runners each take half of an 8-way split (.github/workflows/ci.yml).
+if [ "${1:-}" = "--parallel" ]; then
+	N="${2:-$(nproc)}"
+	TOTAL="${GUT_SHARD_TOTAL:-$N}"
+	OFFSET="${GUT_SHARD_OFFSET:-0}"
+	WORK="$(mktemp -d "${TMPDIR:-/tmp}/gut_parallel.XXXXXX")"
+	PIDS=()
+	for ((k = 0; k < N; k++)); do
+		mkdir -p "$WORK/data$k"
+		XDG_DATA_HOME="$WORK/data$k" GUT_SHARD="$((OFFSET + k))/$TOTAL" \
+			godot --headless -s addons/gut/gut_cmdln.gd > "$WORK/shard$k.log" 2>&1 &
+		PIDS+=($!)
+	done
+	STATUS=0
+	for ((k = 0; k < N; k++)); do
+		wait "${PIDS[$k]}"
+		rc=$?
+		if [ $rc -ne 0 ]; then
+			STATUS=1
+			# 128+n is a process killed by signal n: a crash, not failing tests.
+			[ $rc -gt 128 ] && echo "shard $((OFFSET + k))/$TOTAL CRASHED (signal $((rc - 128))): see $WORK/shard$k.log"
+		fi
+	done
+	: > "$LOG"
+	for ((k = 0; k < N; k++)); do
+		echo "===== shard $((OFFSET + k))/$TOTAL =====" >> "$LOG"
+		cat "$WORK/shard$k.log" >> "$LOG"
+	done
+	# Totals, summed over the shards' own "Totals" blocks.
+	awk '/^Totals/{t=1} t && /^Tests /{a+=$2} t && /^Passing Tests/{p+=$3} \
+		t && /^Failing Tests/{f+=$3} t && /^(Risky|Pending)/{r+=$NF} \
+		END{printf "Tests %d  Passing %d  Failing %d  Risky/Pending %d  (%d of %d shards)\n", a, p, f, r, '"$N"', '"$TOTAL"'}' \
+		"$WORK"/shard*.log
+	grep -hE "SCRIPT ERROR|Parse Error|\[Failed\]|at line" "$WORK"/shard*.log | head -60
+	# Kept when anything failed, so a crash's own log (and the shard's user://)
+	# can still be read; removed on a clean run.
+	if [ $STATUS -eq 0 ]; then rm -rf "$WORK"; else echo "(shard logs kept in $WORK)"; fi
+	echo "(exit $STATUS, full log: $LOG)"
+	exit $STATUS
+fi
+
 if [ $# -eq 0 ]; then
 	godot --headless -s addons/gut/gut_cmdln.gd > "$LOG" 2>&1
 else

@@ -1561,15 +1561,24 @@ static func _overlaid(col: VBoxContainer, art: Control, name: Label, bottom: Con
 		# PLACED AT ITS MINIMUM, and again whenever that changes: a preset sizes the
 		# button off the minimum it has at that moment, and the tight face lands a
 		# frame later, so a button placed once kept the taller box it started with.
-		var place := func() -> void:
-			if is_instance_valid(bottom):
-				bottom.size = bottom.get_combined_minimum_size()
-				bottom.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
-					Control.PRESET_MODE_MINSIZE, LootSlot.USE_INSET)
+		#
+		# A STATIC METHOD WITH THE BUTTON BOUND, NOT A LAMBDA. This is a static func,
+		# so a lambda made here has no owner, and the DEFERRED call outlived the cell
+		# whenever the cell was built and freed in the same frame (the pack redraws
+		# as a haul screen closes): "Lambda capture at index 0 was freed". A bound
+		# argument that has been freed only fails `is_instance_valid`.
+		var place := _place_bottom.bind(bottom)
 		place.call()
 		bottom.minimum_size_changed.connect(place)
 		place.call_deferred()
 	return stack
+
+static func _place_bottom(bottom: Variant) -> void:
+	if is_instance_valid(bottom):
+		var b := bottom as Control
+		b.size = b.get_combined_minimum_size()
+		b.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
+			Control.PRESET_MODE_MINSIZE, LootSlot.USE_INSET)
 
 # The top-down fade behind a cell's name: shared, since every cell draws one.
 static var _fade_tex: GradientTexture2D = null

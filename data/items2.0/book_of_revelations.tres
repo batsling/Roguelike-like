@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_book_of_revelations"]
+[gd_resource type="Resource" script_class="ItemData" load_steps=2 format=3 uid="uid://item_book_of_revelations"]
 
 [ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
-[ext_resource type="Texture2D" path="res://images2.0/items/BookOfRevelations.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_item")
@@ -17,4 +16,4 @@ starts_charged = true
 source_game = "The Binding of Isaac"
 tags = PackedStringArray("book", "angelic")
 pools = PackedStringArray("angel_room")
-image = ExtResource("2_img")
+image_path = "res://images2.0/items/BookOfRevelations.png"

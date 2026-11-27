@@ -96,10 +96,43 @@ extends Resource
 # Needed because a display name and its art stem can differ (Erratic Deck ->
 # ErraticDeck); falls back to the de-spaced display name when unset.
 @export var file: String = ""
-@export var portrait: Texture2D
+#
+# Both LOAD ON FIRST READ, from their paths (the pattern GoalEnemyData.image
+# follows): as exported Texture2Ds every character's two pictures (24, ~1.8 MB)
+# were decoded at every boot (docs/performance-backlog.md §8). Reading and
+# assigning `portrait` and `icon` work as before.
+@export var portrait_path: String = ""
+var _portrait: Texture2D = null
+var _portrait_loaded: bool = false
+var portrait: Texture2D:
+	get:
+		if not _portrait_loaded:
+			_portrait_loaded = true
+			_portrait = GoalEnemyData.load_art(portrait_path)
+		return _portrait
+	set(value):
+		_portrait = value
+		_portrait_loaded = true
+		# Kept by path too, so a duplicate() (which copies exports only) has it.
+		if value != null and value.resource_path != "":
+			portrait_path = value.resource_path
 # Small token image used for the player marker in action & tactical combat
 # (the round in-world avatar). Falls back to `portrait` when unset.
-@export var icon: Texture2D
+@export var icon_path: String = ""
+var _icon: Texture2D = null
+var _icon_loaded: bool = false
+var icon: Texture2D:
+	get:
+		if not _icon_loaded:
+			_icon_loaded = true
+			_icon = GoalEnemyData.load_art(icon_path)
+		return _icon
+	set(value):
+		_icon = value
+		_icon_loaded = true
+		# Kept by path too, so a duplicate() (which copies exports only) has it.
+		if value != null and value.resource_path != "":
+			icon_path = value.resource_path
 @export var portrait_color: Color = Color.WHITE
 
 # THE ART AS WORN (Customization, docs/customization.md): the costume the player

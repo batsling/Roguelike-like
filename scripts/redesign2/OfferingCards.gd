@@ -495,13 +495,19 @@ func _enemy_texture(choice: Dictionary) -> Texture2D:
 # game being OFFERED — the relic buys a column of board with the routing decision,
 # not with the game you are standing on, so the moment a game is committed to its
 # enemy is on the board and describes itself like any other.
+# The same enemy BY ID (CLAUDE.md: two enemy objects can share one id — a body
+# can carry a duplicate() of Data's resource — so `==` on the objects is only
+# usually right). Two nulls are not the same enemy.
+static func same_enemy(a: Variant, b: Variant) -> bool:
+	return a is Resource and b is Resource and StringName(a.get("id")) == StringName(b.get("id"))
+
 func enemy_hidden(choice: Dictionary) -> bool:
 	if not GameState.hides_upcoming_enemies():
 		return false
 	if choice.get("enemy") == null:
 		return false
 	var landed: Dictionary = GameLoop2.arrival()
-	return landed.is_empty() or landed.get("enemy") != choice.get("enemy")
+	return landed.is_empty() or not same_enemy(landed.get("enemy"), choice.get("enemy"))
 
 # What a hidden card says instead. Named rather than inlined because three
 # screens say it (the hover line, the now-playing panel, GameChoiceModal) and
@@ -550,8 +556,7 @@ func bodies_expected(choice: Dictionary) -> int:
 # say the same thing about it.
 func bodies_note(choice: Dictionary) -> String:
 	var landed: Dictionary = GameLoop2.arrival()
-	if not landed.is_empty() and choice.get("enemy") != null \
-			and landed.get("enemy") == choice.get("enemy"):
+	if not landed.is_empty() and same_enemy(landed.get("enemy"), choice.get("enemy")):
 		var second: GoalEnemyData = GameLoop2.second_body()
 		return "" if second == null else "⚠ %s walked on beside it." % second.display_name
 	match bodies_expected(choice):
@@ -627,7 +632,7 @@ func _goal_line(entry: Dictionary) -> String:
 # of the routing decision, not a surprise waiting on the report step.
 func _preview_entry(choice: Dictionary) -> Dictionary:
 	var landed: Dictionary = GameLoop2.arrival()
-	if not landed.is_empty() and landed.get("enemy") == choice.get("enemy"):
+	if not landed.is_empty() and same_enemy(landed.get("enemy"), choice.get("enemy")):
 		return landed
 	return {"enemy": choice.get("enemy"), "statuses": {}}
 
