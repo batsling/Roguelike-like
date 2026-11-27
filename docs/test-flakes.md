@@ -31,6 +31,10 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     `test_overworld2.gd::test_a_plain_notice_pops_nothing_up` failed on a fresh
     `user://`: the unlocks the setup earns are announced at the end of its
     frame, inside the test's wait. It settles first and checks by text now.
+    And `test_events2.gd::test_the_bag_deals_every_event_before_repeating_one`
+    failed once ("devil_room came round again"): its pass is as long as the
+    Common pool, and the three-event Rare rung could be dealt out and refill
+    inside it. Each rung's record starts again once all of it has been dealt.
   - `test_loot_upgrade.gd::test_an_upgraded_shield_card_gives_one_more_shield`
     (20 Nov 2026) got 3 shields instead of 2 on CI. Shrug it Off is "+1
     Temporary Shield and +1 Random Card", and the random card lands in the pack

@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The suite in parallel, here and on CI (27 Nov 2026).** The owner asked for
+  the 25-minute suite to be faster, then for CI too. `tools/gut.sh --parallel`
+  runs one shard per core, each keeping every N-th test of every file
+  (`GUT_SHARD`, read by `test/pre_run_hook.gd`) in its own `user://`
+  (`XDG_DATA_HOME`): ~3.5 min on four cores. CI splits the suite eight ways over
+  two runners and keeps Godot's asset import in the Actions cache; a push went
+  from ~11 min of CI to ~4. Per-test times (`GUT_TIMES=1`) found
+  `test_no_two_covers_can_overlap` decoding every cover in the catalog for its
+  aspect ratio, 112 s — it reads the PNG and JPEG headers now and takes under a
+  second. Sharding also exposed four tests that leaned on their neighbours or
+  were only usually true (docs/test-flakes.md): two that left a save's resume
+  pending, one counting toasts across a frame, and the event bag's, which read a
+  small rung refilling inside its pass as a repeat. And a real default:
+  `RunConfig.min_path` said 5 where every run uses RunGraph's 4.
+
 - **Two more off the boot (27 Nov 2026).** The owner: "are there any more
   efficiencies that we can work towards?" Measured first: a bare Godot starts in
   87 ms, this project in ~2.4 s, and the time is ~1.7 s of compiling scripts

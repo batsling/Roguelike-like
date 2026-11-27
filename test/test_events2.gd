@@ -699,21 +699,34 @@ func test_the_bag_deals_every_event_before_repeating_one() -> void:
 	# The invariant that is actually true is per rung, so that is what is checked:
 	# no event from a rarity with siblings comes round twice before its rung has
 	# been dealt out.
+	#
+	# …AND A SMALL RUNG IS DEALT OUT INSIDE THE PASS. The pass is as long as the
+	# Common pool, and a Rare rung of three was emptied and refilled within it now
+	# and then (devil_room "came round again", once in a run of the sharded suite):
+	# a correct refill, read as a repeat. So each rung's record starts again once
+	# every one of its events has been dealt.
 	var pool: Array = _ungated_common_ids()
-	var drawn: Dictionary = {}
+	var drawn: Dictionary = {}          # every event the pass dealt, for the counts below
+	var since_refill: Dictionary = {}   # rung -> the events dealt since its bag last filled
 	var lonely: int = 0
 	for i in range(pool.size()):
 		var node: StringName = StringName("bag_probe_%d" % i)
 		var ev: EventData2 = EventSystem.roll_for_arrival(node)
 		if ev == null:
 			continue
-		if _rarity_siblings(ev) <= 1:
+		var siblings: int = _rarity_siblings(ev)
+		if siblings <= 1:
 			lonely += 1
 			EventSystem.mark_fired(ev, node)
 			continue
-		assert_false(drawn.has(ev.id),
+		var rung: int = Data.rarity_index_of(ev)
+		var seen: Dictionary = since_refill.get_or_add(rung, {})
+		assert_false(seen.has(ev.id),
 			"%s came round again before the bag was empty" % ev.id)
+		seen[ev.id] = true
 		drawn[ev.id] = true
+		if seen.size() >= siblings:
+			seen.clear()
 		EventSystem.mark_fired(ev, node)
 	assert_gt(drawn.size(), 1, "the bag dealt more than one event")
 	assert_gt(drawn.size(), lonely,
