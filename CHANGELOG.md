@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The menu's art mix, swapped (27 Nov 2026).** The owner: "swap the
+  percentages for costumes and hats with the enemies and bosses, and swap the
+  earned icons with the characters". Only covers (30%) and icons (10%) had a
+  number before; everything else was the room left over (costumes and hats
+  ~27%, enemies ~4.5%, characters ~3.6%). Every kind has its own share now
+  (`MenuFallingArt.SHARES`) and a piece picks its kind by them: covers 30%,
+  enemies and bosses 27%, loot 25%, characters 10%, costumes and hats 4.5%,
+  icons 3.5%. The characters are twelve pictures and none falls twice at once,
+  so at 150 pieces they top out near 8%.
+
 - **The map, the hero and Customization (26 Nov 2026).** The owner's list. On the
   run's **full map**: every box is outlined in its game's type colour, and a
   clicked game's lines are drawn over the roads in that colour, cased in orange
