@@ -174,7 +174,8 @@ the checkout, not what a full clone downloads.
 ```bash
 tools/gut.sh test_gameloop2            # ONE file, ~5 s (test_overworld2 is the slow one: 10+ min)
 tools/gut.sh test_overworld2 crash     # only the tests in it whose name contains "crash"
-tools/gut.sh                           # the whole suite: 65 scripts, ~3200 tests, ~25 min
+tools/gut.sh                           # the whole suite: 90 scripts, ~3850 tests, ~25 min
+tools/gut.sh --parallel                # the same suite in one shard per core: ~6 min on 4
 python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file's sections + funcs, with lines
 ```
 
@@ -182,7 +183,12 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   narrow a run here: `.gutconfig.json` names `res://test/` and GUT adds the file on
   top of it, so `godot ... -gtest=res://test/test_x.gd` quietly runs all ~3,100
   tests. `tools/gut.sh` passes `-gconfig=` to drop the directory and hands the
-  pre-run hook back by hand. Run the full suite once, before pushing.
+  pre-run hook back by hand. Run the full suite once, before pushing —
+  `--parallel` counts: each shard keeps every N-th test of every file
+  (`GUT_SHARD`, read by `test/pre_run_hook.gd`) in its own `user://`
+  (`XDG_DATA_HOME`), so they never race on a save slot. A test that fails only
+  in a shard leans on a test that ran before it in file order; bisect it with
+  `GUT_SHARD=k/n GUT_FILES=test_x` (that shard's share of one file).
 - **Shared test helpers live in `test/helpers/`, so use them rather than writing
   another copy.** `run_page.gd` (`const Page := preload(...)`) builds the game page
   and stands it where a test wants it: `Page.build(self)`, `Page.play_opening(_ui)`,
