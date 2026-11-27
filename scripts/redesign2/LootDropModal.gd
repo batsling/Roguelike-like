@@ -632,13 +632,21 @@ func _bin_row(pack_col: Control) -> Control:
 	var bin := LootTrash.new()
 	bin.grid = _grid
 	row.add_child(bin)
-	var follow := func() -> void:
-		if is_instance_valid(lead) and is_instance_valid(pack_col) and is_instance_valid(row):
-			lead.custom_minimum_size.x = maxf(0.0,
-				pack_col.get_global_rect().position.x - row.get_global_rect().position.x)
+	# A BOUND METHOD, NOT A LAMBDA. The lambda this was captured `lead` and `row`
+	# and never touched `self`, so its connection to `pack_col` had no owner to go
+	# with: when the modal was freed, the row could go first and `pack_col`'s last
+	# resize called a lambda whose captures were already gone ("Lambda capture at
+	# index 0 was freed", on every haul screen closed). A method on the modal is
+	# disconnected with it, and freed arguments only fail `is_instance_valid`.
+	var follow := _follow_pack.bind(lead, pack_col, row)
 	pack_col.item_rect_changed.connect(follow)
 	row.item_rect_changed.connect(follow)
 	return row
+
+func _follow_pack(lead: Variant, pack_col: Variant, row: Variant) -> void:
+	if is_instance_valid(lead) and is_instance_valid(pack_col) and is_instance_valid(row):
+		(lead as Control).custom_minimum_size.x = maxf(0.0,
+			(pack_col as Control).get_global_rect().position.x - (row as Control).get_global_rect().position.x)
 
 # Just the take-all, for an embedded table whose host asked for one. Deliberately
 # NOT `_buttons` minus a button: this row cannot close anything, and its label

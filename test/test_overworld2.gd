@@ -5933,15 +5933,6 @@ func _all_label_text(root: Node) -> String:
 			stack.append(c)
 	return " | ".join(out)
 
-# Every label on a card, joined — the distance line is a plain Label among
-# several, and which child it is is layout, not behaviour.
-func _card_text(card: Node) -> String:
-	var out: String = ""
-	for child in card.get_children():
-		if child is Label:
-			out += (child as Label).text + "\n"
-	return out
-
 # ---------------------------------------------------------------------------
 # The board gets to finish
 #

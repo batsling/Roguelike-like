@@ -287,6 +287,11 @@ var image: Texture2D:
 		_image = value
 		_image_loaded = true
 
+# A content picture by path, or null when there is none: what every lazily-loaded
+# art field here, on ItemData and on CharacterData, reads through.
+static func load_art(path: String) -> Texture2D:
+	return _load_art(path)
+
 static func _load_art(path: String) -> Texture2D:
 	if path == "" or not ResourceLoader.exists(path):
 		return null

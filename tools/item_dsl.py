@@ -1576,14 +1576,14 @@ def item_tres(row):
             break
 
     lines = []
-    load_steps = 3 if img_res else 2
+    # The picture is named by PATH and loaded on first read (ItemData.image), not
+    # an ExtResource, which Data would decode at boot (performance-backlog §8).
+    load_steps = 2
     lines.append('[gd_resource type="Resource" script_class="ItemData" load_steps=%d '
                  'format=3 uid="uid://item_%s"]' % (load_steps, iid))
     lines.append("")
     lines.append('[ext_resource type="Script" '
                  'path="res://scripts/resources/ItemData.gd" id="1_item"]')
-    if img_res:
-        lines.append('[ext_resource type="Texture2D" path="%s" id="2_img"]' % img_res)
     lines.append("")
     lines.append("[resource]")
     lines.append('script = ExtResource("1_item")')
@@ -1673,7 +1673,7 @@ def item_tres(row):
     if pools:
         lines.append("pools = %s" % packed(pools))
     if img_res:
-        lines.append('image = ExtResource("2_img")')
+        lines.append('image_path = "%s"' % img_res)
     return iid, "\n".join(lines) + "\n"
 
 

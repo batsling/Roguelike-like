@@ -3731,18 +3731,6 @@ func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
 	row.add_child(count)
 	return chip
 
-# The statuses this body is CARRYING AND IGNORING, as a set of ids. Only a boss
-# has any: its goal is the only way it comes off the board, so an `instead` on one
-# buys nothing (§7.1) — and the pip is drawn either way, because the stacks are
-# real and the player put them there.
-func _nullified_ids(entry: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	for row in GameLoop2.nullified_alternatives_for(entry):
-		var sd: StatusData = row["status"]
-		if sd != null:
-			out[sd.id] = true
-	return out
-
 # The hover model for one status pip. A thin wrapper over StatusData's own
 # `hover_card`, so the board, the enemy card and the hero strip cannot describe
 # the same status differently.

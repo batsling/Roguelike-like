@@ -612,9 +612,12 @@ noisy to fail a build on; every regression above was visible in these counts.
 whatever moved it, with the reason in the message.
 
 **Still open, measured:**
-- `items2.0` (77 sprites, ~1.3 MB) and `characters2.0` (~1.7 MB) still embed
-  their art and decode it at boot (~35–75 and ~10–40 ms). The fix is the one
-  enemies had: a path in the generator, a lazy getter on the resource.
+- ~~`items2.0` and `characters2.0` still embed their art~~ — **fixed 27 Nov
+  2026**: both name their pictures by path (`ItemData.image_path`,
+  `CharacterData.portrait_path` / `icon_path`, written so by `item_dsl.py` and
+  `generate_character2_tres.py`) and load them on first read. Boot's eager art
+  went from 3,412 KB to 153 KB, and a headless cold start from ~2,715 ms to
+  ~2,430 ms.
 - The `games` catalog grows with every upload (~0.2 ms a file). One combined
   file would halve it, at the cost of the per-file `grep` the tools and docs
   rely on; the budget will say when it starts to matter.

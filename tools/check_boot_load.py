@@ -50,8 +50,6 @@ ART_HEADROOM = 1.10
 # (performance-backlog §8); moving one to a path-and-lazy-load drops it from
 # here. Nothing new goes on this list without a reason written next to it.
 EAGER_ALLOWED = {
-    "data/items2.0/": "77 small sprites (~1.3 MB); not yet moved to a lazy path",
-    "data/characters2.0/": "12 characters, portrait + icon (~1.7 MB); not yet moved",
     "data/statuses2.0/": "7 icons, a few KB",
     "data/tiles2.0/": "2 icons, a few KB",
     "data/units2.0/": "4 icons, a few KB",

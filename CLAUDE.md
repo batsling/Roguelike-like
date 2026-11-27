@@ -329,7 +329,8 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   rules, each from a regression that grew in with the content
   (`docs/performance-backlog.md` §8):
   - a content `.tres` names its picture by **PATH** and loads it on first read
-    (`GameData.cover_image`, `GoalEnemyData.image`, `LocationData.image`) —
+    (`GameData.cover_image`, `GoalEnemyData.image`, `LocationData.image`,
+    `ItemData.image`, `CharacterData.portrait` / `icon`) —
     never an ExtResource Texture2D, which decodes at boot whether a run shows it
     or not;
   - a catalog of thousands of rows is **one file**, not a file per row
