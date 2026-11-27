@@ -1617,7 +1617,7 @@ func _build_actions(game: GameData, accent: Color) -> Control:
 	row.add_child(go)
 	# Deferred: `row` isn't mounted yet, and a Control outside the tree has no
 	# focus to grab.
-	go.grab_focus.call_deferred()
+	UITheme.focus_soon(go)
 	return row
 
 # Public so a test can answer without a click.

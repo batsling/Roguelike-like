@@ -11,6 +11,37 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A code review pass: freed captures, dead code, lazy art (27 Nov 2026).** The
+  owner asked for a search through the whole code for issues and optimizations.
+  The suite's own log was the best lead: 3,846 green tests were raising ~170
+  engine errors nobody saw, every one a real bug.
+  - **Ownerless lambdas outliving what they captured.** A lambda made in a
+    `static` func (or one that never touches `self`) belongs to no object, so a
+    connection or deferred call made with it is never cleaned up. LootGrid's
+    deferred button placement raised "Lambda capture at index 0 was freed" on
+    every haul screen closed; GoalsBeatenView's fit and LootDropModal's bin row
+    could too. Each is a bound method now, whose freed arguments only fail
+    `is_instance_valid`.
+  - **Awaits that resumed after their screen was gone.** `EventModal2._fit` and
+    the Collection's detail fit waited a frame with `await` and woke up after an
+    event had ended the run, or the Collection had closed. They wait through
+    connections the node owns now (`Collection._after_frames`).
+  - **A teleport's game card that never appeared.** Closing the loot-use screen
+    without its Continue released the held arrival from `_exit_tree`, where
+    Godot refuses an `add_child`; the release waits for the page's next idle
+    step. Deferred focus grabs go through `UITheme.focus_soon`, which checks the
+    button is still in the tree.
+  - **Enemies compared by object** in `OfferingCards` (CLAUDE.md asks for ids),
+    and **dead code** the documented scan found: PostCombatScreen's tally panel
+    (still refreshing on every Health change with nothing to draw into) and a
+    chest-roll path nothing filled, `BattlefieldView._nullified_ids`, and two
+    test helpers.
+  - **Item and character art loads on first read**, from a path, as covers and
+    enemies already did (`ItemData.image_path`, `CharacterData.portrait_path` /
+    `icon_path`; the generators write them). Boot's eager art went from 3,412 KB
+    to 153 KB and a headless cold start from ~2.7 s to ~2.4 s, on every launch
+    and every test file run.
+
 - **The page fits instead of hiding its scroll bar (27 Nov 2026).** The owner, on
   the review of the 26 Nov pass: "do the honest fix not removing the scroll bar".
   The bar came from the board's column, sized for a 720-tall canvas with 2 px to

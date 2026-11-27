@@ -1219,6 +1219,18 @@ const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
 const BATS_ART := preload("res://images2.0/custom/menu_bat.png")
 
 
+# Focus `c` once it is in the tree — a button built before its row is mounted
+# has no focus to grab yet. Deferred, and only if it is still there and in the
+# tree by then: a modal closed in the same frame would otherwise make Godot
+# complain (`!is_inside_tree()`). A bound static method, not a lambda, so a freed
+# button fails `is_instance_valid` quietly.
+static func focus_soon(c: Control) -> void:
+	_focus_if_in_tree.bind(c).call_deferred()
+
+static func _focus_if_in_tree(c: Variant) -> void:
+	if is_instance_valid(c) and (c as Control).is_inside_tree():
+		(c as Control).grab_focus()
+
 static func bat_backdrop() -> ColorRect:
 	var rect := ColorRect.new()
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
