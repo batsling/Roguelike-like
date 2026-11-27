@@ -2484,103 +2484,22 @@ func _connection_side(game: GameData) -> Control:
 	col.add_child(jump)
 	return col
 
-# The proof's picture at the card's width, its top PROOF_THUMB_H tall at most.
-# A click opens it over the map: the screenshot at full size, or the clip playing.
+# The proof's thumbnail at the card's width, its top PROOF_THUMB_H tall at most
+# (ProofView.thumb, as the game card shows it). A click opens it over the map.
 const PROOF_THUMB_H := 190.0
+const PROOF_MARGIN := Vector2(48, 56)
 
 func _proof_picture(from_id: StringName, to_id: StringName) -> Control:
-	var video: VideoStream = GameChoiceModal.proof_video(from_id, to_id)
-	var tex: Texture2D = GameChoiceModal.proof_poster(from_id, to_id) if video != null \
-		else GameChoiceModal.proof_texture(from_id, to_id)
-	if tex == null:
-		return null
-	var w: float = _card.custom_minimum_size.x - 40.0
-	var scale: float = minf(1.0, w / float(tex.get_width()))
-	var shown: Vector2 = tex.get_size() * scale
-	var frame := Control.new()
-	frame.name = "ProofShot"
-	frame.clip_contents = true
-	frame.custom_minimum_size = Vector2(w, minf(shown.y, PROOF_THUMB_H))
-	frame.mouse_filter = Control.MOUSE_FILTER_STOP
-	frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	frame.tooltip_text = "Click to play the clip" if video != null else "Click to read it full size"
-	var art := TextureRect.new()
-	art.texture = tex
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_SCALE
-	art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	art.size = shown
-	art.position = Vector2((w - shown.x) * 0.5, 0.0) if shown.x < w else Vector2.ZERO
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(art)
-	if video != null:
-		var play := Label.new()
-		play.text = "▶"
-		play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		play.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		play.set_anchors_preset(Control.PRESET_FULL_RECT)
-		play.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		play.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
-		play.add_theme_color_override("font_color", Color.WHITE)
-		play.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-		play.add_theme_constant_override("outline_size", 8)
-		frame.add_child(play)
-	frame.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			frame.accept_event()
-			_open_proof_view(tex, video))
-	return frame
+	return ProofView.thumb(from_id, to_id, PROOF_THUMB_H, _open_proof_view)
 
-# The proof over the whole map; any click outside a playing clip, or Escape,
-# puts it away.
+# The proof over the whole map (ProofView.overlay); a click outside a playing
+# clip, its ✕, or Escape puts it away.
 var _proof_view: Control = null
 
 func _open_proof_view(tex: Texture2D, video: VideoStream) -> void:
 	_close_proof_view()
-	var shade := ColorRect.new()
-	shade.name = "ProofView"
-	shade.color = Color(UITheme.BG_DEEP, 0.9)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	var room: Vector2 = get_viewport_rect().size - Vector2(96, 112)
-	var shape: Vector2 = tex.get_size()
-	var fit: float = minf(room.x / shape.x, room.y / shape.y)
-	var centre := CenterContainer.new()
-	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
-	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	shade.add_child(centre)
-	if video != null:
-		var player := VideoStreamPlayer.new()
-		player.stream = video
-		player.expand = true
-		player.custom_minimum_size = shape * fit
-		player.mouse_filter = Control.MOUSE_FILTER_STOP
-		player.tooltip_text = "Click to pause or play"
-		player.gui_input.connect(func(event: InputEvent):
-			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				player.accept_event()
-				if not player.is_playing():
-					player.paused = false
-					player.play()
-				else:
-					player.paused = not player.paused)
-		centre.add_child(player)
-		player.play.call_deferred()
-	else:
-		var art := TextureRect.new()
-		art.texture = tex
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-		art.custom_minimum_size = shape * minf(1.0, fit)
-		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		centre.add_child(art)
-	shade.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed:
-			accept_event()
-			_close_proof_view())
-	add_child(shade)
-	_proof_view = shade
+	_proof_view = ProofView.overlay(self, tex, video, tex.get_size(), PROOF_MARGIN,
+		func(): _close_proof_view())
 
 func _close_proof_view() -> bool:
 	if _proof_view == null or not is_instance_valid(_proof_view):
@@ -3198,14 +3117,12 @@ class StarCanvas extends Control:
 			if not vis.grow(head).intersects(Rect2(pa, Vector2.ZERO).expand(pb)):
 				continue
 			var col: Color = AtlasView.MAP_BLUE if lay.is_dev_edge(pair) else AtlasView.MAP_INK
-			var w: float = width
-			var incident: bool = focused and (a == view._selected or b == view._selected)
-			if incident:
+			if focused and (a == view._selected or b == view._selected):
 				picked_lines.append([pa, pb, view.on_optimal_path(a, b)])
 				continue
-			elif focused or view.off_run(a) or view.off_run(b):
+			if focused or view.off_run(a) or view.off_run(b):
 				col = Color(col, AtlasView.MAP_FADE)
-			_draw_map_line(pa, pb, col, w, head)
+			_draw_map_line(pa, pb, col, width, head)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
 		var curves: Array = view.rift_curves()

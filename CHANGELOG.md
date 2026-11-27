@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The page fits instead of hiding its scroll bar (27 Nov 2026).** The owner, on
+  the review of the 26 Nov pass: "do the honest fix not removing the scroll bar".
+  The bar came from the board's column, sized for a 720-tall canvas with 2 px to
+  spare, so a header a few px taller put the page over. The vertical bar is back
+  on AUTO, and `Overworld2._fit_board_to_room` measures the column's overflow and
+  caps the grid by exactly that much plus 4 px (`BattlefieldView.set_height_cap`),
+  lifting the cap whenever the room, the grid or the column sharing changes. The
+  hero's statuses are 30 px like its shields again (`HERO_PIP`, one constant for
+  both, clocks at `HERO_CLOCK`). The CheckBox fix now sets `hover_pressed` only:
+  setting `disabled` too had made every CheckBox 16 px shorter. And the proof
+  viewer the game card and the map's connection card each carried is one file,
+  `scripts/ui/ProofView.gd`; the menu art's free lists are kept per kind of art,
+  so a spawn picks from six lists rather than scanning the pool.
+
 - **The menu's art mix, swapped (27 Nov 2026).** The owner: "swap the
   percentages for costumes and hats with the enemies and bosses, and swap the
   earned icons with the characters". Only covers (30%) and icons (10%) had a
@@ -31,14 +45,11 @@ For how the project is laid out and how its systems fit together, see
   gone (the rings stay); and a connection's card shows its proof screenshot or
   clip poster, with the two covers smaller to make room. On the **run page**: the
   character's icon sits a little smaller inside its badge on the player's
-  portrait, the hero's shields are 30 px (from 22) with an 18 px clock, and the
-  page never draws a vertical scroll bar (it fitted a wide window with 2 px to
-  spare, so a counter row put one up; it still scrolls by wheel). In
+  portrait, and the hero's shields are 30 px (from 22) with an 18 px clock. In
   **Customization**, each tab with looks has 🎲 Random all (`Cosmetics.choose_all`),
   and a ticked game's name in Title Letters no longer loses its last letter when
   hovered: the theme never set CheckBox `hover_pressed`, which fell back to
-  Godot's stock style and its wider margin (setting it also trims every ticked
-  CheckBox to its real height).
+  Godot's stock style and its 4 px margin.
 
 - **Forge, the Sovereign Blade and Zoe's Courier's Board (25 Nov 2026).** The
   owner's upload changed four characters, Burning Blood, six boss footprints and the

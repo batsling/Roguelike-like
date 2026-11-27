@@ -228,7 +228,11 @@ var _pool := {Kind.SMALL: [], Kind.COVER: []}
 # be on screen twice at once — which on a screen of 72 pieces drawn from a pool of
 # ~146 would otherwise happen constantly, and reads as a glitch rather than as
 # variety.
-var _free := {Kind.SMALL: [], Kind.COVER: []}
+#
+# KEYED BY GROUP, not by kind: a piece picks its group by `SHARES` and then a free
+# picture of that group, so each group's list is what a spawn draws from (`_spawn`).
+# An index is into `_pool[kind_of(group)]`.
+var _free := _empty_free()
 var _pixel_layer: MenuFallingArtLayer
 var _smooth_layer: MenuFallingArtLayer
 var _running := false
@@ -317,7 +321,7 @@ func _on_setting_changed(enabled: bool) -> void:
 		_pieces.clear()
 		_queue.clear()
 		_pool = {Kind.SMALL: [], Kind.COVER: []}
-		_free = {Kind.SMALL: [], Kind.COVER: []}
+		_free = _empty_free()
 		_redraw()
 		return
 	_fill_queue()
@@ -369,6 +373,23 @@ func _fill_queue() -> void:
 	# Interleaved, so the first seconds are not all one kind.
 	_queue.shuffle()
 	_queue_total = _queue.size()
+
+static func _empty_free() -> Dictionary:
+	var out := {}
+	for g in SHARES:
+		out[g] = []
+	return out
+
+# The pool a group's pictures sit in: covers in COVER, everything else in SMALL.
+static func kind_of(group: int) -> int:
+	return Kind.COVER if group == Group.COVER else Kind.SMALL
+
+# How many pictures nothing is falling with, over every group.
+func free_count() -> int:
+	var n: int = 0
+	for g in _free:
+		n += (_free[g] as Array).size()
+	return n
 
 func _tagged(jobs: Array, group: int) -> Array:
 	for j in jobs:
@@ -664,12 +685,14 @@ func _pump_queue() -> int:
 
 func _add_to_pool(kind: int, tex: Texture2D, pixel: bool, foot: int,
 		group: int = -1) -> void:
-	if group < 0:
+	# A group must name the pool its picture is in (kind_of), or a spawn would
+	# read another pool's entry at this index.
+	if group < 0 or kind_of(group) != kind:
 		group = Group.COVER if kind == Kind.COVER else Group.LOOT
 	_pool[kind].append({"tex": tex, "pixel": pixel, "foot": foot, "group": group})
 	# Every entry starts free. `_free` is the list of pool indices nothing is
 	# currently falling with.
-	_free[kind].append(_pool[kind].size() - 1)
+	(_free[group] as Array).append(_pool[kind].size() - 1)
 
 # True when the art's border has any see-through pixel — that is, it is a sprite
 # cut out of its background rather than a tile with the background baked in.
@@ -698,33 +721,30 @@ func _is_cutout(tex: Texture2D) -> bool:
 
 func _spawn() -> Dictionary:
 	var size: Vector2 = get_viewport_rect().size
-	# THE KIND FIRST, BY ITS SHARE (`SHARES`), then a picture of that kind.
-	# NO PICTURE TWICE AT ONCE: only entries nothing else is currently falling with
-	# are candidates, and a kind with none free is left out of the draw, so the
+	# THE GROUP FIRST, BY ITS SHARE (`SHARES`), then a picture of that group.
+	# NO PICTURE TWICE AT ONCE: only pictures nothing else is falling with are on
+	# a free list, and a group whose list is empty is left out of the draw, so the
 	# others serve instead rather than the screen repeating itself.
-	var free_of := {}
-	for k in [Kind.SMALL, Kind.COVER]:
-		for slot in range(_free[k].size()):
-			var g: int = int(_pool[k][_free[k][slot]].get("group", Group.LOOT))
-			(free_of.get_or_add(g, []) as Array).append(Vector2i(k, slot))
-	if free_of.is_empty():
-		return {}
 	var total: float = 0.0
-	for g in free_of:
-		total += float(SHARES.get(g, 0.0))
+	for g in _free:
+		if not (_free[g] as Array).is_empty():
+			total += float(SHARES[g])
+	if total <= 0.0:
+		return {}
 	var roll: float = _rng.randf() * total
-	var group: int = free_of.keys()[0]
-	for g in free_of:
-		roll -= float(SHARES.get(g, 0.0))
+	var group: int = -1
+	for g in _free:
+		if (_free[g] as Array).is_empty():
+			continue
 		group = g
+		roll -= float(SHARES[g])
 		if roll < 0.0:
 			break
-	var choices: Array = free_of[group]
-	var pick: Vector2i = choices[_rng.randi() % choices.size()]
-	var kind: int = pick.x
-	var slot: int = pick.y
-	var index: int = _free[kind][slot]
-	_free[kind].remove_at(slot)
+	var list: Array = _free[group]
+	var slot: int = _rng.randi() % list.size()
+	var index: int = list[slot]
+	list.remove_at(slot)
+	var kind: int = kind_of(group)
 	var entry: Dictionary = _pool[kind][index]
 	var tex: Texture2D = entry["tex"]
 	var scale: float = 1.0 + _rng.randf_range(-SIZE_JITTER, SIZE_JITTER)
@@ -758,6 +778,7 @@ func _spawn() -> Dictionary:
 		"tex": tex,
 		"pixel": bool(entry["pixel"]),
 		"kind": kind,
+		"group": group,
 		"index": index,
 		"pos": pos,
 		"box": box,
@@ -803,12 +824,17 @@ func _rect_dim(p: Vector2, box: Vector2, rect: Rect2) -> float:
 
 # Hand a piece's pool entry back, so the picture it was using can fall again.
 func _release(piece: Dictionary) -> void:
-	if not piece.has("kind") or not piece.has("index"):
+	if not piece.has("group") or not piece.has("index"):
 		return
-	var kind: int = int(piece["kind"])
-	var index: int = int(piece["index"])
-	if not _free[kind].has(index):
-		_free[kind].append(index)
+	var list: Array = _free[int(piece["group"])]
+	if not list.has(int(piece["index"])):
+		list.append(int(piece["index"]))
+
+# Take a piece's picture back off its free list: it was released for a
+# replacement that never came, and is still on screen.
+func _retake(piece: Dictionary) -> void:
+	if piece.has("group") and piece.has("index"):
+		(_free[int(piece["group"])] as Array).erase(int(piece["index"]))
 
 # An x anywhere across the screen, with the whole piece on it. A piece wider than
 # the screen is pinned to the middle rather than letting the range invert.
@@ -894,8 +920,7 @@ func _process(delta: float) -> void:
 				# vanishing, and take the entry back off the free list so nothing
 				# else claims a picture that is still on screen.
 				piece["pos"] = Vector2(pos.x, _reentry_y(size, piece["box"]))
-				if _free[int(piece["kind"])].has(int(piece["index"])):
-					_free[int(piece["kind"])].erase(int(piece["index"]))
+				_retake(piece)
 			else:
 				fresh["pos"] = Vector2(_column_x(size, (fresh["box"] as Vector2).x),
 					_reentry_y(size, fresh["box"]))
@@ -923,8 +948,7 @@ func _sink_step(delta: float, size: Vector2) -> void:
 		if fresh.is_empty():
 			piece["pos"] = _edge_start(size, piece["box"], 0.33)
 			piece["age"] = 0.0
-			if _free[int(piece["kind"])].has(int(piece["index"])):
-				_free[int(piece["kind"])].erase(int(piece["index"]))
+			_retake(piece)
 		else:
 			fresh["pos"] = _edge_start(size, fresh["box"], 0.33)
 			piece.merge(fresh, true)

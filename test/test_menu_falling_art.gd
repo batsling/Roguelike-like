@@ -281,14 +281,12 @@ func test_no_two_pieces_show_the_same_picture() -> void:
 
 func test_a_recycled_piece_gives_its_picture_back() -> void:
 	_seed()
-	var before: int = _art._free[MenuFallingArt.Kind.SMALL].size() \
-		+ _art._free[MenuFallingArt.Kind.COVER].size()
+	var before: int = _art.free_count()
 	# Drive it long enough that pieces fall off the bottom and are replaced. In
 	# SECONDS: a frame's step is capped at `MAX_STEP` however big a delta it is
 	# handed, so a loop of 400 x 0.1 is 13 seconds of falling, not 40.
 	_run_for(60.0)
-	var after: int = _art._free[MenuFallingArt.Kind.SMALL].size() \
-		+ _art._free[MenuFallingArt.Kind.COVER].size()
+	var after: int = _art.free_count()
 	assert_eq(after, before,
 		"the free list neither leaks nor grows as pieces recycle")
 	var seen := {}

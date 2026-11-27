@@ -839,152 +839,29 @@ static func proof_poster(from_id: StringName, to_id: StringName) -> Texture2D:
 		return null
 	return load(path) as Texture2D
 
+# The proof slot's thumbnail (ProofView.thumb), opening over this popup.
 func _proof_thumb(from_id: StringName, to_id: StringName) -> Control:
-	var video: VideoStream = proof_video(from_id, to_id)
-	var tex: Texture2D = proof_poster(from_id, to_id) if video != null else proof_texture(from_id, to_id)
-	if tex == null:
-		return null
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-	# The frame clips; the picture inside is sized from the frame's width each
-	# time the column settles, which a TextureRect's own stretch modes can't do
-	# (they fit BOTH ways, which is what shrank a tweet to 140px tall).
-	var frame := Control.new()
-	frame.name = "ProofFrame"
-	frame.clip_contents = true
-	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	frame.mouse_filter = Control.MOUSE_FILTER_STOP
-	frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	frame.tooltip_text = "Click to play the clip" if video != null else "Click to read it full size"
-	var art := TextureRect.new()
-	art.name = "Proof"
-	art.texture = tex
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_SCALE
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	frame.add_child(art)
-	if video != null:
-		# A ▶ over the poster's middle, so the thumbnail reads as a clip at a glance
-		# and not as a screenshot of a video.
-		var play := Label.new()
-		play.name = "PlayMark"
-		play.text = "▶"
-		play.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		play.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		play.set_anchors_preset(Control.PRESET_FULL_RECT)
-		play.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		play.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
-		play.add_theme_color_override("font_color", Color.WHITE)
-		play.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
-		play.add_theme_constant_override("outline_size", 8)
-		frame.add_child(play)
-	var more := Label.new()
-	more.text = "Click to read all of it"
-	more.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
-	more.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	more.visible = false
-	box.add_child(frame)
-	box.add_child(more)
-	var fit := func():
-		var scale: float = minf(1.0, frame.size.x / float(tex.get_width())) if frame.size.x > 0.0 else 1.0
-		var shown: Vector2 = tex.get_size() * scale
-		art.position = Vector2.ZERO
-		art.size = shown
-		frame.custom_minimum_size.y = minf(shown.y, PROOF_THUMB_H)
-		more.visible = video == null and shown.y > PROOF_THUMB_H + 0.5
-	frame.resized.connect(fit)
-	fit.call()
-	frame.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			frame.accept_event()
-			if video != null:
-				open_proof_video(video, tex.get_size())
-			else:
-				open_proof(tex))
-	return box
+	return ProofView.thumb(from_id, to_id, PROOF_THUMB_H, func(tex: Texture2D, video: VideoStream):
+		if video != null:
+			open_proof_video(video, tex.get_size())
+		else:
+			open_proof(tex))
 
-# The screenshot at its own size (or the window's, if it is bigger), over the
-# popup. Any click or Escape puts it away; it is a closer look, not a step.
+# The proof full size over the popup (ProofView.overlay). Any click or Escape
+# puts it away; it is a closer look, not a step.
 var _proof_view: Control = null
 
 func open_proof(tex: Texture2D) -> Control:
 	close_proof()
-	var shade := ColorRect.new()
-	shade.name = "ProofView"
-	shade.color = Color(UITheme.BG_DEEP, 0.88)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	var room: Vector2 = get_viewport_rect().size - VIEW_MARGIN * 2.0
-	var fit: float = minf(1.0, minf(room.x / tex.get_width(), room.y / tex.get_height()))
-	var art := TextureRect.new()
-	art.texture = tex
-	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.custom_minimum_size = tex.get_size() * fit
-	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var centre := CenterContainer.new()
-	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
-	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	centre.add_child(art)
-	shade.add_child(centre)
-	shade.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed:
-			accept_event()
-			close_proof())
-	add_child(shade)
-	_proof_view = shade
-	return shade
+	_proof_view = ProofView.overlay(self, tex, null, tex.get_size(), VIEW_MARGIN, close_proof)
+	return _proof_view
 
-# THE CLIP, PLAYING, over the popup — the same shade a screenshot opens in, at the
-# poster's shape scaled to the window. A click on the clip pauses and resumes it
-# (and starts it again once it has finished); a click outside it, the ✕, or Escape
-# puts it away, and the sound stops with it.
+# THE CLIP, PLAYING, at the poster's shape scaled to the window; the sound stops
+# when it is put away.
 func open_proof_video(video: VideoStream, shape: Vector2) -> Control:
 	close_proof()
-	var shade := ColorRect.new()
-	shade.name = "ProofView"
-	shade.color = Color(UITheme.BG_DEEP, 0.92)
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.mouse_filter = Control.MOUSE_FILTER_STOP
-	var room: Vector2 = get_viewport_rect().size - VIEW_MARGIN * 2.0
-	if shape.x <= 0.0 or shape.y <= 0.0:
-		shape = Vector2(16, 9)
-	var fit: float = minf(room.x / shape.x, room.y / shape.y)
-	var player := VideoStreamPlayer.new()
-	player.name = "ProofVideo"
-	player.stream = video
-	player.expand = true
-	player.custom_minimum_size = shape * fit
-	player.mouse_filter = Control.MOUSE_FILTER_STOP
-	player.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	player.tooltip_text = "Click to pause or play"
-	player.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			player.accept_event()
-			if not player.is_playing():
-				player.paused = false
-				player.play()
-			else:
-				player.paused = not player.paused)
-	var centre := CenterContainer.new()
-	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
-	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	centre.add_child(player)
-	shade.add_child(centre)
-	var close := Button.new()
-	close.text = "✕"
-	close.tooltip_text = "Close (Esc)"
-	close.position = Vector2(get_viewport_rect().size.x - VIEW_MARGIN.x - 40.0, VIEW_MARGIN.y * 0.5)
-	close.pressed.connect(close_proof)
-	shade.add_child(close)
-	shade.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed:
-			accept_event()
-			close_proof())
-	add_child(shade)
-	_proof_view = shade
-	player.play()
-	return shade
+	_proof_view = ProofView.overlay(self, null, video, shape, VIEW_MARGIN, close_proof)
+	return _proof_view
 
 func close_proof() -> void:
 	if _proof_view != null and is_instance_valid(_proof_view):

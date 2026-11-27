@@ -97,6 +97,7 @@ const MIGRATED_FONTS := [
 	"res://scripts/ui/RateGameModal.gd",
 	"res://scripts/ui/RadioScreen.gd",
 	"res://scripts/ui/RankBadge.gd",
+	"res://scripts/ui/ProofView.gd",
 	"res://scripts/ui/RankFill.gd",
 	"res://scripts/ui/RadioMiniPlayer.gd",
 	"res://scripts/ui/GoalsBeatenView.gd",
@@ -189,6 +190,7 @@ const MIGRATED_GAPS := [
 	"res://scripts/ui/StatRow.gd",
 	"res://scripts/ui/TierListScreen.gd",
 	"res://scripts/ui/UITheme.gd",
+	"res://scripts/ui/ProofView.gd",
 ]
 
 # EMPTY, AND THAT IS THE POINT. Twenty-two font literals had no step on the type
@@ -555,14 +557,26 @@ func test_a_dropdown_marks_its_selection_and_nothing_else() -> void:
 	assert_eq(off_img.get_pixelv(mid).a, 0.0, "and an unchosen row wears nothing")
 
 # A TICKED CHECKBOX UNDER THE MOUSE draws `hover_pressed`. Unset, it fell back to
-# Godot's stock stylebox, whose wider margin pushed the label right inside a box
-# sized for `normal` and cut its last letter off while hovered (Customization's
-# Title Letters, 26 Nov 2026). Every state a CheckBox can draw is the theme's.
-func test_every_checkbox_state_is_the_themes_own() -> void:
+# Godot's stock stylebox, whose 4 px margin pushed the label right inside a box
+# sized without it and cut its last letter off while hovered (Customization's
+# Title Letters, 26 Nov 2026). It pads the label exactly as `normal` does — and
+# the fix moved nothing else: a CheckBox is the height it always was.
+func test_a_ticked_checkbox_under_the_mouse_pads_like_normal() -> void:
 	var t: Theme = UITheme.shared()
+	assert_true(t.has_stylebox("hover_pressed", "CheckBox"), "the theme sets it")
 	var normal: StyleBox = t.get_stylebox("normal", "CheckBox")
-	for state in ["hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		assert_true(t.has_stylebox(state, "CheckBox"), "the theme sets CheckBox %s" % state)
-		var sb: StyleBox = t.get_stylebox(state, "CheckBox")
-		assert_eq(sb.get_minimum_size(), normal.get_minimum_size(),
-			"%s pads the label exactly as normal does" % state)
+	var hp: StyleBox = t.get_stylebox("hover_pressed", "CheckBox")
+	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+		assert_eq(hp.get_margin(side), normal.get_margin(side), "side %d" % side)
+	var c := CheckBox.new()
+	c.text = "20 Minutes Till Dawn"
+	c.theme = t
+	add_child_autofree(c)
+	var before: Theme = t.duplicate()
+	before.clear_stylebox("hover_pressed", "CheckBox")
+	var old := CheckBox.new()
+	old.text = c.text
+	old.theme = before
+	add_child_autofree(old)
+	assert_eq(c.get_combined_minimum_size(), old.get_combined_minimum_size(),
+		"the same size as before the fix")

@@ -1562,16 +1562,16 @@ static func make_theme() -> Theme:
 	t.set_stylebox("hover", "CheckBox", clear)
 	t.set_stylebox("pressed", "CheckBox", clear)
 	t.set_stylebox("focus", "CheckBox", clear)
-	# HOVER_PRESSED AND DISABLED TOO. A ticked box under the mouse draws
-	# `hover_pressed`, and with it unset that state fell back to Godot's stock
-	# stylebox, whose wider content margin pushed the label right inside a box
-	# sized for `normal` — the last letter of a ticked game's name was cut off
-	# while hovered (the owner, 26 Nov 2026, on Customization's Title Letters).
+	# HOVER_PRESSED TOO. A ticked box under the mouse draws `hover_pressed`, and
+	# with it unset that state fell back to Godot's stock stylebox, whose 4 px
+	# content margin pushed the label right inside a box sized without it — the
+	# last letter of a ticked game's name was cut off while hovered (the owner,
+	# 26 Nov 2026, on Customization's Title Letters). Only that state: `disabled`
+	# still falls back to the Button's, which is what sets every CheckBox's height,
+	# and the owner asked that nothing else change (27 Nov 2026).
 	t.set_stylebox("hover_pressed", "CheckBox", clear)
-	t.set_stylebox("disabled", "CheckBox", clear)
 	t.set_color("font_color", "CheckBox", TEXT)
 	t.set_color("font_hover_color", "CheckBox", GOLD)
-	t.set_color("font_hover_pressed_color", "CheckBox", GOLD)
 	# Godot's stock check glyphs are a thin grey outline drawn for a light theme,
 	# and on these near-black panels they all but vanish — the report checklist is
 	# the one place the player is actually ANSWERING something, so its boxes are

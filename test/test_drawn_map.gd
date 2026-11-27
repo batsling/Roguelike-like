@@ -558,7 +558,7 @@ func test_a_connection_card_shows_its_proof() -> void:
 		pending("no drawn line has a proof screenshot")
 		return
 	view.select_edge(found)
-	var shot: Control = view._card.find_child("ProofShot", true, false)
+	var shot: Control = view._card.find_child("ProofFrame", true, false)
 	assert_not_null(shot, "the proof is on the card")
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
