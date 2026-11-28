@@ -130,10 +130,21 @@ func _refresh_unlocks(announce: bool) -> void:
 	_save()
 	if announce:
 		for key in fresh:
-			Notifications.announce("🏆 New title letter: %s" % label(key),
-				Color(0.95, 0.8, 0.45), null, "title_letter")
+			# Held for the post-game wheel while a game is on (RankRewardQueue).
+			if not RankRewardQueue.offer(reward_entry(key)):
+				_toast_unlock(key)
 			letter_unlocked.emit(key)
 	changed.emit()
+
+# A rank's letter for the post-game wheel (RankRewardQueue).
+func reward_entry(key: String) -> Dictionary:
+	return {"kind": "letter", "key": key, "owner": String(_unlocked.get(key, "")),
+		"text": "🏆 New title letter: %s" % label(key),
+		"toast": _toast_unlock.bind(key)}
+
+func _toast_unlock(key: String) -> void:
+	Notifications.announce("🏆 New title letter: %s" % label(key),
+		Color(0.95, 0.8, 0.45), null, "title_letter")
 
 func _draw(pool: Array, owed: int, owner: String, fresh: Array) -> void:
 	if owed <= 0:

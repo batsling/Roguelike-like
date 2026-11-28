@@ -476,6 +476,15 @@ static func _ch_enemies() -> Dictionary:
 			_p("XP lands as you earn it: tick a goal mid-game and the game's and "
 				+ "your character's rank bars slide up in the bottom-right corner "
 				+ "and fill. A bar that reaches a new rank says RANK UP."),
+			_p("Every rank unlocks something: a Roguelike Radio song, a title "
+				+ "letter, or a look (a costume, an icon or a hat). It is yours the "
+				+ "moment the rank lands, but what it is stays a secret until the "
+				+ "game is over: the summary page then offers Rank-up rewards, a "
+				+ "wheel for each one, which you spin with a click or by dragging it "
+				+ "round and letting go. Skip shows them all at once, and Skip on the "
+				+ "summary goes straight on with each one announced as you go. Once "
+				+ "it lands you can play the song, wear the costume or hat, or use "
+				+ "the icon right there."),
 			_p("Under the board, \"Beat it:\" shows what beating the game would pay "
 				+ "right now — its chests and the loot on the board."),
 			_note("Bosses are not in that pool. A boss drops a chest of its own, "

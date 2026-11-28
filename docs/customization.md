@@ -29,7 +29,34 @@ them: a **look**, which is one costume, one icon set or one hat (§7) (`RankRewa
   own costumes (`CosmeticCatalog.units_of_character`).
 - As with letters, how many have been earned is worked out from the rank, and
   WHICH ones came up is a random draw that is stored with who drew it. Each one
-  is toasted as it arrives ("✦ New costume: Zoe — Clown").
+  is toasted as it arrives ("✦ New costume: Zoe — Clown"), **except while a game
+  is on** (below).
+- **The rank-up wheel** (the owner, 28 Nov 2026). A rank that lands during a game
+  (a goal ticked, the game reported) still draws and saves its song, letter or
+  look on the spot, but its toast is held in `RankRewardQueue`, while
+  `Overworld2.holds_rank_rewards` says so: a game in play, the report resolving,
+  the haul not open yet, its summary page up. The RANK UP! banner says
+  "🎡 Reward waiting". The report's summary page (`ReportSummary`) takes what was
+  held, the game's first and then the character's, and offers two ways on:
+  - **🎡 Rank-up rewards (N)** opens `RankRewardPage`: one wheel per reward, one after
+    another (`RewardWheel`). It always lands on what was drawn; the other slices
+    are pictures of what the same game or character could give, for show. Click
+    it or press Spin, or drag it round and let go (the flick's speed and direction
+    carry on). A click while it turns, or Skip, lands it at once; **⏭ Skip all**
+    turns every wheel left into its card. More than one reward ends on all their
+    cards, then Continue goes on to the haul.
+  - **Skip** goes straight to the haul and toasts each one, as before the wheel.
+- **A landed reward can be used at once**, and a second press puts back what was
+  there before: a song's **▶ Play now** (`Radio.play_song`; a song with no file
+  yet says so), a costume's **Wear on \<character\>** (both slots for a Both
+  costume), a hat's **Wear on \<player\>** (the run's player, or the first with a
+  spot for a hat), an icon's **Use this icon**. A title letter has no button: an
+  earned letter is already in the title's pool.
+- **Nothing is ever silent.** Whatever is still held when there is no wheel to
+  show it (the run ends on the report, a game is left without one, the page
+  closes, a summary is torn down unseen) is toasted then (`RankRewardQueue.release`
+  / `settle`). Radio also holds back lining a new song up to play next until it
+  is revealed, since hearing it would give the prize away.
 - A test profile's **Unlock everything** reads every look as unlocked.
 
 ## 2. The catalog: the file name is the entry

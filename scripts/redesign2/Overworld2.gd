@@ -631,6 +631,9 @@ func _ready() -> void:
 	# XP landing mid-game slides the rank bars up from the corner (XpPopup).
 	if not GameStats.changed.is_connected(_on_stats_changed_for_xp):
 		GameStats.changed.connect(_on_stats_changed_for_xp)
+	# A rank-up's reward is HELD while a game is on, for the post-game wheel to
+	# reveal (RankRewardQueue, RankRewardPage).
+	RankRewardQueue.hold_while(holds_rank_rewards)
 	# Register as the mounted overworld so overworld-active items (Ride the Bus,
 	# Wand of Wishing) can route their effect here, and so item pickups refresh
 	# the inventory panel.
@@ -1609,6 +1612,17 @@ func show_xp_gain(gfrom: int, gto: int, cfrom: int, cto: int) -> Control:
 		Data.get_game(GameState.current_game_id), gfrom, gto,
 		Data.get_character2(GameState.character_id), cfrom, cto)
 	return _xp_popup
+
+# WHILE A RANK-UP'S REWARD IS HELD FOR THE WHEEL (RankRewardQueue): a game in
+# play, the report resolving, the haul not opened yet, and the haul's summary page
+# while it still has the wheel to offer. Public for the tests.
+func holds_rank_rewards() -> bool:
+	if not is_inside_tree() or GameLoop2.run_over:
+		return false
+	if _phase == Phase.PLAYING or _resolving or not _post_snapshot.is_empty():
+		return true
+	return _post_screen != null and is_instance_valid(_post_screen) \
+		and _post_screen.summary() != null
 
 # The XP `game` had when it was picked (GameLoop2.rank_start), or its XP now when
 # that was not recorded for it.
@@ -3218,6 +3232,7 @@ func _open_post_game() -> void:
 		_post_screen.abandon()
 		_post_screen = null
 	if _post_snapshot.is_empty():
+		RankRewardQueue.release()
 		_open_pending_event()
 		return
 	# HELD, NOT CLEARED YET. Between this and the screen actually standing up, the
@@ -4221,6 +4236,8 @@ func _on_arrived(game_id: StringName) -> void:
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	# Whatever rank reward is still held is told now: no page, no wheel.
+	RankRewardQueue.stop_holding(holds_rank_rewards)
 	if GameStats.changed.is_connected(_on_stats_changed_for_xp):
 		GameStats.changed.disconnect(_on_stats_changed_for_xp)
 	# The header bar goes with the page. Leaving its height published would push
@@ -6294,6 +6311,7 @@ func _flush_loop_refresh() -> void:
 
 func _refresh(_a = null) -> void:
 	_loop_refresh_owed = false
+	RankRewardQueue.settle()
 	if _board == null:
 		return
 	_refresh_stats()
@@ -8124,6 +8142,8 @@ func _result_text(res: Dictionary) -> String:
 
 func _on_run_lost() -> void:
 	_phase = Phase.OVER
+	# No haul screen follows, so no wheel: a held rank reward is toasted now.
+	RankRewardQueue.release()
 	_drop_queue.clear()
 	SaveSystem.clear_autosave()
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
@@ -8197,6 +8217,8 @@ func _arrive_home_if_due(dest: StringName) -> bool:
 
 func _on_run_won() -> void:
 	_phase = Phase.OVER
+	# No haul screen follows, so no wheel: a held rank reward is toasted now.
+	RankRewardQueue.release()
 	_drop_queue.clear()
 	SaveSystem.clear_autosave()
 	if GameState.carrying_amulet:

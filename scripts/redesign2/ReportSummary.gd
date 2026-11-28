@@ -93,16 +93,74 @@ func setup(screen: Node) -> void:
 	if sum != null:
 		body.add_child(sum)
 
+	# THE RANK-UPS' REWARDS, HELD FOR THE WHEEL while the game was on
+	# (RankRewardQueue): taken here, the game's first and then the character's.
+	var owners: Array = []
+	if g != null:
+		owners.append(RankRewards.game_key(g.id))
+	owners.append(RankRewards.character_key(StringName(screen._snap.get("character_id", ""))))
+	rewards = RankRewardQueue.take(owners)
 	var go := UITheme.confirm_button("Continue  →", Vector2(220, 44), UITheme.FONT_LABEL)
 	go.name = "Continue"
-	go.size_flags_horizontal = Control.SIZE_SHRINK_END
 	go.pressed.connect(proceed)
-	col.add_child(go)
-	UITheme.focus_soon(go)
+	if rewards.is_empty():
+		go.size_flags_horizontal = Control.SIZE_SHRINK_END
+		col.add_child(go)
+		UITheme.focus_soon(go)
+	else:
+		# TWO WAYS ON (the owner, 28 Nov 2026: "make the rank up rewards its own
+		# button or the player can click a skip and proceed"): the wheel page, or
+		# straight to the haul with the rewards toasted the way they always were.
+		# The skip keeps the name Continue: it is the same way on it always was.
+		var row := HBoxContainer.new()
+		row.name = "Exits"
+		row.add_theme_constant_override("separation", UITheme.GAP)
+		row.size_flags_horizontal = Control.SIZE_SHRINK_END
+		go.text = "Skip  →"
+		go.tooltip_text = "On to the haul. The rewards are yours either way; they are announced as you go."
+		UITheme.tint_action_button(go, UITheme.TEXT_DIM)
+		row.add_child(go)
+		var spin := UITheme.action_button("🎡  Rank-up rewards (%d)" % rewards.size(),
+			UITheme.GOLD, Vector2(260, 44), UITheme.FONT_LABEL)
+		spin.name = "Rewards"
+		spin.tooltip_text = "Spin the wheel for what each rank-up unlocked."
+		spin.pressed.connect(open_rewards)
+		row.add_child(spin)
+		col.add_child(row)
+		UITheme.focus_soon(spin)
 	_fit.call_deferred()
+
+# The rank-up rewards this page holds, and the wheel page while it is up.
+var rewards: Array = []
+var _rewards_told: bool = false
+const REWARD_PAGE_SCRIPT := "res://scripts/redesign2/RankRewardPage.gd"
+var _reward_page: Control = null
+
+# The wheel page, over this one; its Continue goes on to the haul.
+func open_rewards() -> Control:
+	if rewards_page() != null:
+		return _reward_page
+	_rewards_told = true
+	_reward_page = load(REWARD_PAGE_SCRIPT).new()
+	add_child(_reward_page)
+	_reward_page.setup(rewards)
+	_reward_page.finished.connect(proceed)
+	return _reward_page
+
+func rewards_page() -> Control:
+	return _reward_page if _reward_page != null and is_instance_valid(_reward_page) \
+		and not _reward_page.is_queued_for_deletion() else null
 
 func _ready() -> void:
 	get_viewport().size_changed.connect(_fit)
+
+# Taken down without Continue or the wheel (the haul abandoned under it): the
+# rewards it held are toasted rather than lost to silence.
+func _exit_tree() -> void:
+	if not _rewards_told:
+		_rewards_told = true
+		for e in rewards:
+			RankRewardQueue.tell(e)
 
 # The scroll box's height: the body's own, capped at what the window has left
 # once the pinned header bar, the card's chrome, the header line and Continue are
@@ -120,14 +178,24 @@ func _fit() -> void:
 	_scroll.custom_minimum_size.y = maxf(80.0, minf(want, room))
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel"):
+	if rewards_page() != null:
+		return
+	if event.is_action_pressed("ui_accept") and not rewards.is_empty():
+		open_rewards()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel"):
 		proceed()
 		get_viewport().set_input_as_handled()
 
-# On to the haul. Public so a test, or the page, can move past it.
+# On to the haul. Public so a test, or the page, can move past it. Rewards the
+# wheel never showed are toasted now (the wheel page toasts any it did not reach).
 func proceed() -> void:
 	if is_queued_for_deletion():
 		return
+	if not _rewards_told:
+		_rewards_told = true
+		for e in rewards:
+			RankRewardQueue.tell(e)
 	continued.emit()
 	queue_free()
 

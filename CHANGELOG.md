@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The rank-up wheel (28 Nov 2026).** The owner: "something to play when the
+  player ranks up. It should look like a roulette and the player can spin it."
+  A rank still draws and saves its song, letter or look the moment its XP
+  lands, so nothing earned can be lost to a quit. What moved is the TELLING: while
+  a game is on, the toast is held (`RankRewardQueue`), and the report's summary
+  page offers 🎡 Rank-up rewards or Skip. The rewards page spins one wheel per
+  reward (`RewardWheel`), the game's and then the character's. A click, a drag
+  and let-go (its speed and direction carry on), or Spin sets it going; it always
+  comes to rest on what was drawn, and a click while it turns lands it at once.
+  The other slices are what the same game or character could give, for show.
+  Each landing shows a card with the thing itself to use at once: ▶ Play now, Wear
+  on Zoe, Wear on Retro Bat, Use this icon, each undone by a second press (a
+  title letter has no button; it is already in the title's pool). Skip on the
+  summary toasts them all as before, and anything held with no wheel to show it
+  (the run ends on the report, a game left without one) is toasted then. Radio
+  also holds lining the new song up next until it is shown. Two small things on
+  the way: a black logo letter (Haste's) sits on a light plate on the wheel, and
+  the rank bar's tooltip no longer says every rank is a song.
+
 - **The suite in parallel, here and on CI (27 Nov 2026).** The owner asked for
   the 25-minute suite to be faster, then for CI too. `tools/gut.sh --parallel`
   runs one shard per core, each keeping every N-th test of every file
