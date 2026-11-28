@@ -8824,6 +8824,46 @@
   "checked": "2026-11-20",
   "wiki": null
  },
+ "Food Devils": {
+  "api": "https://fooddevils.wiki.gg/api.php",
+  "articles": 37,
+  "blurb": "",
+  "categories": {
+   "characters": [
+    "Characters"
+   ]
+  },
+  "checked": "2026-11-28",
+  "counts": {
+   "characters": 2,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Recipes"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "signal": "",
+  "sitename": "Food Devils Wiki",
+  "wiki": "https://fooddevils.wiki.gg/"
+ },
  "Footgun: Underground": {
   "checked": "2026-10-11",
   "wiki": null
@@ -9750,6 +9790,57 @@
    "statuses": 0
   },
   "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Artifacts",
+    "Upgrades"
+   ],
+   "statuses": [
+    "Mutations"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Goobies Wiki",
+  "wiki": "https://goobies.fandom.com"
+ },
+ "Goobies 2": {
+  "api": "https://goobies.fandom.com/api.php",
+  "articles": 136,
+  "blurb": "Welcome to the ! Goobies 2 Battle thousands of blobs in this roguelike auto-shooter. Travel from island to island, defeat bosses, collect and upgrade items to become more powerful and discover lag-inducing combos in an endless blobbath. We'",
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Mini Bosses"
+   ],
+   "loot": [
+    "Items",
+    "Passive",
+    "Artifacts",
+    "Evolutions",
+    "Upgrades"
+   ]
+  },
+  "checked": "2026-11-28",
+  "counts": {
+   "characters": 5,
+   "events": 0,
+   "goals": 27,
+   "locations": 0,
+   "loot": 139,
+   "statuses": 0
+  },
+  "match": "check",
   "pages": {
    "characters": [
     "Characters"

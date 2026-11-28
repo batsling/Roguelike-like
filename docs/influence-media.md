@@ -368,7 +368,7 @@ Listen for: **Dungeon Crawl Stone Soup** (sheet says "check folder")
 
 - [ ] podcast [Episode 138: Golden Krone Hotel](https://podcasts.apple.com/us/podcast/episode-138-golden-krone-hotel/id461288283?i=1000390782195) — Roguelike Radio · 2017-08-07 — cue in the description
 
-### Goobies (2023) — 1 connection
+### Goobies (2023) — 2 connections
 
 Listen for: **Vampire Survivors** (sheet says "look at it")
 
