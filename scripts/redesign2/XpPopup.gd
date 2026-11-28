@@ -160,7 +160,7 @@ func _banner(who: String, rank: int) -> Control:
 	if RankRewardQueue.count() > 0:
 		var wait := Label.new()
 		wait.name = "RewardWaiting"
-		wait.text = "🎡  Reward waiting: spin for it after the game"
+		wait.text = "🛞  Reward waiting: spin for it after the game"
 		wait.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		wait.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		wait.add_theme_color_override("font_color", UITheme.GOLD)

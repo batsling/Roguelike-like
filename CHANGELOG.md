@@ -16,7 +16,7 @@ For how the project is laid out and how its systems fit together, see
   A rank still draws and saves its song, letter or look the moment its XP
   lands, so nothing earned can be lost to a quit. What moved is the TELLING: while
   a game is on, the toast is held (`RankRewardQueue`), and the report's summary
-  page offers 🎡 Rank-up rewards or Skip. The rewards page spins one wheel per
+  page offers 🛞 Rank-up rewards or Skip. The rewards page spins one wheel per
   reward (`RewardWheel`), the game's and then the character's. A click, a drag
   and let-go (its speed and direction carry on), or Spin sets it going; it always
   comes to rest on what was drawn, and a click while it turns lands it at once.

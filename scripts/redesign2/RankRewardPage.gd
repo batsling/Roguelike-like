@@ -3,7 +3,7 @@ extends Control
 # the player ranks up. It should look like a roulette and the player can spin it
 # and then when it lands on something, that's the thing they unlock").
 #
-# Opened from the report's summary page (ReportSummary's 🎡 Rank-up rewards
+# Opened from the report's summary page (ReportSummary's 🛞 Rank-up rewards
 # button) with every reward this game's ranks paid, which were HELD rather than
 # toasted while the game was on (RankRewardQueue). One wheel per reward, one after
 # another — the game's first, then the character's — each landing on what the
@@ -104,7 +104,7 @@ func _head(title: String) -> HBoxContainer:
 func _show_wheel() -> void:
 	_clear()
 	var e: Dictionary = rewards[index]
-	_content.add_child(_head("🎡  Rank-up rewards"))
+	_content.add_child(_head("🛞  Rank-up rewards"))
 	_counter.text = "%d of %d" % [index + 1, rewards.size()]
 	_content.add_child(_owner_row(String(e.get("owner", ""))))
 	var body := HBoxContainer.new()
@@ -207,7 +207,7 @@ func skip_all() -> void:
 
 func _show_all() -> void:
 	_clear()
-	_content.add_child(_head("🎡  Rank-up rewards"))
+	_content.add_child(_head("🛞  Rank-up rewards"))
 	_counter.text = "%d unlocked" % rewards.size()
 	var scroll := ScrollContainer.new()
 	scroll.name = "All"

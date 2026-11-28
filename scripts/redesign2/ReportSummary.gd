@@ -120,7 +120,7 @@ func setup(screen: Node) -> void:
 		go.tooltip_text = "On to the haul. The rewards are yours either way; they are announced as you go."
 		UITheme.tint_action_button(go, UITheme.TEXT_DIM)
 		row.add_child(go)
-		var spin := UITheme.action_button("🎡  Rank-up rewards (%d)" % rewards.size(),
+		var spin := UITheme.action_button("🛞  Rank-up rewards (%d)" % rewards.size(),
 			UITheme.GOLD, Vector2(260, 44), UITheme.FONT_LABEL)
 		spin.name = "Rewards"
 		spin.tooltip_text = "Spin the wheel for what each rank-up unlocked."

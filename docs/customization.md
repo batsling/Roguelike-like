@@ -36,9 +36,9 @@ them: a **look**, which is one costume, one icon set or one hat (§7) (`RankRewa
   look on the spot, but its toast is held in `RankRewardQueue`, while
   `Overworld2.holds_rank_rewards` says so: a game in play, the report resolving,
   the haul not open yet, its summary page up. The RANK UP! banner says
-  "🎡 Reward waiting". The report's summary page (`ReportSummary`) takes what was
+  "🛞 Reward waiting". The report's summary page (`ReportSummary`) takes what was
   held, the game's first and then the character's, and offers two ways on:
-  - **🎡 Rank-up rewards (N)** opens `RankRewardPage`: one wheel per reward, one after
+  - **🛞 Rank-up rewards (N)** opens `RankRewardPage`: one wheel per reward, one after
     another (`RewardWheel`). It always lands on what was drawn; the other slices
     are pictures of what the same game or character could give, for show. Click
     it or press Spin, or drag it round and let go (the flick's speed and direction

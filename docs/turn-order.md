@@ -399,7 +399,7 @@ Once the animation ends (`_end_resolve`):
 2. The **end-of-game screen**. It opens on its **summary page** (the game's and
    the character's XP and what each was for, `ReportSummary`), which takes every
    rank-up reward held since the game was picked: the game's first, then the
-   character's. With any, the summary offers **🎡 Rank-up rewards**, a wheel per
+   character's. With any, the summary offers **🛞 Rank-up rewards**, a wheel per
    reward in that order (`RankRewardPage`), each landing on what was already
    drawn, or **Skip**, which toasts them all the way they were toasted before the
    wheel. Then the haul: kill drops that had no square, chests, the boss warning,
