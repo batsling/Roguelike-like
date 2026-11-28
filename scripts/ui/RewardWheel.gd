@@ -36,6 +36,45 @@ const ART_AT := 0.62
 const ART_SIZE := 0.38
 # The let-go's speed is read off the last stretch of the drag, not its whole.
 const FLICK_WINDOW := 0.09
+# A letter's glow, across, of the picture's side.
+const GLOW_REACH := 1.9
+
+# The rim's gold, lifted towards white, for the light behind a letter.
+static func glow_tint() -> Color:
+	return Color(UITheme.GOLD.lerp(Color.WHITE, 0.45), 0.9)
+
+# White in the middle, clear at the rim: the glow behind a letter. One for every
+# wheel and card.
+static var _disc: GradientTexture2D = null
+
+static func glow_disc() -> GradientTexture2D:
+	if _disc == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		g.add_point(0.5, Color(1, 1, 1, 0.55))
+		_disc = GradientTexture2D.new()
+		_disc.gradient = g
+		_disc.fill = GradientTexture2D.FILL_RADIAL
+		_disc.fill_from = Vector2(0.5, 0.5)
+		_disc.fill_to = Vector2(1.0, 0.5)
+		_disc.width = 64
+		_disc.height = 64
+	return _disc
+
+# A picture with that glow behind it, `side` across, for a letter shown anywhere
+# else (its card on the rewards page).
+static func glowing(tex: Texture2D, side: int) -> Control:
+	var box := CenterContainer.new()
+	box.name = "Glowing"
+	box.custom_minimum_size = Vector2(side, side) * 1.3
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.draw.connect(func() -> void:
+		var c: Vector2 = box.size * 0.5
+		var g: float = side * GLOW_REACH * 0.5
+		box.draw_texture_rect(glow_disc(), Rect2(c - Vector2(g, g), Vector2(g, g) * 2.0), false, glow_tint()))
+	box.add_child(UITheme.crisp_tex(tex, side))
+	return box
 
 enum State { IDLE, DRAGGING, SPINNING, LANDED }
 
@@ -268,6 +307,15 @@ func _draw() -> void:
 	# The hub.
 	draw_circle(c, r * 0.12, UITheme.BG_DEEP)
 	draw_arc(c, r * 0.12, 0.0, TAU, 48, UITheme.GOLD, 3.0, true)
+	# …wearing the ROULETTE icon (Customization: the 🎡's stand-in), when one is
+	# worn. It turns with the wheel.
+	var hub: Texture2D = Cosmetics.glyph_texture("🎡")
+	if hub != null:
+		var hs := Vector2(hub.get_width(), hub.get_height())
+		var drawn: Vector2 = hs * (r * 0.17 / maxf(hs.x, hs.y))
+		draw_set_transform(c, angle, Vector2.ONE)
+		draw_texture_rect(hub, Rect2(-drawn * 0.5, drawn), false)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# The pointer, at the top, pointing in.
 	var tip := Vector2(c.x, c.y - r + 18.0)
 	var tri := PackedVector2Array([tip, Vector2(c.x - 14.0, c.y - r - 12.0),
@@ -294,10 +342,14 @@ func _draw_art(pixel_layer: bool) -> void:
 		if tex != null:
 			var ts := Vector2(tex.get_width(), tex.get_height())
 			drawn = ts * (side / maxf(ts.x, ts.y))
-		# A LETTER ON A PLATE: logo letters come in every colour, black included
-		# (Haste's), and a black letter on a dark slice is no letter at all.
+		# A LETTER IN A GLOW: logo letters come in every colour, black included
+		# (Haste's), and a black letter on a dark slice is no letter at all. A soft
+		# light behind it in the rim's gold (the owner, 28 Nov 2026: "a white
+		# yellowish glow that matches the edge of the wheel"), the way the main
+		# menu lights its letters (MainMenu.LetterGlow).
 		if not pixel_layer and String(s.get("kind", "")) == "letter":
-			on.draw_circle(Vector2.ZERO, side * 0.62, Color(UITheme.TEXT, 0.92))
+			var g: float = side * GLOW_REACH * 0.5
+			on.draw_texture_rect(glow_disc(), Rect2(-Vector2(g, g), Vector2(g, g) * 2.0), false, glow_tint())
 		if tex != null and bool(s.get("pixel", false)) == pixel_layer:
 			on.draw_texture_rect(tex, Rect2(-drawn * 0.5, drawn), false)
 		var glyph: String = String(s.get("glyph", ""))

@@ -156,7 +156,7 @@ func announce_text(key: String) -> String:
 		else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
 			"luck": "Luck icon", "chest": "chest icon", "health": "Health icon",
 			"damage": "damage icon", "gold": "gold icon", "shield": "shield icon",
-			"hunger": "Hunger icon", "timer": "timer icon"}.get(
+			"hunger": "Hunger icon", "timer": "timer icon", "roulette": "roulette icon"}.get(
 			String(e.get("kind", "")), "look")
 	if bool(e.get("status", false)):
 		what = "%s icon" % String(e.get("kind", "")).capitalize()
@@ -394,7 +394,7 @@ func icon_of(ch: CharacterData) -> Texture2D:
 # when the default glyph is worn. `level` is the Fracture for a trophy and the
 # chest's size (0 Small … 3 Huge) for a gift.
 const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "luck", "🎁": "chest",
-	"♥": "health", "◉": "gold", "🛡": "shield", "⏱": "timer"}
+	"♥": "health", "◉": "gold", "🛡": "shield", "⏱": "timer", "🎡": "roulette"}
 
 # A SHIELD IS ALSO DRAWN AS A PICTURE, not only written as 🛡: the pips over the
 # hero, the chip beside the Health, the Camp's Rest, the OBS overlay. Each asks

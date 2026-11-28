@@ -9,7 +9,7 @@ and characters, and every choice is saved per profile
 |---|---|
 | **Characters** | each character's **icon** and **full portrait**, chosen separately |
 | **Hats** | what each **player** (Retro Bat, Batsaac) wears on its head (§7) |
-| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield), ⏱ (anything temporary), and each **status**'s icon (§4), on two sub-tabs: **Symbols** and **Statuses** |
+| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield), ⏱ (anything temporary), 🎡 (the rank-up wheel), and each **status**'s icon (§4), on two sub-tabs: **Symbols** and **Statuses** |
 | **Title Letters** | which earned letters the main menu's title may be spelled from |
 
 ## 1. Earning: a rank is a song, a letter or a look
@@ -81,6 +81,7 @@ images2.0/icons/Shields/<Name>_<Game>.png
 images2.0/icons/Hunger/<Name>_<Game>.png
 images2.0/icons/Statuses/<Status>/<Name>_<Game>.png   one kind per status, its id (§4)
 images2.0/icons/Timer/<Name>_<Game>.png              the ⏱ on anything temporary (§4)
+images2.0/icons/Roulette/<Name>_<Game>.png           the 🎡 of the rank-up wheel (§4)
 images2.0/hats/<Name>_<Game>.png                  a hat, its game's rank-up reward (§7)
 images2.0/hats/Special/<Name>_<Game>.png          a hat earned some other way (§7)
 ```
@@ -258,6 +259,12 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   (`UITheme.TIMER_ART`); the stopwatch it used to be is Mewgenics' unlock. **Draw
   the badge with `Cosmetics.timer_art()`.** Slay the Spire 2's own Strength and
   Dexterity are unlocks too, beside Slay the Spire's.
+- **The roulette is 🎡** (the owner, 28 Nov 2026: "have the roulette icon also be
+  an unlockable icon"): the rank-up wheel's own symbol, on the 🎡 Rank-up rewards
+  button, the wheel page's heading and the RANK UP! banner's "Reward waiting".
+  A worn one stands in for each of those (`Cosmetics.GLYPHS`) and sits in the
+  wheel's hub, turning with it (`RewardWheel._draw`). The folder starts empty:
+  its icons are researched for the owner to tick (research.md §6.8).
 - **Gold is ◉**: the purse chip, the shop's purse, prices and gold Reroll, the
   Steal action and the inventory's Gold line. A kind with nothing to earn says so
   on its row ("No icons to earn yet").

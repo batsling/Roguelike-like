@@ -412,3 +412,21 @@ func test_skipping_the_wheel_toasts_the_rewards() -> void:
 	Page.leave_post_game(ui)
 	GameState.reset_run()
 	GameLoop2.reset()
+
+# --- the roulette icon ---------------------------------------------------------
+
+func test_a_worn_roulette_icon_stands_in_for_the_wheel_glyph() -> void:
+	assert_eq(String(Cosmetics.GLYPHS.get("🎡", "")), "roulette", "🎡 is a glyph an icon can replace")
+	assert_true(CosmeticCatalog.KINDS.has("roulette"))
+	assert_true(DirAccess.dir_exists_absolute("res://images2.0/icons/Roulette"), "with a folder for its icons")
+	# A catalog of the test's own: the folder waits on the owner's ticks.
+	var pngs: Array = Array(DirAccess.get_files_at("res://images2.0/icons/Timer")) \
+		.filter(func(f): return String(f).ends_with(".png"))
+	var art: String = "res://images2.0/icons/Timer/" + String(pngs[0])
+	CosmeticCatalog.set_for_tests([], [{"id": "roulette/test_wheel", "kind": "roulette", "name": "Test Wheel",
+		"game": "haste", "images": [{"name": "Test Wheel", "path": art, "min": 0, "max": 10}]}])
+	Cosmetics._unlocked["roulette/test_wheel"] = "game:haste"
+	assert_null(Cosmetics.glyph_texture("🎡"), "nothing stands in until one is worn")
+	Cosmetics.set_icon("roulette", "roulette/test_wheel")
+	assert_not_null(Cosmetics.glyph_texture("🎡"), "worn, it is the 🎡's picture")
+	CosmeticCatalog.reset_cache()

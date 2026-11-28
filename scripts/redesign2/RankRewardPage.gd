@@ -396,7 +396,9 @@ func reward_card(e: Dictionary, art: int) -> PanelContainer:
 	var s: Dictionary = slice_of(e)
 	var tex: Texture2D = s.get("texture")
 	if tex != null:
-		var pic: TextureRect = UITheme.crisp_tex(tex, art)
+		# A letter in the wheel's glow, as on its slice: a black one reads.
+		var pic: Control = RewardWheel.glowing(tex, art) if String(e.get("kind", "")) == "letter" \
+			else UITheme.crisp_tex(tex, art)
 		pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		col.add_child(pic)
 	var text: String = String(e.get("text", ""))

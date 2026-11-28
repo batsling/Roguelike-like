@@ -18,6 +18,7 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
   images2.0/icons/Shields/<Name>_<Game>.png                      a shield icon (the 🛡, written or drawn)
   images2.0/icons/Hunger/<Name>_<Game>.png                       a Hunger icon (the 🍗, drawn five to the bar)
   images2.0/icons/Timer/<Name>_<Game>.png                        a TIMER icon (the ⏱ on anything temporary)
+  images2.0/icons/Roulette/<Name>_<Game>.png                     a ROULETTE icon (the 🎡 of the rank-up wheel)
   images2.0/icons/Statuses/<Status>/<Name>_<Game>.png            a STATUS's icon (one kind per status, the
                                                                  status's id; worn in place of its basic one)
   images2.0/hats/<Name>_<Game>.png                               a HAT a player wears (docs/customization.md §7)
@@ -59,7 +60,7 @@ HAT_DIR = "images2.0/hats"
 SLOTS = {"Costumes Icon": "icon", "Costumes Full": "full", "Costumes Both": "both"}
 ICON_KINDS = {"Keys": "key", "Bombs": "bomb", "Difficulties": "difficulty", "Luck": "luck",
 	"Chests": "chest", "Health": "health", "Damage": "damage", "Gold": "gold",
-	"Shields": "shield", "Hunger": "hunger", "Timer": "timer"}
+	"Shields": "shield", "Hunger": "hunger", "Timer": "timer", "Roulette": "roulette"}
 
 # The game a costume is earned from, where its title does not say (the owner, 8 Nov
 # 2026: "any rebirth costumes should be from rebirth, and the isaac_Stray should be
