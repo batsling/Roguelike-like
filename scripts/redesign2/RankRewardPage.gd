@@ -212,7 +212,8 @@ func _show_all() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.name = "All"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var room: float = get_viewport_rect().size.y - ModalScaffold.reserved_top - 200.0
+	var room: float = get_viewport_rect().size.y - ModalScaffold.reserved_top - 200.0 \
+		if is_inside_tree() else 460.0
 	scroll.custom_minimum_size = Vector2(0, clampf(room, 160.0, 460.0))
 	_content.add_child(scroll)
 	var flow := HFlowContainer.new()
@@ -331,7 +332,12 @@ static func slice_for(kind: String, key: String) -> Dictionary:
 
 # The wheel's other slices, for show: what the same game or character could give,
 # a few of each kind taken in turn, so a wheel reads as songs AND letters AND
-# looks. Fewer than a wheel's worth goes round again.
+# looks. STILL-LOCKED FIRST (the owner, 28 Nov 2026), so every slice looks like
+# something the spin could have won; what is already unlocked only tops the wheel
+# up when there are not enough locked ones, and fewer than a wheel's worth goes
+# round again.
+const PER_KIND := {"song": 2, "letter": 3, "look": 4}
+
 func slices_for(e: Dictionary) -> Array:
 	var owner: String = String(e.get("owner", ""))
 	var id := StringName(owner.get_slice(":", 1))
@@ -350,18 +356,31 @@ func slices_for(e: Dictionary) -> Array:
 				songs.append_array(Radio.game_songs(g).map(func(s): return String((s as SongData).id)))
 		letters = TitleLetters.units()
 		looks = CosmeticCatalog.units_of_character(id)
-	var lists: Array = []
-	for pair in [["song", songs, 2], ["letter", letters, 3], ["look", looks, 4]]:
-		var keys: Array = (pair[1] as Array).filter(func(k): return String(k) != prize_key)
+	var by_kind := {"song": songs, "letter": letters, "look": looks}
+	var locked: Array = []
+	var owned: Array = []
+	for kind in ["song", "letter", "look"]:
+		var keys: Array = (by_kind[kind] as Array).filter(func(k): return String(k) != prize_key)
 		_shuffle(keys)
-		lists.append([pair[0], keys.slice(0, int(pair[2]))])
+		var l: Array = []
+		var o: Array = []
+		for k in keys:
+			(o if is_unlocked(kind, String(k)) else l).append(k)
+		locked.append([kind, l])
+		owned.append([kind, o])
+	var taken := {"song": 0, "letter": 0, "look": 0}
 	var picks: Array = []
-	var more: bool = true
-	while picks.size() < RewardWheel.SLICES - 1 and more:
-		more = false
-		for l in lists:
-			if not (l[1] as Array).is_empty() and picks.size() < RewardWheel.SLICES - 1:
-				picks.append([l[0], (l[1] as Array).pop_front()])
+	for pool in [locked, owned]:
+		var more: bool = true
+		while picks.size() < RewardWheel.SLICES - 1 and more:
+			more = false
+			for l in pool:
+				var kind: String = String(l[0])
+				if (l[1] as Array).is_empty() or int(taken[kind]) >= int(PER_KIND[kind]) \
+						or picks.size() >= RewardWheel.SLICES - 1:
+					continue
+				picks.append([kind, (l[1] as Array).pop_front()])
+				taken[kind] = int(taken[kind]) + 1
 				more = true
 	_shuffle(picks)
 	var out: Array = []
@@ -373,6 +392,18 @@ func slices_for(e: Dictionary) -> Array:
 	while out.size() < RewardWheel.SLICES:
 		out.append(filler[out.size() % filler.size()])
 	return out
+
+# Whether a song, letter or look is already the player's.
+static func is_unlocked(kind: String, key: String) -> bool:
+	match kind:
+		"song":
+			var song: SongData = Data.get_song(StringName(key))
+			return song != null and Radio.is_drawn(song)
+		"letter":
+			return TitleUnlocks.is_unlocked(key)
+		"look":
+			return Cosmetics.is_unlocked(key)
+	return false
 
 func _shuffle(a: Array) -> void:
 	for i in range(a.size() - 1, 0, -1):
@@ -401,10 +432,10 @@ func reward_card(e: Dictionary, art: int) -> PanelContainer:
 			else UITheme.crisp_tex(tex, art)
 		pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		col.add_child(pic)
-	var text: String = String(e.get("text", ""))
-	var cut: int = text.find(": ")
+	# What it is and its name, as the autoload that drew it says them (the toast
+	# runs the two together as "what: name").
 	var what := Label.new()
-	what.text = text.substr(0, cut) if cut >= 0 else ""
+	what.text = String(e.get("what", ""))
 	what.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
@@ -412,7 +443,7 @@ func reward_card(e: Dictionary, art: int) -> PanelContainer:
 	col.add_child(what)
 	var title := Label.new()
 	title.name = "Title"
-	title.text = text.substr(cut + 2) if cut >= 0 else text
+	title.text = String(e.get("name", e.get("text", "")))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)

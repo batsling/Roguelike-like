@@ -58,7 +58,9 @@ func test_the_reward_screen_opens_on_the_summary() -> void:
 	var summary = screen.summary()
 	assert_not_null(summary, "the game and its XP come first")
 	if summary != null:
-		assert_not_null(summary.find_child("Continue", true, false), "with a way on")
+		# Continue, or Skip beside the rank-up wheel's button when a rank paid.
+		assert_true(summary.find_child("Continue", true, false) != null \
+			or summary.find_child("Skip", true, false) != null, "with a way on")
 		summary.proceed()
 	await wait_frames(2)
 	assert_null(screen.summary(), "Continue leaves the haul underneath")

@@ -136,7 +136,9 @@ func _refresh_unlocks(announce: bool) -> void:
 # A rank's look for the post-game wheel (RankRewardQueue).
 func reward_entry(key: String) -> Dictionary:
 	return {"kind": "look", "key": key, "owner": String(_unlocked.get(key, "")),
-		"text": announce_text(key), "toast": _toast_unlock.bind(key)}
+		"text": announce_text(key), "what": "✦ New %s" % look_kind(key),
+		"name": CosmeticCatalog.label(CosmeticCatalog.entry(key)),
+		"toast": _toast_unlock.bind(key)}
 
 # The toast for a look just earned ("✦ New hat: Super Auto Pets — Top Hat").
 func _announce(key: String) -> void:
@@ -150,6 +152,10 @@ func _toast_unlock(key: String) -> void:
 
 # "✦ New hat: Super Auto Pets — Top Hat", "✦ New Bleed icon: …".
 func announce_text(key: String) -> String:
+	return "✦ New %s: %s" % [look_kind(key), CosmeticCatalog.label(CosmeticCatalog.entry(key))]
+
+# What kind of look `key` is, in words: "costume", "hat", "key icon", "Bleed icon".
+func look_kind(key: String) -> String:
 	var e: Dictionary = CosmeticCatalog.entry(key)
 	var unit := String(e.get("unit", ""))
 	var what: String = unit if unit in ["costume", "hat"] \
@@ -160,7 +166,7 @@ func announce_text(key: String) -> String:
 			String(e.get("kind", "")), "look")
 	if bool(e.get("status", false)):
 		what = "%s icon" % String(e.get("kind", "")).capitalize()
-	return "✦ New %s: %s" % [what, CosmeticCatalog.label(e)]
+	return what
 
 # A SPECIAL HAT is earned by a rule of its own, never by a rank
 # (CosmeticCatalog.is_special): the owner, 14 Nov 2026 — "don't add special hats

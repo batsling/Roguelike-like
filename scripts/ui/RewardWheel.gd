@@ -12,12 +12,25 @@ extends Control
 #
 # THREE WAYS TO TURN IT:
 #   * a click on it, or `spin()` (the page's Spin button), at a standard speed;
-#   * DRAGGING it round: it follows the pointer, and letting go with speed spins it
-#     on at that speed, in that direction (a slow let-go leaves it where it is);
+#   * DRAGGING it round: it follows the pointer either way, and letting go with
+#     speed spins it on at that speed — CLOCKWISE, whichever way it was flung (the
+#     owner, 28 Nov 2026: the arrows round the rim are the rule, not a hint). A
+#     slow let-go leaves it where it is;
 #   * `skip()` (a click while it spins, or Space) puts it on the prize at once.
-# However fast and whichever way it turns, the slow-down is worked out so it comes
-# to rest on the prize: `_launch` picks the whole turns from the speed and adds
-# the part-turn that brings the prize under the pointer.
+# However fast it turns, the slow-down is worked out so it comes to rest on the
+# prize: `_launch` picks the whole turns from the speed and adds the part-turn
+# that brings the prize under the pointer.
+#
+# HOW IT ENDS IS MIXED UP (the owner, 28 Nov 2026: "sometimes a near-miss,
+# sometimes overshoot-and-rock-back, sometimes a clean stop"), so it is not the
+# same every time (`Ending`, `_plan`):
+#   * CLEAN     the ease-out comes to rest on the prize;
+#   * NEAR_MISS it seems to settle on the slice BEFORE the prize, just short of
+#               the edge, holds a beat, then creeps over onto it;
+#   * OVERSHOOT it slides past onto the slice AFTER, holds, then rocks back;
+#   * CRAWL     a much longer, slower final stretch across the last slices.
+# Each is a list of legs played one after another (`_legs`); the last always
+# ends on the prize, so every ending lands where the draw already put it.
 
 signal spun
 signal landed
@@ -77,6 +90,17 @@ static func glowing(tex: Texture2D, side: int) -> Control:
 	return box
 
 enum State { IDLE, DRAGGING, SPINNING, LANDED }
+enum Ending { CLEAN, NEAR_MISS, OVERSHOOT, CRAWL }
+# How often each ending comes up, in Ending's order.
+const ENDING_WEIGHTS := [3.0, 3.0, 2.0, 2.0]
+# The beat it holds before a near-miss creeps over or an overshoot rocks back.
+const HOLD := 0.45
+# How far short of the prize's edge a near-miss stops, and past it an overshoot
+# goes, in slices.
+const MISS_BY := 0.12
+# A crawl's slow-down: a steeper ease-out over a longer time.
+const CRAWL_POWER := 5.5
+const CRAWL_EXTRA := 1.6
 
 # One per slice: {"texture": Texture2D or null, "glyph": String, "pixel": bool}.
 var slices: Array = []
@@ -92,6 +116,12 @@ var _from: float = 0.0
 var _to: float = 0.0
 var _time: float = 0.0
 var _elapsed: float = 0.0
+# This spin's ending, and its legs still to play: [to, seconds, ease power, or
+# 0 for a hold, or -1 for an ease in-out]. A test sets `ending_override`.
+var ending: int = Ending.CLEAN
+var ending_override: int = -1
+var _legs: Array = []
+var _leg_from: float = 0.0
 var _glow: float = 0.0
 var _drag_last: float = 0.0
 var _drag_moved: float = 0.0
@@ -168,7 +198,9 @@ func skip() -> void:
 		return
 	if state != State.SPINNING:
 		spun.emit()
-	angle = rest_angle(angle, 1.0, 0)
+	# Mid-spin, onto where this spin was always going to stop.
+	angle = _to if state == State.SPINNING else rest_angle(angle, 1.0, 0)
+	_legs = []
 	_land()
 
 func is_spinning() -> bool:
@@ -177,30 +209,81 @@ func is_spinning() -> bool:
 func has_landed() -> bool:
 	return state == State.LANDED
 
-# Spin on from where it stands at `speed` (radians a second; negative turns it
-# anticlockwise), coming to rest on the prize.
+# Spin on clockwise from where it stands at `speed` (radians a second), coming
+# to rest on the prize by one of the endings.
 func _launch(speed: float) -> void:
-	var dir: float = 1.0 if speed >= 0.0 else -1.0
 	var v: float = absf(speed)
 	# Faster is more turns, from two to seven.
 	var turns: int = clampi(int(round(v / 4.0)), 2, 7)
 	_from = angle
-	_to = rest_angle(angle, dir, turns)
+	_to = rest_angle(angle, 1.0, turns)
 	# The ease-out starts at EASE_POWER x distance / time: match it to the speed
 	# it was flung at, inside the bounds.
 	_time = clampf(EASE_POWER * absf(_to - _from) / maxf(v, 0.01), SPIN_MIN, SPIN_MAX)
+	ending = ending_override if ending_override >= 0 else _pick_ending()
+	_legs = _plan(ending)
+	_leg_from = angle
 	_elapsed = 0.0
 	state = State.SPINNING
 	set_process(true)
 	spun.emit()
 
+func _pick_ending() -> int:
+	var total: float = 0.0
+	for w in ENDING_WEIGHTS:
+		total += float(w)
+	var r: float = _rng.randf() * total
+	for i in range(ENDING_WEIGHTS.size()):
+		r -= float(ENDING_WEIGHTS[i])
+		if r <= 0.0:
+			return i
+	return Ending.CLEAN
+
+# The legs of an ending, each [to, seconds, power]: power > 0 an ease-out of that
+# power, 0 a hold where it stands, -1 an ease in-out. The last leg ends on `_to`.
+func _plan(which: int) -> Array:
+	# From the prize's resting place to the edge it is approached across (the one
+	# shared with the slice before it), and to the edge it would be left across.
+	var to_back_edge: float = (0.5 - jitter) * seg()
+	var to_front_edge: float = (0.5 + jitter) * seg()
+	match which:
+		Ending.NEAR_MISS:
+			var short: float = _to - to_back_edge - MISS_BY * seg()
+			return [[short, _time, EASE_POWER], [short, HOLD, 0.0],
+				[_to, 0.75, -1.0]]
+		Ending.OVERSHOOT:
+			var past: float = _to + to_front_edge + MISS_BY * seg() * 1.5
+			return [[past, _time, EASE_POWER], [past, HOLD * 0.7, 0.0],
+				[_to, 0.6, -1.0]]
+		Ending.CRAWL:
+			return [[_to, minf(_time + CRAWL_EXTRA, SPIN_MAX + CRAWL_EXTRA), CRAWL_POWER]]
+	return [[_to, _time, EASE_POWER]]
+
 func _process(delta: float) -> void:
 	if state == State.SPINNING:
 		_elapsed += delta
-		var t: float = clampf(_elapsed / _time, 0.0, 1.0)
-		angle = lerpf(_from, _to, 1.0 - pow(1.0 - t, EASE_POWER))
+		while not _legs.is_empty():
+			var leg: Array = _legs[0]
+			var secs: float = maxf(float(leg[1]), 0.001)
+			var t: float = clampf(_elapsed / secs, 0.0, 1.0)
+			var power: float = float(leg[2])
+			var k: float = t
+			if power > 0.0:
+				k = 1.0 - pow(1.0 - t, power)
+			elif power < 0.0:
+				k = t * t * (3.0 - 2.0 * t)
+			else:
+				k = 0.0
+			angle = lerpf(_leg_from, float(leg[0]), k) if power != 0.0 else _leg_from
+			if t < 1.0:
+				break
+			_elapsed -= secs
+			_leg_from = float(leg[0])
+			angle = _leg_from
+			_legs.pop_front()
 		_repaint()
-		if t >= 1.0:
+		if _legs.is_empty():
+			angle = _to
 			_land()
 	elif shows_arrows():
 		_idle_t += delta
@@ -256,15 +339,15 @@ func drag_to(pos: Vector2) -> void:
 		_drag_samples.pop_front()
 	_repaint()
 
-# Let go: a flick spins on, a click (no real drag) spins at the standard speed, and
-# a slow let-go leaves it where it is.
+# Let go: a flick spins on (clockwise, however it was flung), a click (no real
+# drag) spins at the standard speed, and a slow let-go leaves it where it is.
 func release_drag() -> void:
 	if state != State.DRAGGING:
 		return
 	state = State.IDLE
 	var v: float = flick_speed()
 	if absf(v) >= FLICK_MIN:
-		_launch(clampf(v, -CLICK_SPEED * 2.0, CLICK_SPEED * 2.0))
+		_launch(minf(absf(v), CLICK_SPEED * 2.0))
 	elif _drag_moved < 0.05:
 		_launch(CLICK_SPEED)
 
@@ -387,9 +470,8 @@ func _draw_note(on: CanvasItem, at: Vector2, u: float) -> void:
 
 # WHICH WAY IT TURNS (the owner, 28 Nov 2026: "make sure the player knows which
 # way to spin it by using an arrow"). Two curved arrows just outside the rim,
-# opposite each other, both clockwise, the way a click spins it. They nudge
-# forward while it waits and go once it is spinning. A flick the other way still
-# spins it; the arrows say which way it is meant to go.
+# opposite each other, both clockwise, the way every spin goes. They nudge
+# forward while it waits and go once it is spinning.
 func shows_arrows() -> bool:
 	return state == State.IDLE or state == State.DRAGGING
 

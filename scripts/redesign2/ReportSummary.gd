@@ -111,11 +111,11 @@ func setup(screen: Node) -> void:
 		# TWO WAYS ON (the owner, 28 Nov 2026: "make the rank up rewards its own
 		# button or the player can click a skip and proceed"): the wheel page, or
 		# straight to the haul with the rewards toasted the way they always were.
-		# The skip keeps the name Continue: it is the same way on it always was.
 		var row := HBoxContainer.new()
 		row.name = "Exits"
 		row.add_theme_constant_override("separation", UITheme.GAP)
 		row.size_flags_horizontal = Control.SIZE_SHRINK_END
+		go.name = "Skip"
 		go.text = "Skip  →"
 		go.tooltip_text = "On to the haul. The rewards are yours either way; they are announced as you go."
 		UITheme.tint_action_button(go, UITheme.TEXT_DIM)

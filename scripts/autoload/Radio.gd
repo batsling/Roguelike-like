@@ -506,6 +506,7 @@ func reward_entry(song: SongData) -> Dictionary:
 		"owner": RankRewards.character_key(StringName(by)) if by != "" \
 			else RankRewards.game_key(song.game_id),
 		"text": "📻 New on Roguelike Radio: %s" % _label(song),
+		"what": "📻 New on Roguelike Radio", "name": _label(song),
 		"toast": _toast_unlock.bind(song),
 		"after": func() -> void:
 			_line_up(song)

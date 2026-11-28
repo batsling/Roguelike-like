@@ -113,11 +113,25 @@ def used_glyphs() -> dict:
     return counts
 
 
+# PINNED, so a rebuild changes only what the glyph list changes: an upstream
+# republish can no longer change the shipped fonts unasked (with recalcTimestamp
+# off, below, two builds of the same glyphs are now the same bytes). These are the
+# versions the shipped fonts were built from; bump one on purpose, and say so in
+# the commit.
+VERSIONS = {
+    "noto-sans-symbols-2": "5.3.0",
+    "noto-emoji": "5.3.2",
+    "noto-sans-symbols": "5.3.0",
+    "noto-sans-math": "5.3.0",
+}
+
+
 def fetch(package: str, filename: str) -> bytes:
-    """One subset file out of an @fontsource npm tarball."""
+    """One subset file out of an @fontsource npm tarball, at its pinned version."""
     meta = json.load(urllib.request.urlopen(
         "https://registry.npmjs.org/@fontsource/%s" % package, timeout=60))
-    tarball = meta["versions"][meta["dist-tags"]["latest"]]["dist"]["tarball"]
+    version = VERSIONS.get(package, meta["dist-tags"]["latest"])
+    tarball = meta["versions"][version]["dist"]["tarball"]
     blob = urllib.request.urlopen(tarball, timeout=180).read()
     with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
         member = tar.extractfile("package/files/%s" % filename)
@@ -166,7 +180,10 @@ def main() -> None:
         if not (need - taken):
             break
         print("fetching @fontsource/%s …" % package)
-        font = TTFont(io.BytesIO(fetch(package, filename)))
+        # recalcTimestamp off: fontTools otherwise stamps `head.modified` with the
+        # time of the build, so two builds of the same glyphs were never the same
+        # bytes and every rebuild rewrote all four files (28 Nov 2026).
+        font = TTFont(io.BytesIO(fetch(package, filename)), recalcTimestamp=False)
         mine = (need - taken) & set(font.getBestCmap().keys())
         if not mine:
             font.close()

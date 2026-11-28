@@ -140,6 +140,7 @@ func _refresh_unlocks(announce: bool) -> void:
 func reward_entry(key: String) -> Dictionary:
 	return {"kind": "letter", "key": key, "owner": String(_unlocked.get(key, "")),
 		"text": "🏆 New title letter: %s" % label(key),
+		"what": "🏆 New title letter", "name": label(key),
 		"toast": _toast_unlock.bind(key)}
 
 func _toast_unlock(key: String) -> void:

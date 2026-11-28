@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The rank-up wheel, hardened (28 Nov 2026).** The owner asked for its weak
+  points to be found by questions, and answered them. It spins clockwise only
+  now, whichever way it is flung, with two arrows round the rim saying so. How
+  it ends is mixed up: a clean stop, a near-miss that settles on the slice
+  before the prize and creeps over, an overshoot that rocks back, or a long
+  crawl (each one a list of legs that always ends on the prize). The slices for
+  show are what is still locked first. A held reward is kept in the profile's
+  `held_rank_rewards.json` until shown or toasted, so a crash or a closed window
+  loses no announcement. Smaller fixes: a reward carries its kind and name as
+  fields rather than the card cutting its toast apart; the summary's Skip is
+  called Skip; `tools/gut.sh` fails a run in which a test file did not parse
+  (GUT reports those green); and the glyph fonts build to the same bytes twice
+  (fontTools was stamping the build time into each file) at pinned versions.
+  The wheel's symbol is 🛞, the owner's pick from a sheet of 21.
+
 - **The rank-up wheel (28 Nov 2026).** The owner: "something to play when the
   player ranks up. It should look like a roulette and the player can spin it."
   A rank still draws and saves its song, letter or look the moment its XP

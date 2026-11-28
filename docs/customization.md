@@ -40,12 +40,17 @@ them: a **look**, which is one costume, one icon set or one hat (§7) (`RankRewa
   held, the game's first and then the character's, and offers two ways on:
   - **🛞 Rank-up rewards (N)** opens `RankRewardPage`: one wheel per reward, one after
     another (`RewardWheel`). It always lands on what was drawn; the other slices
-    are pictures of what the same game or character could give, for show. Click
-    it or press Spin, or drag it round and let go (the flick's speed and direction
-    carry on). Two curved arrows outside the rim say which way it turns
-    (clockwise, a click's way) and nudge forward until it spins. A click while it turns, or Skip, lands it at once; **⏭ Skip all**
-    turns every wheel left into its card. More than one reward ends on all their
-    cards, then Continue goes on to the haul.
+    are pictures of what the same game or character could give, for show, the
+    ones **still locked first** (what is already unlocked only tops a wheel up).
+    Click it or press Spin, or drag it round and let go: the flick's speed
+    carries on, and it always spins **clockwise**, whichever way it was flung.
+    Two curved arrows outside the rim say so, nudging forward until it spins.
+    **How it ends is mixed up**: a clean stop, a near-miss (it seems to settle
+    on the slice before the prize, then creeps over), an overshoot (past onto
+    the slice after, then it rocks back), or a long slow crawl. A click while it
+    turns, or Skip, lands it at once; **⏭ Skip all** turns every wheel left into
+    its card. More than one reward ends on all their cards, then Continue goes
+    on to the haul.
   - **Skip** goes straight to the haul and toasts each one, as before the wheel.
 - **A landed reward can be used at once**, and a second press puts back what was
   there before: a song's **▶ Play now** (`Radio.play_song`; a song with no file
@@ -58,6 +63,12 @@ them: a **look**, which is one costume, one icon set or one hat (§7) (`RankRewa
   closes, a summary is torn down unseen) is toasted then (`RankRewardQueue.release`
   / `settle`). Radio also holds back lining a new song up to play next until it
   is revealed, since hearing it would give the prize away.
+- **…and nothing held is lost to a crash.** Each held reward is written to the
+  profile's `held_rank_rewards.json` as `{kind, key}` and comes off it only once
+  it has been shown or toasted, not when the summary takes it. The run page reads
+  it back in when it starts, so the next post-game wheel shows what a crashed or
+  closed session never did. Closing the window (the page sees the OS's close
+  request) keeps the file rather than toasting into a disappearing window.
 - A test profile's **Unlock everything** reads every look as unlocked.
 
 ## 2. The catalog: the file name is the entry

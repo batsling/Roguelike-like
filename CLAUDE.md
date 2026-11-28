@@ -179,6 +179,9 @@ tools/gut.sh --parallel                # the same suite in one shard per core: ~
 python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file's sections + funcs, with lines
 ```
 
+- **A test file that fails to PARSE fails the run.** GUT itself skips such a file
+  and exits 0 with green totals, so `tools/gut.sh` fails any run whose log has a
+  `Parse Error` or no `Totals` block (`broken`). Read the totals, not GUT's word.
 - **Run one file, not the suite, while working.** `-gtest=` on its own does NOT
   narrow a run here: `.gutconfig.json` names `res://test/` and GUT adds the file on
   top of it, so `godot ... -gtest=res://test/test_x.gd` quietly runs all ~3,100

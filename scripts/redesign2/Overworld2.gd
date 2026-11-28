@@ -7995,6 +7995,10 @@ func refresh_board() -> void:
 var _pack_drag: Dictionary = {}
 
 func _notification(what: int) -> void:
+	# The window is closing: a rank reward still held stays on file for the next
+	# session's wheel, rather than being toasted on the way out (RankRewardQueue).
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		RankRewardQueue.closing = true
 	if _drops == null:
 		return
 	match what:

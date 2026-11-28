@@ -70,18 +70,16 @@ func test_a_look_drawn_while_held_is_not_toasted_until_released() -> void:
 	assert_eq(Cosmetics.drawn_for(RankRewards.game_key(GAME)), owed, "drawn and saved at once, as ever")
 	var held: Array = _hastes(RankRewardQueue.held())
 	assert_eq(held.size(), owed, "held for the wheel instead")
-	# Counted by each held reward's own line: a character the suite's other
-	# records have ranked (Zoe herself, in a shard) draws costumes of its own.
-	var told := func() -> int:
-		var n: int = 0
-		for e in held:
-			n += _toasts(String(e["text"]))
-		return n
-	assert_eq(told.call(), 0, "but not toasted while a game is on")
 	for e in held:
 		assert_string_contains(String(e["text"]), "New costume")
+	# Counted against EVERYTHING held, not by line: a character the suite's other
+	# records have ranked (Zoe herself, in a shard) draws costumes of its own, and
+	# an icon costume and a full one can carry the same name.
+	var looks_held: int = RankRewardQueue.held().filter(func(e): return String(e["kind"]) == "look").size()
+	var looks_told := func() -> int: return _toasts("✦ New")
+	assert_eq(looks_told.call(), 0, "but not toasted while a game is on")
 	RankRewardQueue.release()
-	assert_eq(told.call(), owed, "released, each is toasted the way it always was")
+	assert_eq(looks_told.call(), looks_held, "released, each is toasted the way it always was")
 	assert_eq(RankRewardQueue.count(), 0)
 
 func test_nothing_is_held_without_a_holder() -> void:
@@ -187,7 +185,7 @@ func test_skip_puts_it_on_the_prize_at_once() -> void:
 	idle.skip()
 	assert_eq(idle.slice_at(idle.angle), 2, "skipped before it was ever spun")
 
-func test_a_flick_spins_it_on_either_way_and_still_lands_on_the_prize() -> void:
+func test_a_flick_either_way_spins_it_clockwise_onto_the_prize() -> void:
 	for dir in [1.0, -1.0]:
 		var w := _wheel(6)
 		var c: Vector2 = w.centre()
@@ -199,12 +197,64 @@ func test_a_flick_spins_it_on_either_way_and_still_lands_on_the_prize() -> void:
 			w.clock_override = 0.016 * i
 			w.drag_to(c + Vector2.from_angle(dir * 0.25 * i) * 100.0)
 		var before: float = w.angle
-		assert_almost_eq(before, dir * 1.25, 0.01, "it follows the pointer round")
+		assert_almost_eq(before, dir * 1.25, 0.01, "it follows the pointer round, either way")
 		w.release_drag()
 		assert_true(w.is_spinning(), "let go at speed, it spins on")
-		assert_eq(signf(w._to - before), dir, "the way it was flung")
+		assert_gt(w._to, before, "clockwise, however it was flung")
 		_run(w)
 		assert_eq(w.slice_at(w.angle), 6)
+
+# Where the wheel stands after `secs` of the spin.
+func _at(w: RewardWheel, secs: float) -> int:
+	var t: float = 0.0
+	while t < secs and w.is_spinning():
+		w._process(1.0 / 120.0)
+		t += 1.0 / 120.0
+	return w.slice_at(w.angle)
+
+func test_every_ending_lands_on_the_prize() -> void:
+	for e in [RewardWheel.Ending.CLEAN, RewardWheel.Ending.NEAR_MISS,
+			RewardWheel.Ending.OVERSHOOT, RewardWheel.Ending.CRAWL]:
+		for prize in [0, 3, 7]:
+			var w := _wheel(prize)
+			w.ending_override = e
+			w.jitter = randf_range(-0.3, 0.3)
+			w.spin()
+			assert_eq(w.ending, e)
+			_run(w)
+			assert_true(w.has_landed())
+			assert_eq(w.slice_at(w.angle), prize, "ending %d lands on slice %d" % [e, prize])
+
+func test_a_near_miss_holds_on_the_slice_before_then_ticks_over() -> void:
+	var n: int = RewardWheel.SLICES
+	for prize in [0, 4]:
+		var w := _wheel(prize)
+		w.ending_override = RewardWheel.Ending.NEAR_MISS
+		w.spin()
+		var held: int = _at(w, w._time + RewardWheel.HOLD * 0.5)
+		assert_eq(held, (prize + 1) % n, "it seems to stop on the slice before the prize")
+		_run(w)
+		assert_eq(w.slice_at(w.angle), prize, "then creeps over onto it")
+
+func test_an_overshoot_goes_past_then_rocks_back() -> void:
+	var n: int = RewardWheel.SLICES
+	for prize in [0, 4]:
+		var w := _wheel(prize)
+		w.ending_override = RewardWheel.Ending.OVERSHOOT
+		w.spin()
+		var past: int = _at(w, w._time + RewardWheel.HOLD * 0.3)
+		assert_eq(past, (prize - 1 + n) % n, "it slides onto the slice after")
+		_run(w)
+		assert_eq(w.slice_at(w.angle), prize, "and rocks back")
+
+func test_skipping_mid_ending_lands_on_the_prize() -> void:
+	var w := _wheel(5)
+	w.ending_override = RewardWheel.Ending.NEAR_MISS
+	w.spin()
+	_at(w, w._time + 0.1)
+	w.skip()
+	assert_true(w.has_landed())
+	assert_eq(w.slice_at(w.angle), 5)
 
 func test_a_slow_let_go_leaves_it_where_it_is() -> void:
 	var w := _wheel(1)
@@ -377,7 +427,7 @@ func test_the_summary_offers_the_wheel_or_a_skip() -> void:
 	assert_not_null(spin, "a button for the wheel")
 	if spin != null:
 		assert_string_contains(spin.text, "(%d)" % summary.rewards.size())
-	var skip: Button = summary.find_child("Continue", true, false)
+	var skip: Button = summary.find_child("Skip", true, false)
 	assert_not_null(skip, "and a skip")
 	if skip != null:
 		assert_string_contains(skip.text, "Skip")
@@ -421,3 +471,75 @@ func test_arrows_say_which_way_until_it_spins() -> void:
 	w.skip()
 	assert_false(w.shows_arrows())
 	assert_gt(w.rest_angle(0.0, 1.0, 2), 0.0, "and the way they point is the way a click spins it")
+
+func test_the_other_slices_are_still_locked_first() -> void:
+	var units: Array = CosmeticCatalog.units_of_game(GAME)
+	# Two of Haste's looks already owned; the rest (and the prize) locked.
+	Cosmetics._unlocked[units[1]] = "game:haste"
+	Cosmetics._unlocked[units[2]] = "game:haste"
+	var e: Dictionary = {"kind": "look", "key": units[0], "owner": RankRewards.game_key(GAME), "text": "✦ New costume: x"}
+	var p := _page([e])
+	var w: RewardWheel = p._wheel
+	var page_script = load(PAGE_SCRIPT)
+	# What is still locked of each kind, up to the wheel's share of that kind.
+	var pools := {"song": Radio.game_songs(GAME).map(func(x): return String((x as SongData).id)),
+		"letter": TitleLetters.units_of(GAME), "look": units}
+	var want: int = 0
+	for kind in pools:
+		var locked: int = (pools[kind] as Array).filter(func(k): return String(k) != String(units[0]) \
+			and not page_script.is_unlocked(kind, String(k))).size()
+		want += mini(locked, int(page_script.PER_KIND[kind]))
+	want = mini(want, RewardWheel.SLICES - 1)
+	var shown_locked: int = 0
+	for i in range(w.slices.size()):
+		var s: Dictionary = w.slices[i]
+		if i != w.prize and not page_script.is_unlocked(String(s["kind"]), String(s["key"])):
+			shown_locked += 1
+	assert_gt(want, 0)
+	assert_eq(shown_locked, want, "every locked one that fits is on the wheel before anything owned")
+
+# --- held rewards survive a crash -------------------------------------------------
+
+func _real_letter() -> Dictionary:
+	var key: String = TitleLetters.units_of(&"hades")[0]
+	TitleUnlocks._unlocked[key] = "game:hades"
+	return TitleUnlocks.reward_entry(key)
+
+func test_a_held_reward_survives_a_crash_and_comes_back() -> void:
+	_hold()
+	var e := _real_letter()
+	assert_true(RankRewardQueue.offer(e))
+	assert_eq(RankRewardQueue._read().size(), 1, "on file as soon as it is held")
+	# The session dies: the queue in memory is gone, the file is not.
+	RankRewardQueue._held = []
+	RankRewardQueue.hold_while(func() -> bool: return true)
+	var back: Array = RankRewardQueue.held()
+	assert_eq(back.size(), 1, "the next run page reads it back in")
+	assert_eq(String(back[0]["key"]), String(e["key"]))
+	assert_eq(String(back[0]["owner"]), "game:hades", "with who drew it")
+	assert_true((back[0]["toast"] as Callable).is_valid(), "and its toast")
+	RankRewardQueue.hold_while(func() -> bool: return true)
+	assert_eq(RankRewardQueue.count(), 1, "read in once, not twice")
+
+func test_a_reward_leaves_the_file_only_once_shown_or_told() -> void:
+	_hold()
+	RankRewardQueue.offer(_real_letter())
+	var taken: Array = RankRewardQueue.take()
+	assert_eq(RankRewardQueue._read().size(), 1, "taken by a summary, it stays on file")
+	RankRewardQueue.revealed(taken[0])
+	assert_eq(RankRewardQueue._read().size(), 0, "shown by the wheel, it comes off")
+	RankRewardQueue.offer(_real_letter())
+	RankRewardQueue.release()
+	assert_eq(RankRewardQueue._read().size(), 0, "toasted, it comes off too")
+
+func test_a_closing_window_keeps_what_is_held_on_file() -> void:
+	var c := {}
+	var mine := func() -> bool: return true
+	RankRewardQueue.hold_while(mine)
+	RankRewardQueue.offer(_real_letter())
+	RankRewardQueue.offer(_fake("game:x", c))
+	RankRewardQueue.closing = true
+	RankRewardQueue.stop_holding(mine)
+	assert_eq(int(c.get("toast", 0)), 0, "nothing toasted into a closing window")
+	assert_eq(RankRewardQueue._read().size(), 1, "the real one waits on file for next time")
+	assert_eq(RankRewardQueue.count(), 0)
