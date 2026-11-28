@@ -11,6 +11,26 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **28 Nov upload: 2 new games, 4 connections, 8 newly owned games.** Food
+  Devils and Goobies 2 are on the chart and the drawn map with their covers,
+  joined by Darkest Dungeon and Hades → Food Devils and by Goobies and Risk of
+  Rain 2 → Goobies 2, with three proof screenshots. Berserk Mode, Dungeons &
+  Jewels, Forestrike, Genome Guardian 2, Korridor, Schism, The Bazaar and Tiny
+  Auto Knights are owned. `map_layout.tres` is re-baked (1,021 games, 1,670
+  lines), `Map Calc` / `Map Analysis` are rewritten for the two new rows, and
+  `RoguelikeMap.svg` is exported again at scale 5. That export came from draw.io's
+  own renderer (`viewer-static.min.js` in headless Chromium, `Graph.getSvg`)
+  rather than the desktop app, so each label's fallback for viewers without
+  `foreignObject` is plain SVG text instead of a PNG. Browsers draw the same map.
+  Research covered both games for every kind. No connections came up beyond the
+  owner's: Food Devils' developer names Fire Emblem and Hades, and Fire Emblem is
+  not a roguelike. The Goobies 2 brief's wiki turned out to document the
+  *first* Goobies, so its candidates (Amam, Runner, Tree Hugger, Dizzys Ball and
+  its evolution, Dizzy Wizzy, Spinky Winky, Cracked Heart, Symbol Of Pain) are
+  filed under Goobies, which had never been researched. Food Devils gives
+  Syndeer, Tortlumber, Charcoal Roast, Soulful Soup, the Business Logs event and
+  the Ashen Forest.
+
 - **MapView, and Show on map (28 Nov 2026).** The owner agreed to two follow-ups.
   The map's classes are named for what they are now: `AtlasView` is `MapView`,
   `AtlasLayout` is `MapLayout`, the baked file is `data/map_layout.tres` and the

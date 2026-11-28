@@ -2861,6 +2861,15 @@
   "loot": "2026-11-20: 1 row (Eye of Likho), from the patch notes; Living Water repeats Dio's Best Friend, Sharpening Stone the whetstone family, Sword of Koschei and Frost Gauntlets are undocumented; weapons are class kits (sword, bow, daggers) with no named weapons, and rune combining joins runes, not weapons, so no evolutions",
   "statuses": "2026-11-20: nothing usable: its rune elements (Fire, Curse, Bleeding, Electricity, Slowdown) are all live statuses"
  },
+ "Food Devils": {
+  "characters": "2026-11-28: nothing usable: the Chef is not playable and the wiki documents none of the adventurers or devils",
+  "connections": "2026-11-28",
+  "events": "2026-11-28: 1 row (Business Logs); Ghost Tricks, The Charcoal Saint, The Last Salad and Ancient Future have no pages yet",
+  "goals": "2026-11-28: 2 rows (Syndeer, Tortlumber), from the wiki's Ashen Forest pages; the other three biomes have no pages yet",
+  "locations": "2026-11-28: 1 row (Ashen Forest); the other three biomes have no pages yet",
+  "loot": "2026-11-28: 2 rows (Charcoal Roast, Soulful Soup), from Recipes. No weapons (units fight with skills) and no evolutions (recipes are cooked, not one weapon becoming another)",
+  "statuses": "2026-11-28: nothing usable: the page lists only stat boosts/curses, Armor and Bleed (live). Fear, Nausea, Prey/Predator and Awakening are named on enemy pages but not documented"
+ },
  "Footgun: Underground": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "connections": "before 2026-10-07",
@@ -3249,13 +3258,22 @@
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Goobies": {
-  "characters": "2026-10-12: nothing usable: its enemies and items are stat pages (blobs, runners, gem crumbs)",
+  "characters": "2026-11-28: 2 rows (Dizzy Wizzy, Spinky Winky); Wiggle Woogle is the plain starter, Bingus Bongus and Hoozey Woozey are close to the two taken",
   "connections": "before 2026-10-07",
-  "events": "2026-10-12: nothing usable: its enemies and items are stat pages (blobs, runners, gem crumbs)",
-  "goals": "2026-10-12: nothing usable: its enemies and items are stat pages (blobs, runners, gem crumbs)",
-  "locations": "2026-10-12: nothing usable: its enemies and items are stat pages (blobs, runners, gem crumbs)",
-  "loot": "2026-10-12: nothing usable: its enemies and items are stat pages (blobs, runners, gem crumbs)",
-  "statuses": "2026-10-12: nothing usable: its enemies and items are stat pages (blobs, runners, gem crumbs)"
+  "events": "2026-11-28: nothing usable: the wiki has no events",
+  "goals": "2026-11-28: 2 rows (Amam, Runner); Ulla (pulls you in), Blobby (spawner), Exploder and Bacharach (heals itself) repeat goals already on record",
+  "locations": "2026-11-28: nothing usable: the islands have no pages",
+  "loot": "2026-11-28: 3 rows and an evolution (Tree Hugger, Dizzys Ball -> Dizzys Balls); the artifacts are run modifiers, used for statuses instead",
+  "statuses": "2026-11-28: 2 rows (Cracked Heart, Symbol Of Pain), from the artifacts, which are self-imposed handicaps for score"
+ },
+ "Goobies 2": {
+  "characters": "2026-11-28: the wiki the brief found (goobies.fandom.com) documents the FIRST Goobies, page by page ('found in Goobies'); its rows are filed under Goobies. Nothing yet documents the sequel's own content (its gene mutations, omens)",
+  "connections": "2026-11-28",
+  "events": "2026-11-28: the wiki the brief found (goobies.fandom.com) documents the FIRST Goobies, page by page ('found in Goobies'); its rows are filed under Goobies. Nothing yet documents the sequel's own content (its gene mutations, omens)",
+  "goals": "2026-11-28: the wiki the brief found (goobies.fandom.com) documents the FIRST Goobies, page by page ('found in Goobies'); its rows are filed under Goobies. Nothing yet documents the sequel's own content (its gene mutations, omens)",
+  "locations": "2026-11-28: the wiki the brief found (goobies.fandom.com) documents the FIRST Goobies, page by page ('found in Goobies'); its rows are filed under Goobies. Nothing yet documents the sequel's own content (its gene mutations, omens)",
+  "loot": "2026-11-28: the wiki the brief found (goobies.fandom.com) documents the FIRST Goobies, page by page ('found in Goobies'); its rows are filed under Goobies. Nothing yet documents the sequel's own content (its gene mutations, omens)",
+  "statuses": "2026-11-28: the wiki the brief found (goobies.fandom.com) documents the FIRST Goobies, page by page ('found in Goobies'); its rows are filed under Goobies. Nothing yet documents the sequel's own content (its gene mutations, omens)"
  },
  "Gordian Quest": {
   "characters": "2026-10-12: nothing usable: its pages are perk and card names with one-line numbers",
