@@ -412,3 +412,12 @@ func test_skipping_the_wheel_toasts_the_rewards() -> void:
 	Page.leave_post_game(ui)
 	GameState.reset_run()
 	GameLoop2.reset()
+
+func test_arrows_say_which_way_until_it_spins() -> void:
+	var w := _wheel(2)
+	assert_true(w.shows_arrows(), "waiting, it shows which way it turns")
+	w.spin()
+	assert_false(w.shows_arrows(), "spinning, the arrows go")
+	w.skip()
+	assert_false(w.shows_arrows())
+	assert_gt(w.rest_angle(0.0, 1.0, 2), 0.0, "and the way they point is the way a click spins it")

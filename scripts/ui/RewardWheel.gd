@@ -97,6 +97,8 @@ var _drag_last: float = 0.0
 var _drag_moved: float = 0.0
 var _drag_samples: Array = []   # [[time, angle]]
 var _pixel_ink: Control = null
+# Seconds it has stood waiting, for the arrows' nudge.
+var _idle_t: float = 0.0
 var _rng := RandomNumberGenerator.new()
 
 static func make(slice_list: Array, prize_index: int, side: float) -> RewardWheel:
@@ -123,13 +125,17 @@ func _ready() -> void:
 	_pixel_ink.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_pixel_ink.draw.connect(_draw_art.bind(true))
 	add_child(_pixel_ink)
-	set_process(false)
+	# Running from the start: the direction arrows nudge while it waits.
+	set_process(true)
 
 func seg() -> float:
 	return TAU / float(maxi(slices.size(), 1))
 
+# Room round the rim for the direction arrows.
+const ARROW_ROOM := 24.0
+
 func radius() -> float:
-	return minf(size.x, size.y) * 0.5 - 6.0
+	return minf(size.x, size.y) * 0.5 - ARROW_ROOM
 
 func centre() -> Vector2:
 	return size * 0.5
@@ -196,6 +202,9 @@ func _process(delta: float) -> void:
 		_repaint()
 		if t >= 1.0:
 			_land()
+	elif shows_arrows():
+		_idle_t += delta
+		queue_redraw()
 	elif state == State.LANDED and _glow > 0.0:
 		_glow = maxf(0.0, _glow - delta * 0.6)
 		_repaint()
@@ -300,6 +309,8 @@ func _draw() -> void:
 		draw_line(c, c + Vector2.from_angle(a) * r, UITheme.GOLD.lerp(UITheme.BORDER, 0.5), 2.0, true)
 	_draw_art(false)
 	draw_arc(c, r, 0.0, TAU, 96, UITheme.GOLD, 4.0, true)
+	if shows_arrows():
+		_draw_direction(c, r)
 	# Studs round the rim, one per slice edge.
 	for i in range(n):
 		var a: float = -PI * 0.5 + float(i) * seg() + angle
@@ -373,3 +384,26 @@ func _draw_note(on: CanvasItem, at: Vector2, u: float) -> void:
 	var top: Vector2 = at + Vector2(0.9, -6.0) * u
 	on.draw_line(at + Vector2(0.9, 3.0) * u, top, UITheme.GOLD, maxf(1.5, u * 0.9), true)
 	on.draw_line(top, at + Vector2(3.6, -2.6) * u, UITheme.GOLD, maxf(1.5, u * 0.9), true)
+
+# WHICH WAY IT TURNS (the owner, 28 Nov 2026: "make sure the player knows which
+# way to spin it by using an arrow"). Two curved arrows just outside the rim,
+# opposite each other, both clockwise, the way a click spins it. They nudge
+# forward while it waits and go once it is spinning. A flick the other way still
+# spins it; the arrows say which way it is meant to go.
+func shows_arrows() -> bool:
+	return state == State.IDLE or state == State.DRAGGING
+
+func _draw_direction(c: Vector2, r: float) -> void:
+	var wave: float = 0.5 + 0.5 * sin(_idle_t * 4.0)
+	var col := Color(UITheme.GOLD, 0.55 + 0.45 * wave)
+	var nudge: float = 0.07 * wave
+	var at: float = r + ARROW_ROOM * 0.5
+	for start in [-PI * 0.5 + 0.5, PI * 0.5 + 0.5]:
+		var a0: float = start + nudge
+		var a1: float = a0 + 0.85
+		draw_arc(c, at, a0, a1, 24, col, 4.0, true)
+		# The head, at the arc's clockwise end, pointing along it.
+		var p: Vector2 = c + Vector2.from_angle(a1) * at
+		var along := Vector2(-sin(a1), cos(a1))
+		var out := Vector2(cos(a1), sin(a1))
+		draw_colored_polygon(PackedVector2Array([p + along * 12.0, p + out * 8.0, p - out * 8.0]), col)

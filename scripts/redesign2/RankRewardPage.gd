@@ -125,7 +125,7 @@ func _show_wheel() -> void:
 	body.add_child(_result_slot)
 	_hint = Label.new()
 	_hint.name = "Hint"
-	_hint.text = "Click the wheel or press Spin — or grab it, drag it round and let go."
+	_hint.text = "Click the wheel or press Spin — or grab it and drag it round the way the arrows point, then let go."
 	_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_hint.custom_minimum_size = Vector2(TILE_W + 60, 0)
 	_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)

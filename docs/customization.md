@@ -42,7 +42,8 @@ them: a **look**, which is one costume, one icon set or one hat (§7) (`RankRewa
     another (`RewardWheel`). It always lands on what was drawn; the other slices
     are pictures of what the same game or character could give, for show. Click
     it or press Spin, or drag it round and let go (the flick's speed and direction
-    carry on). A click while it turns, or Skip, lands it at once; **⏭ Skip all**
+    carry on). Two curved arrows outside the rim say which way it turns
+    (clockwise, a click's way) and nudge forward until it spins. A click while it turns, or Skip, lands it at once; **⏭ Skip all**
     turns every wheel left into its card. More than one reward ends on all their
     cards, then Continue goes on to the haul.
   - **Skip** goes straight to the haul and toasts each one, as before the wheel.
