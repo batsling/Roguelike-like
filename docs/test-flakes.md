@@ -66,6 +66,12 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     `test_overworld2`, once its orphans number in the thousands. Raising
     `memory/limits/message_queue/max_size_mb` would hide it rather than find it;
     if it recurs, log the queue's size per test to see which one fills it.
+    **It recurred on 28 Nov 2026** (the rank-up wheel / one-map branch, CI run
+    1543), again in `Container::_sort_children`, this time during
+    `test_game_choice_modal.gd::test_key_roads_are_drawn_only_while_a_key_is_held`
+    on the 0/2 machine. The same half of the split (shards 0–3 of 8) passed
+    locally, 1,894 of 1,894, so it is still a CI-only crash and still not caught;
+    the per-test queue log is the next step.
   - **CI's GUT job crashing with signal 11** (main on 19 Nov 2026, PR #366
     twice on 20 Nov), at a random point after `test_overworld2`'s orphan
     list, with no failed assertion. Each crash log that reaches back far enough
