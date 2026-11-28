@@ -4,9 +4,10 @@
 Writes `data/atlas_layout_map.tres`: an `AtlasLayout` whose stars sit EXACTLY
 where the owner drew each game's box, at the size they drew it, with every line
 as drawn (its colour and the points it leaves and enters its boxes at) and the
-year ruler down the left. `AtlasView` draws it during a run (the owner, 19 Nov
-2026: "a map that is shaped exactly as this is"); the Collection keeps the
-baked constellations and the Tree.
+year ruler down the left. `AtlasView` draws it (the owner, 19 Nov 2026: "a map
+that is shaped exactly as this is"): in a run, in Run History and from the main
+menu's Extras. It is the only map since the computed star chart went (28 Nov
+2026).
 
 Nothing here lays anything out. The drawio is the layout, so the shape is the
 owner's to change: redraw, upload the .drawio, rerun this.
@@ -263,8 +264,6 @@ source_filter = "drawn"
 game_ids = PackedStringArray({", ".join('"%s"' % g for g in ids)})
 xs = PackedFloat32Array({fl(cx)})
 ys = PackedFloat32Array({fl(cy)})
-region = PackedInt32Array({", ".join("-1" for _ in ids)})
-hops = PackedInt32Array({", ".join("-1" for _ in ids)})
 edges = PackedInt32Array({", ".join(str(v) for v in edges)})
 box_w = PackedFloat32Array({fl(bw)})
 box_h = PackedFloat32Array({fl(bh)})

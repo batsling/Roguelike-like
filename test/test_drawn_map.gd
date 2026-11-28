@@ -125,16 +125,7 @@ func test_a_run_view_draws_the_drawn_map() -> void:
 		pending("the drawn map is not baked")
 		return
 	var view := _open_run_view()
-	assert_true(view.layout.is_drawn_map(), "outside the Collection the Atlas is the owner's map")
-
-func test_the_collection_keeps_the_computed_sky() -> void:
-	var view: AtlasView = ATLAS.new()
-	view.pure_catalog = true
-	add_child_autofree(view)
-	if not view.has_layout():
-		pending("no sky baked")
-		return
-	assert_false(view.layout.is_drawn_map(), "the Collection draws the constellations")
+	assert_true(view.layout.is_drawn_map(), "the map is the owner's drawing")
 
 func test_clicking_a_box_picks_its_game() -> void:
 	if _map == null:
@@ -364,19 +355,17 @@ func _text(node: Node) -> String:
 		out += (c as Label).text + "\n"
 	return out
 
-func test_the_collection_draws_no_rifts() -> void:
+# OUTSIDE A RUN (the Extras map) there are no rifts and no road: nothing of a run
+# is drawn on it, whatever the last run left behind.
+func test_the_map_outside_a_run_draws_no_run() -> void:
 	if _map == null:
 		pending("the drawn map is not baked")
 		return
-	_start_run()
 	var view: AtlasView = ATLAS.new()
-	view.pure_catalog = true
 	add_child_autofree(view)
-	assert_eq(view.rift_seams(), [], "the catalog has no run, so no rifts")
+	assert_true(view.outside_run(), "no run page, so no run")
+	assert_eq(view.trail_segment_count(), 0)
 
-# THE MAP'S TOGGLE (the owner, 20 Nov 2026): the run's Map opens on the Optimal
-# Path with an "Optimal path | Full map" switch on top; Full opens the drawn map on
-# its own with the same switch, and the switch goes back.
 func _button(root: Node, name: String) -> Button:
 	for b in root.find_children(name, "Button", true, false):
 		if (b as Button).is_visible_in_tree():

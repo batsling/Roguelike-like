@@ -597,7 +597,7 @@ still exists under an old name silently generates the wrong content.
 > regenerate anything: it overwrote 15 of the 861 real files with a lossy copy,
 > dropping `influence_sources`, `influence_relations`, `owned`, `file_location`
 > and `steam_page`, and cutting `games_influenced` down to whatever was inside
-> the subset (Hades: 48 links to 8). That is the graph the Atlas is baked from.
+> the subset (Hades: 48 links to 8). That is the graph every run travels.
 > It is deleted rather than fixed, because `import-games-godot.py` already does
 > the job from the sheet the rest of the pipeline uses.
 
@@ -623,14 +623,13 @@ still exists under an old name silently generates the wrong content.
 | `generate_curse2_tres.py` | `data/curses2.0/*.tres` — the CURSE CARDS (`CardData`, `docs/loot-passives.md` §18) — from the `curses` sheet |
 | `build_glyph_font.py` | `fonts/*.ttf` — the UI's symbol glyphs, subsetted from Noto. Not sheet-driven: it scans `scripts/**/*.gd` for the glyphs actually used. Run it after adding a new one; `--check` verifies without writing |
 | `item_dsl.py` | **not a generator**: the item Effect-column DSL and ItemData writer that `generate_item2_tres.py` runs and the loot generators borrow (it was `generate_item_tres.py`) |
-| `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas, and lists the games `research/ledger.json` has no entry for (`research.py new` researches them) |
+| `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — and lists the games `research/ledger.json` has no entry for (`research.py new` researches them) |
 | `research.py` | **not data**: every kind of research (connections, tags, goals, loot, events, characters, statuses, locations) in one place. Candidates in `research/<kind>.csv`; `build` writes them into `tools/Research.xlsx` for the owner and `sync` reads the owner's yes/no and edits back; `research/ledger.json` records what has been researched and `research/wikis.json` each game's wiki. `new` runs everything for games just added. See `docs/research.md` |
 | `influence_research.py new` | **not data**: researches the games added since the last pass for influences (every scan that works from the cloud, over just those games) into `.influence_work/new_games.md`; `--mark` records them in `research/ledger.json`. See `docs/influence-research.md` |
 | `apply_tag_edits.py` | the `games` sheet's **Tags** column, from the game's tag export (Settings → Game tags; `tools/tag_edits.json`), writing only each game's added/removed tags, through `_xlsx_surgery` so the charts and formula columns survive — then runs `import-games-godot.py`. Idempotent; `--dry-run` shows the changes |
 | `apply_radio_import.py` | the `radio` sheet, from the Radio screen's *Export song list* (`tools/radio_import.json`): a row per new audio file in the player's music folder, from the file's own tags, its game matched from the folder it sits in. Only adds; through `_xlsx_surgery`, then runs `generate_song_tres.py`. `--dry-run`, `--game "Folder=Game"`; see `docs/roguelike-radio.md` §2a |
 | `tag_research.py` | **not data**: the tag sheets of `tools/Research.xlsx` (it leaves the other sheets alone), tag suggestions for the owner from each game's Steam tags, store text and title. It never writes `Roguelikes.xlsx`; the owner types the tags they agree with into `games` |
-| `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
-| `bake_drawio_map.py` | `data/atlas_layout_map.tres` — **the owner's hand-drawn map**, read straight off `tools/Roguelikes.drawio`: every box where and as big as it was drawn, every line with its colour and anchors, the year ruler. A run's Atlas draws it. Rerun after every drawio upload; CI's `--check` says when it is stale |
+| `bake_drawio_map.py` | `data/atlas_layout_map.tres` — **the owner's hand-drawn map**, read straight off `tools/Roguelikes.drawio`: every box where and as big as it was drawn, every line with its colour and anchors, the year ruler. It is the game's one map (a run's, Run History's and Extras'). Rerun after every drawio upload; CI's `--check` says when it is stale |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_events2_ranwid_setup.py` | one-shot: the Ranwid the Elder event row |
 | `_events2_tiny_rogues_setup.py` | one-shot: the `Opens With` column, the Potion Lab and Golden Monkey rows, and Ranwid's credit line |
@@ -670,49 +669,26 @@ the repository root, e.g.:
 python3 tools/generate_item2_tres.py
 ```
 
-`bake_atlas.py` runs automatically at the end of `import-games-godot.py`, so
-adding a game or a connection to the spreadsheet and re-importing moves the sky
-with it. Run it directly to re-tune the layout:
+**There is one map, and it is the owner's drawing.** The computed Atlas star
+chart that used to sit beside it (`bake_atlas.py`'s constellation skies, one per
+game filter, and `AtlasLayoutBuilder`, which re-laid a sky at runtime for the
+Collection's filters) was taken out on 28 Nov 2026 (the owner: "get rid of the
+atlas and instead let's have the new map replace it"); it is in git history.
 
-```bash
-python3 tools/bake_atlas.py --all-filters  # every sky (what the importer runs)
-python3 tools/bake_atlas.py                # 8 capitals, full catalog
-python3 tools/bake_atlas.py --filter owned # just the owned-games sky
-python3 tools/bake_atlas.py --capitals 12  # re-cut the constellations
-python3 tools/bake_atlas.py --stats        # report without writing
-```
-
-One sky is baked per `Settings.game_filter` value. The Atlas has to show the
-graph the run actually travels — an owned-only run drawn over the full 751-game
-sky would offer routes through games the run cannot enter — so each variant is
-laid out from scratch over its own subgraph and gets its own capitals rather
-than being the full map with stars hidden.
-
-It refuses to write a layout in which any two stars overlap, so a bad run fails
-loudly rather than shipping an unreadable map.
-
-**The same layout also runs at runtime.** `scripts/ui/AtlasLayoutBuilder.gd` is
-a GDScript port of the baker's layout half (`build_graph` / `span_tree` /
-`cluster_layout` / `pack_around` / `pack_discs`), because the sky for a filter
-the player assembles in the Collection — "Deckbuilder + never beaten + owned" —
-is one of hundreds of combinations and cannot be baked. The two agree about the
-*shape* of a sky (same capitals, same regions, same hops, same no-overlap
-guarantee) but are not bit-identical: `math.hypot` is not `sqrt(x*x + y*y)` in
-the last bits, and the packer picks positions with strict comparisons a one-ulp
-difference can flip. That never shows, because the unfiltered catalog is drawn
-from the baked file. Keep the two in step when either changes — the tests in
-`test/test_atlas_layout_builder.gd` assert the agreement.
-
-**The map a run draws is the owner's drawing, not a computed sky** (the
-owner, 19 Nov 2026). `tools/bake_drawio_map.py` reads `tools/Roguelikes.drawio`
+**The map is the owner's drawing** (the owner, 19 Nov 2026). `tools/bake_drawio_map.py` reads `tools/Roguelikes.drawio`
 into `data/atlas_layout_map.tres`, an `AtlasLayout` with the drawn-map fields
 (`box_w`/`box_h`, `edge_dev`, `edge_anchors`, the `ruler_*` arrays;
-`is_drawn_map()`), and `AtlasView` draws it outside the Collection: white paper,
+`is_drawn_map()`), and `AtlasView` draws it: old parchment,
 each game a box with its name, black and blue lines with draw.io's arrowheads,
 the grey year rules. Hovering a box lights it and puts up the game's card with
 its art. A game the run can't enter (outside the game filter, or off the run's
-main group) is greyed in place, because the shape is the point. The
-Collection keeps the computed constellations and the Tree.
+main group) is greyed in place, because the shape is the point.
+
+**Outside a run it is in the main menu's Extras** (🗺 Map, after the Collection;
+the owner, 28 Nov 2026): no road, no rifts, no You or Amulet, and **All games**
+by default (`AtlasView.owned_only_menu`, remembered apart from the run's).
+Whether a map is outside a run is whether a run page is mounted
+(`AtlasView.outside_run`).
 
 In a run it is the **Full map** half of the 🗺 Map's "Optimal path | Full map"
 switch (`Overworld2.open_full_map`), and it has a second switch, **All games |

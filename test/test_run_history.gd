@@ -113,7 +113,7 @@ func test_showing_a_run_on_the_map_frames_it() -> void:
 	var atlas = ATLAS.new()
 	add_child_autofree(atlas)
 	if not atlas.has_layout():
-		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
+		pending("the drawn map is not baked — run tools/bake_drawio_map.py")
 		return
 	assert_true(atlas.frame_games(GameStats.runs[0]["path"]),
 		"the run's route can be framed on the map")
@@ -134,7 +134,7 @@ func test_showing_a_run_on_the_map_leaves_the_map_up() -> void:
 	var atlas = ATLAS.new()
 	add_child_autofree(atlas)
 	if not atlas.has_layout():
-		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
+		pending("the drawn map is not baked — run tools/bake_drawio_map.py")
 		return
 	var screen = HISTORY.new()
 	screen._atlas = atlas
@@ -161,7 +161,7 @@ func test_a_route_the_sky_cannot_hold_does_not_close_the_strip() -> void:
 	var atlas = ATLAS.new()
 	add_child_autofree(atlas)
 	if not atlas.has_layout():
-		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
+		pending("the drawn map is not baked — run tools/bake_drawio_map.py")
 		return
 	var screen = HISTORY.new()
 	screen._atlas = atlas
@@ -175,7 +175,7 @@ func test_framing_unknown_games_is_refused() -> void:
 	var atlas = ATLAS.new()
 	add_child_autofree(atlas)
 	if not atlas.has_layout():
-		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
+		pending("the drawn map is not baked — run tools/bake_drawio_map.py")
 		return
 	assert_false(atlas.frame_games(["not_a_game", "also_not"]),
 		"a route the sky doesn't hold frames nothing")

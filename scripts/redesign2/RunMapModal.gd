@@ -336,7 +336,7 @@ func _build_header() -> Control:
 		# Put the whole corridor back in frame on the chart behind — the window is
 		# a second view of the same route, and it should be able to point at it.
 		tools.add_child(_zoom_button("⌖ Frame route", _frame_route))
-	elif _offer_chart and not _to_full.is_valid() and AtlasView.load_layout() != null:
+	elif _offer_chart and not _to_full.is_valid() and AtlasView.load_drawn_map() != null:
 		# Opened without a chart under it: offer to raise one. The start picker gets
 		# the offer too now — there is no longer a secret for the sky to give away.
 		tools.add_child(_zoom_button("✦ Star chart", _open_atlas))

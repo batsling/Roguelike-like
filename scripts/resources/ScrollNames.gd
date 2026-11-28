@@ -14,7 +14,7 @@ extends Resource
 # generated into data/ by tools/generate_scroll2_tres.py and read from there.
 #
 # It is loaded BY PATH (ScrollSystem.NAMES_PATH), the way AtlasView loads
-# data/atlas_layout.tres, rather than through `Data`: Data._load_dir keys a
+# data/atlas_layout_map.tres, rather than through `Data`: Data._load_dir keys a
 # folder's resources by their `id`, and this is one singleton row rather than a
 # catalog of them.
 #

@@ -1525,28 +1525,9 @@ func _build_games() -> void:
 		_refresh())
 	row.add_child(status_opt)
 	row.add_child(VSeparator.new())
-	# The same catalog as the grid, drawn as the influence graph instead of a
-	# list. Opened in PURE mode: no run is laid over it, because the Collection is
-	# about the catalog, not about a run in progress.
-	var constellation := HoverButton.new()
-	constellation.text = "✦ Show constellation"
-	constellation.tooltip_text = "See the whole catalog as a star chart of influences"
-	constellation.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	constellation.disabled = AtlasView.load_layout() == null
-	if constellation.disabled:
-		constellation.tooltip_text = "Run tools/bake_atlas.py to generate the star chart"
-	constellation.pressed.connect(_open_constellation)
-	row.add_child(constellation)
 	_add_count_label(row)
 	_grid_and_detail()
 	_populate_games()
-
-# Open the catalog as a star chart, over the Collection so closing it comes
-# straight back here.
-func _open_constellation() -> void:
-	if AtlasView.load_layout() == null:
-		return
-	AtlasView.open(get_parent() if get_parent() != null else self, true)
 
 func _populate_games() -> void:
 	_clear_children(_grid)

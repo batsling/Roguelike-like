@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **One map: the drawn one, now in Extras too (28 Nov 2026).** The owner: "get
+  rid of the atlas and instead let's have the new map replace it and also include
+  it in the extras section." The computed star chart is gone entirely: the
+  Collection's *✦ Show constellation* button, `tools/bake_atlas.py`, the five
+  baked skies (`data/atlas_layout*.tres` but the map), `AtlasLayoutBuilder` (the
+  runtime re-layout behind the Collection's filters and the Tree), the catalog
+  mode in `AtlasView` with its filters, capitals, hulls and cover art, the fields
+  `AtlasLayout` kept only for it, the importer's re-bake step, and their tests
+  (`AtlasView` went from 3,878 lines to about 2,900). The drawn map that already
+  served a run, Run History and the run-over screen is the only map, and the main
+  menu's Extras has a **🗺 Map** button after the Collection that opens it with no
+  run on it: no road, rifts or markers, and All games by default, remembered
+  apart from the run's Owned default. "Outside a run" is read off whether a run
+  page is mounted, since `GameState.phase` never leaves MENU in a fresh run. The
+  run-over screen's button reads "See the run on the map".
+
 - **The rank-up wheel, hardened (28 Nov 2026).** The owner asked for its weak
   points to be found by questions, and answered them. It spins clockwise only
   now, whichever way it is flung, with two arrows round the rim saying so. How

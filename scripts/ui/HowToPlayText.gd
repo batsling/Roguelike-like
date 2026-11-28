@@ -1318,8 +1318,10 @@ static func _ch_screen() -> Dictionary:
 				+ "is a step of the optimal path. Click a line for who inspired "
 				+ "whom and its proof. Hover or click a rift's swirl for the game "
 				+ "inside it."),
-			_kv("✦ Atlas", "The star chart of every game, opened from the "
-				+ "Collection. Not a run tool — a thing to look at."),
+			_kv("🗺 Map (Extras)", "The same full map outside a run, from the "
+				+ "main menu's Extras: every game and who inspired whom, with "
+				+ "All games / Owned to narrow it. Not a run tool — a thing to "
+				+ "look at."),
 			_kv("Collection", "Every item, scroll, enemy, event and status in the "
 				+ "game, and whether you have met it."),
 			_kv("🏆 Tier List", "Your own ranking of every game you have beaten, "

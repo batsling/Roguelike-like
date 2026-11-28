@@ -2300,7 +2300,7 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
 	var wants_chart: bool = RUN_ATLAS and bool(opts.get("chart", true)) \
-		and load(ATLAS_VIEW_SCRIPT).load_layout() != null
+		and load(ATLAS_VIEW_SCRIPT).load_drawn_map() != null
 	opts["offer_chart"] = RUN_ATLAS
 	opts.erase("chart")
 	if wants_chart:
