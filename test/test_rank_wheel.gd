@@ -16,6 +16,11 @@ var _saved_worn: Dictionary
 var _holding: bool = false
 
 func before_each() -> void:
+	# Whatever the records earlier test files left owes is drawn NOW, with nothing
+	# holding, so it is toasted and gone rather than turning up in this test's
+	# queue the first time something here makes the unlocks catch up.
+	RankRewardQueue.reset_for_tests()
+	RankRewardQueue.catch_up()
 	_saved_stats = GameStats.stats.duplicate(true)
 	_saved_unlocked = Cosmetics._unlocked.duplicate()
 	_saved_worn = Cosmetics._worn.duplicate()
@@ -109,7 +114,10 @@ func test_take_puts_the_named_owners_first() -> void:
 	RankRewardQueue.offer(_fake("game:other", c, "test", "b"))
 	RankRewardQueue.offer(_fake("game:haste", c, "test", "c"))
 	var got: Array = RankRewardQueue.take(["game:haste", "character:zoe"])
-	assert_eq(got.map(func(e): return String(e["key"])), ["c", "a", "b"])
+	# Only the test's own: `take` lets the unlock systems catch up first, and in a
+	# shard the records earlier tests left can draw real looks in beside them.
+	var mine: Array = got.filter(func(e): return String(e["kind"]) == "test")
+	assert_eq(mine.map(func(e): return String(e["key"])), ["c", "a", "b"])
 	assert_eq(RankRewardQueue.count(), 0, "taken off the queue")
 	assert_eq(int(c.get("toast", 0)), 0, "taking tells nothing")
 
