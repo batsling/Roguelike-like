@@ -28,7 +28,7 @@ extends RefCounted
 
 const PATH := "res://data/cosmetics.json"
 const KINDS := ["key", "bomb", "difficulty", "luck", "chest", "health", "damage", "gold", "shield",
-	"hunger", "timer", "roulette"]
+	"hunger", "timer"]
 const SLOTS := ["icon", "full"]
 
 static var _cache: Dictionary = {}

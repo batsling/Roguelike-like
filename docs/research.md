@@ -403,7 +403,7 @@ not part of `research.py new`. The owner names a game, a kind of icon, or just
 
 A row is one picture a game draws for something this game also has: `Kind` is
 the art folder it would go in (`Health`, `Damage`, `Gold`, `Shields`, `Luck`,
-`Keys`, `Bombs`, `Chests`, `Difficulties`, `Hunger`, `Timer`, `Roulette` (the rank-up wheel's 🎡: a game's roulette, wheel of fortune or slot machine), and one kind per status,
+`Keys`, `Bombs`, `Chests`, `Difficulties`, `Hunger`, `Timer`, and one kind per status,
 `Statuses/<Status>`, since a status's folder sits inside `Statuses/`), `File` the name it would carry there
 (`<Name>_<Game>`, the form [customization.md](customization.md) §2 reads the
 game out of), `Size` its real pixel size and `Source` the page it came from.

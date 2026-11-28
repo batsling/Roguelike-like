@@ -307,15 +307,6 @@ func _draw() -> void:
 	# The hub.
 	draw_circle(c, r * 0.12, UITheme.BG_DEEP)
 	draw_arc(c, r * 0.12, 0.0, TAU, 48, UITheme.GOLD, 3.0, true)
-	# …wearing the ROULETTE icon (Customization: the 🎡's stand-in), when one is
-	# worn. It turns with the wheel.
-	var hub: Texture2D = Cosmetics.glyph_texture("🎡")
-	if hub != null:
-		var hs := Vector2(hub.get_width(), hub.get_height())
-		var drawn: Vector2 = hs * (r * 0.17 / maxf(hs.x, hs.y))
-		draw_set_transform(c, angle, Vector2.ONE)
-		draw_texture_rect(hub, Rect2(-drawn * 0.5, drawn), false)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# The pointer, at the top, pointing in.
 	var tip := Vector2(c.x, c.y - r + 18.0)
 	var tri := PackedVector2Array([tip, Vector2(c.x - 14.0, c.y - r - 12.0),

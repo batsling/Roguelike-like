@@ -33,10 +33,9 @@ const ICON_SUB_STATUSES := 1
 const HAT_PREVIEW := 150
 const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
 	"luck": "Luck", "chest": "Chests", "health": "Health", "damage": "Damage", "gold": "Gold",
-	"shield": "Shields", "hunger": "Hunger", "timer": "Timer (anything temporary)",
-	"roulette": "Roulette (the rank-up wheel)"}
+	"shield": "Shields", "hunger": "Hunger", "timer": "Timer (anything temporary)"}
 const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀", "chest": "🎁",
-	"health": "♥", "damage": "⚔", "gold": "◉", "shield": "🛡", "hunger": "🍗", "timer": "⏱", "roulette": "🎡"}
+	"health": "♥", "damage": "⚔", "gold": "◉", "shield": "🛡", "hunger": "🍗", "timer": "⏱"}
 
 var _tab := 0
 var _icon_sub := 0
