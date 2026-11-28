@@ -196,7 +196,7 @@ func get_stats(id) -> Dictionary:
 # get_stats returns a fresh `{"beaten": 0, "amulets": 0}` for a game with no
 # record — which is most games — so every ask for a count on an unplayed game
 # allocated a Dictionary and threw it away. The Atlas's catalog view asks for both
-# counts on every star of an 852-star sky on every redraw (AtlasView's
+# counts on every star of an 852-star sky on every redraw (MapView's
 # star_record_color), so a pan across the chart was minting thousands of
 # throwaway dictionaries a frame for two integers that are almost always zero.
 # Measured over the whole sky: ~1.0 ms a pass, all of it garbage.

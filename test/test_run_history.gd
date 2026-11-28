@@ -8,7 +8,7 @@ extends GutTest
 
 const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 const HISTORY := preload("res://scripts/ui/RunHistoryScreen.gd")
-const ATLAS := preload("res://scripts/ui/AtlasView.gd")
+const ATLAS := preload("res://scripts/ui/MapView.gd")
 
 var _saved_runs: Array = []
 

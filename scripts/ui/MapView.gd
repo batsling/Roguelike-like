@@ -1,8 +1,8 @@
-class_name AtlasView
+class_name MapView
 extends Control
 
 # THE MAP — the owner's hand-drawn map of every game and how they influenced each
-# other (tools/Roguelikes.drawio, baked into data/atlas_layout_map.tres by
+# other (tools/Roguelikes.drawio, baked into data/map_layout.tres by
 # tools/bake_drawio_map.py), drawn as old parchment: each game a box with its
 # name, the influence lines in ink, the year rules faint behind them.
 #
@@ -19,7 +19,8 @@ extends Control
 # and instead let's have the new map replace it"). It was this class's first job —
 # constellations around hub games, covers blooming with zoom, filters that re-laid
 # the sky (AtlasLayoutBuilder, tools/bake_atlas.py) — and is in git history. The
-# class keeps its name, and its "star" vocabulary means a box on the map.
+# class was AtlasView until then (renamed the same day); its "star" vocabulary
+# means a box on the map.
 
 signal finished
 
@@ -30,7 +31,7 @@ signal finished
 # whatever the game filter: the
 # shape is the point, so a game the run can't enter is dimmed where it stands
 # rather than taken out and the map re-laid around the hole.
-const MAP_LAYOUT_PATH := "res://data/atlas_layout_map.tres"
+const MAP_LAYOUT_PATH := "res://data/map_layout.tres"
 
 
 # How far out the map zooms, as a multiple of the fit-to-screen scale.
@@ -186,7 +187,7 @@ const PICK_EDGE_RADIUS := 7.0    # how near a link you must click to open it
 # "here → if you take this → the Amulet".
 var preview_origin: StringName = &""
 
-var layout: AtlasLayout = null
+var layout: MapLayout = null
 
 var _scale: float = 1.0
 var _fit_scale: float = 1.0
@@ -284,8 +285,8 @@ var _legend_bar: PanelContainer = null
 # Lifecycle
 # ---------------------------------------------------------------------------
 
-static func open(parent: Node) -> AtlasView:
-	var v := AtlasView.new()
+static func open(parent: Node) -> MapView:
+	var v := MapView.new()
 	parent.add_child(v)
 	return v
 
@@ -308,11 +309,11 @@ func _ready() -> void:
 	frame_all()
 
 # The drawn map, or null if it was never baked.
-static func load_drawn_map() -> AtlasLayout:
+static func load_drawn_map() -> MapLayout:
 	if ResourceLoader.exists(MAP_LAYOUT_PATH):
 		var res: Resource = load(MAP_LAYOUT_PATH)
-		if res is AtlasLayout and (res as AtlasLayout).is_drawn_map():
-			return res as AtlasLayout
+		if res is MapLayout and (res as MapLayout).is_drawn_map():
+			return res as MapLayout
 	return null
 
 # The chart fills the screen, minus whatever strip at the top of it belongs to
@@ -1422,7 +1423,7 @@ class RouteKey extends Control:
 
 	func _draw() -> void:
 		var y: float = size.y * 0.5
-		draw_line(Vector2(0, y), Vector2(size.x, y), AtlasView.COL_TRAIL_CASING, 6.0, true)
+		draw_line(Vector2(0, y), Vector2(size.x, y), MapView.COL_TRAIL_CASING, 6.0, true)
 		draw_line(Vector2(0, y), Vector2(size.x, y), core, 3.0, true)
 		var tip := Vector2(size.x, y)
 		draw_colored_polygon(PackedVector2Array([
@@ -1469,7 +1470,7 @@ func _fit_card() -> void:
 
 # Cover art on a card is shown WHOLE. The two builders live on UITheme now
 # (UITheme.card_art / card_art_size), because the route ladder's card draws the
-# same art and naming AtlasView for it pulled this 2,800-line file into every
+# same art and naming MapView for it pulled this 2,800-line file into every
 # run's page load (docs/performance-backlog.md §6). These forward, so nothing
 # that already calls them here changes.
 const CARD_ART_WIDTH := 248.0
@@ -2279,7 +2280,7 @@ func _on_canvas_input(event: InputEvent) -> void:
 # ---------------------------------------------------------------------------
 
 class StarCanvas extends Control:
-	var view: AtlasView = null
+	var view: MapView = null
 
 	func _gui_input(event: InputEvent) -> void:
 		if view != null:
@@ -2299,9 +2300,9 @@ class StarCanvas extends Control:
 	# year beside it, black lines for influence and blue for sequels and same
 	# studio, each with draw.io's filled arrowhead where it enters, and every game
 	# a white box with a thin black border and its name. Hovering a box puts its
-	# card up (AtlasView.card_star). During a run, games the run can't enter are
+	# card up (MapView.card_star). During a run, games the run can't enter are
 	# greyed where they stand; the run's own roads and markers go on top.
-	func _draw_drawn_map(lay: AtlasLayout) -> void:
+	func _draw_drawn_map(lay: MapLayout) -> void:
 		var vis := Rect2(Vector2.ZERO, size)
 		_draw_parchment(lay, vis)
 		var font: Font = get_theme_default_font()
@@ -2311,25 +2312,25 @@ class StarCanvas extends Control:
 		# The year ruler.
 		var x0: float = view.to_screen(Vector2(lay.ruler_x.x, 0)).x
 		var x1: float = view.to_screen(Vector2(lay.ruler_x.y, 0)).x
-		var year_px: int = int(round(AtlasView.MAP_YEAR_FONT * sc))
+		var year_px: int = int(round(MapView.MAP_YEAR_FONT * sc))
 		for k in range(lay.ruler_years.size()):
 			var y: float = view.to_screen(Vector2(0, lay.ruler_ys[k])).y
 			if y < -40.0 or y > vis.size.y + 40.0:
 				continue
 			draw_line(Vector2(maxf(x0, -10.0), y), Vector2(minf(x1, vis.size.x + 10.0), y),
-				AtlasView.MAP_RULE, 1.0)
-			if year_px >= AtlasView.MAP_MIN_TEXT_PX:
+				MapView.MAP_RULE, 1.0)
+			if year_px >= MapView.MAP_MIN_TEXT_PX:
 				var lr: Rect2 = lay.ruler_label_rect
 				var box := Rect2(view.to_screen(Vector2(lr.position.x, lay.ruler_label_ys[k])),
 					lr.size * sc)
 				var ypx: int = _fit_px(font, -1 - k, str(lay.ruler_years[k]), box.size, year_px)
 				if ypx > 0:
-					_text_in(font, box, str(lay.ruler_years[k]), ypx, AtlasView.MAP_INK)
+					_text_in(font, box, str(lay.ruler_years[k]), ypx, MapView.MAP_INK)
 
 		# The lines, under the boxes as in draw.io.
 		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
 		var width: float = clampf(sc * 0.55, 0.7, 1.5)
-		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 10.0)
+		var head: float = clampf(MapView.MAP_ARROW * sc, 3.0, 10.0)
 		# The picked game's own lines are held back and drawn over the roads below,
 		# in the picked game's TYPE colour (the owner, 26 Nov 2026).
 		var picked_lines: Array = []
@@ -2343,12 +2344,12 @@ class StarCanvas extends Control:
 			var pb: Vector2 = view.to_screen(ends[1])
 			if not vis.grow(head).intersects(Rect2(pa, Vector2.ZERO).expand(pb)):
 				continue
-			var col: Color = AtlasView.MAP_BLUE if lay.is_dev_edge(pair) else AtlasView.MAP_INK
+			var col: Color = MapView.MAP_BLUE if lay.is_dev_edge(pair) else MapView.MAP_INK
 			if focused and (a == view._selected or b == view._selected):
 				picked_lines.append([pa, pb, view.on_optimal_path(a, b)])
 				continue
 			if focused or view.off_run(a) or view.off_run(b):
-				col = Color(col, AtlasView.MAP_FADE)
+				col = Color(col, MapView.MAP_FADE)
 			_draw_map_line(pa, pb, col, width, head)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
@@ -2369,35 +2370,35 @@ class StarCanvas extends Control:
 			var pick_w: float = width + 1.8
 			for line in picked_lines:
 				if bool(line[2]):
-					draw_line(line[0], line[1], AtlasView.COL_TRAIL_CASING, pick_w + 7.0, true)
-					draw_line(line[0], line[1], AtlasView.COL_TRAIL, pick_w + 4.5, true)
+					draw_line(line[0], line[1], MapView.COL_TRAIL_CASING, pick_w + 7.0, true)
+					draw_line(line[0], line[1], MapView.COL_TRAIL, pick_w + 4.5, true)
 				_draw_map_line(line[0], line[1], pick_col, pick_w, head + 1.5)
 		_draw_picked_edge(lay)
 
 		# The boxes.
-		var name_px: int = int(round(AtlasView.MAP_NAME_FONT * sc))
+		var name_px: int = int(round(MapView.MAP_NAME_FONT * sc))
 		for i in range(lay.star_count()):
 			var r: Rect2 = view.screen_box(i)
 			if not vis.intersects(r.grow(2.0)) or view.hidden(i):
 				continue
 			var faded: bool = view.off_run(i) or (focused and not view._near.has(i))
-			var fill: Color = AtlasView.MAP_BOX
-			var ink: Color = AtlasView.MAP_INK
+			var fill: Color = MapView.MAP_BOX
+			var ink: Color = MapView.MAP_INK
 			if faded:
-				fill = AtlasView.MAP_PAPER_DIM
-				ink = Color(AtlasView.MAP_INK, 0.35)
+				fill = MapView.MAP_PAPER_DIM
+				ink = Color(MapView.MAP_INK, 0.35)
 			# THE BOX UNDER THE CURSOR LIGHTS UP (the owner, 20 Nov 2026): tinted
 			# and ringed in the pick colour, with a soft halo outside the ring, so
 			# a small box at a low zoom still says which one the card is about.
 			var lit: bool = i == view._selected or i == view._hovered
 			if lit:
-				fill = AtlasView.MAP_BOX.lerp(AtlasView.MAP_PICK, 0.22)
-				ink = AtlasView.MAP_INK
-				draw_rect(r.grow(3.0), Color(AtlasView.MAP_PICK, 0.35), false, 4.0)
+				fill = MapView.MAP_BOX.lerp(MapView.MAP_PICK, 0.22)
+				ink = MapView.MAP_INK
+				draw_rect(r.grow(3.0), Color(MapView.MAP_PICK, 0.35), false, 4.0)
 			# A neighbour of the picked game that is on the optimal path wears the
 			# road's orange outside its own outline.
 			if focused and not lit and view._near.has(i) and view.on_optimal_path(i, i):
-				draw_rect(r.grow(3.0), AtlasView.COL_TRAIL, false, 3.0)
+				draw_rect(r.grow(3.0), MapView.COL_TRAIL, false, 3.0)
 			draw_rect(r, fill)
 			# EVERY BOX IS OUTLINED IN ITS GAME'S TYPE COLOUR (the owner, 26 Nov
 			# 2026), the colours the legend and every card use for the four types.
@@ -2406,18 +2407,18 @@ class StarCanvas extends Control:
 			if faded:
 				edge_col = Color(edge_col, 0.4)
 			if lit:
-				edge_col = AtlasView.MAP_PICK
+				edge_col = MapView.MAP_PICK
 				edge_w = 2.5
 			draw_rect(r, edge_col, false, edge_w)
 			# A game bashed this run is a road that no longer exists: crossed out.
 			if view.is_bashed(i):
-				draw_line(r.position, r.end, AtlasView.COL_EDGE_BASHED, 2.0, true)
+				draw_line(r.position, r.end, MapView.COL_EDGE_BASHED, 2.0, true)
 				draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y),
-					AtlasView.COL_EDGE_BASHED, 2.0, true)
-			if name_px >= AtlasView.MAP_MIN_TEXT_PX:
+					MapView.COL_EDGE_BASHED, 2.0, true)
+			if name_px >= MapView.MAP_MIN_TEXT_PX:
 				var game: GameData = view.game_at(i)
 				var label: String = game.display_name if game != null else String(view.star_id(i))
-				var inner: Rect2 = r.grow(-AtlasView.MAP_TEXT_PAD)
+				var inner: Rect2 = r.grow(-MapView.MAP_TEXT_PAD)
 				var px: int = _fit_px(font, i, label, inner.size, name_px)
 				if px > 0:
 					_text_in(font, inner, label, px, ink)
@@ -2440,9 +2441,9 @@ class StarCanvas extends Control:
 			var dir: Vector2 = d.normalized()
 			var perp := Vector2(-dir.y, dir.x)
 			_polygon_at(pb, PackedVector2Array([Vector2.ZERO,
-				-dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
+				-dir * head + perp * head * MapView.MAP_ARROW_SPREAD,
 				-dir * head * 0.75,
-				-dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
+				-dir * head - perp * head * MapView.MAP_ARROW_SPREAD]), col)
 
 	# A seam fades with the other lines when something else is picked.
 	func _rift_alpha(k: int, seam: Dictionary, focused: bool) -> float:
@@ -2456,12 +2457,12 @@ class StarCanvas extends Control:
 		if not Rect2(Vector2.ZERO, size).grow(40.0).intersects(_bounds_of(pts)):
 			return
 		var core: float = clampf(view._scale * 0.9, 1.6, 3.5)
-		draw_polyline(pts, Color(AtlasView.MAP_RIFT_GLOW, AtlasView.MAP_RIFT_GLOW.a * alpha),
+		draw_polyline(pts, Color(MapView.MAP_RIFT_GLOW, MapView.MAP_RIFT_GLOW.a * alpha),
 			core * 3.2, true)
 		# Dashed along the curve's length, so the dashes stay even round the bend.
 		var dash: float = maxf(7.0, core * 3.5)
 		var gap: float = dash * 0.6
-		var col := Color(AtlasView.MAP_RIFT, alpha)
+		var col := Color(MapView.MAP_RIFT, alpha)
 		var on: bool = true
 		var left: float = dash
 		for i in range(pts.size() - 1):
@@ -2498,8 +2499,8 @@ class StarCanvas extends Control:
 		var glow := Color(UITheme.RIFT, alpha)
 		# Picked or under the cursor: ringed in the pick colour, as a box is.
 		if lit:
-			draw_circle(at, rad + 5.0, Color(AtlasView.MAP_PICK, 0.45))
-			draw_arc(at, rad + 3.5, 0.0, TAU, 32, AtlasView.MAP_PICK, 2.5, true)
+			draw_circle(at, rad + 5.0, Color(MapView.MAP_PICK, 0.45))
+			draw_arc(at, rad + 3.5, 0.0, TAU, 32, MapView.MAP_PICK, 2.5, true)
 		draw_circle(at, rad + 1.5, glow)
 		draw_circle(at, rad, deep)
 		var spiral := PackedVector2Array()
@@ -2508,11 +2509,11 @@ class StarCanvas extends Control:
 			var ang: float = t * TAU * 2.2
 			spiral.append(at + Vector2(cos(ang), sin(ang)) * rad * 0.82 * t)
 		draw_polyline(spiral, glow, maxf(1.2, rad * 0.14), true)
-		if name_px < AtlasView.MAP_MIN_TEXT_PX:
+		if name_px < MapView.MAP_MIN_TEXT_PX:
 			return
 		var game: GameData = Data.get_game(seam["game"])
 		var label: String = "RIFT · " + (game.display_name if game != null else String(seam["game"]))
-		var px: int = clampi(int(name_px * 1.1), AtlasView.MAP_MIN_TEXT_PX + 4, 22)
+		var px: int = clampi(int(name_px * 1.1), MapView.MAP_MIN_TEXT_PX + 4, 22)
 		var sz: Vector2 = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
 		var pad := Vector2(px * 0.6, px * 0.25)
 		var pill := Rect2(Vector2(at.x - sz.x * 0.5, at.y + rad + 4.0) - pad, sz + pad * 2.0)
@@ -2533,12 +2534,12 @@ class StarCanvas extends Control:
 	# which the bake pads with a margin), lying on the game's own dark background
 	# with a shadow under it, edges darkened the way old paper browns, and a frame.
 	# It pans and zooms with the map, so it reads as a thing you are looking at.
-	func _draw_parchment(lay: AtlasLayout, vis: Rect2) -> void:
+	func _draw_parchment(lay: MapLayout, vis: Rect2) -> void:
 		draw_rect(vis, UITheme.BG_DEEP)
 		var sheet := Rect2(view.to_screen(lay.bounds.position), lay.bounds.size * view._scale)
 		var lift: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.01, 3.0, 12.0)
-		draw_rect(Rect2(sheet.position + Vector2(lift, lift * 1.4), sheet.size), AtlasView.MAP_SHADOW)
-		draw_rect(sheet, AtlasView.MAP_PAPER)
+		draw_rect(Rect2(sheet.position + Vector2(lift, lift * 1.4), sheet.size), MapView.MAP_SHADOW)
+		draw_rect(sheet, MapView.MAP_PAPER)
 		_draw_grain(sheet, vis)
 		# The browned edges, darkest at the border and fading over 8% of the
 		# sheet's short side (the owner, 19 Nov 2026: "make the edges stronger").
@@ -2557,16 +2558,16 @@ class StarCanvas extends Control:
 			var toward: Vector2 = (sheet.get_center() - outer[k]).sign()
 			mid.append(outer[k] + toward * depth * 0.35)
 			inner.append(outer[k] + toward * depth)
-		var dark := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA)
-		var half := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA * 0.35)
-		var clear := Color(AtlasView.MAP_PAPER_EDGE, 0.0)
+		var dark := Color(MapView.MAP_PAPER_EDGE, MapView.MAP_EDGE_ALPHA)
+		var half := Color(MapView.MAP_PAPER_EDGE, MapView.MAP_EDGE_ALPHA * 0.35)
+		var clear := Color(MapView.MAP_PAPER_EDGE, 0.0)
 		for k in range(4):
 			var n: int = (k + 1) % 4
 			draw_polygon(PackedVector2Array([outer[k], outer[n], mid[n], mid[k]]),
 				PackedColorArray([dark, dark, half, half]))
 			draw_polygon(PackedVector2Array([mid[k], mid[n], inner[n], inner[k]]),
 				PackedColorArray([half, half, clear, clear]))
-		draw_rect(sheet, AtlasView.MAP_FRAME, false, clampf(lift * 0.6, 2.0, 6.0))
+		draw_rect(sheet, MapView.MAP_FRAME, false, clampf(lift * 0.6, 2.0, 6.0))
 
 	# Paper grain: a tile of fibres and specks laid over the sheet at a fixed
 	# SCREEN size, anchored to the sheet's corner, so it moves with the paper when
@@ -2576,7 +2577,7 @@ class StarCanvas extends Control:
 		var area: Rect2 = sheet.intersection(vis)
 		if area.size.x <= 0.0 or area.size.y <= 0.0:
 			return
-		var tex: Texture2D = AtlasView.paper_grain()
+		var tex: Texture2D = MapView.paper_grain()
 		var t: float = float(tex.get_width())
 		var start := sheet.position + ((area.position - sheet.position) / t).floor() * t
 		var y: float = start.y
@@ -2604,13 +2605,13 @@ class StarCanvas extends Control:
 		if not hit.is_empty() and hit[0] == stamp:
 			return int(hit[1])
 		var px: int = want
-		while px >= AtlasView.MAP_MIN_TEXT_PX:
+		while px >= MapView.MAP_MIN_TEXT_PX:
 			var sz: Vector2 = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER,
 				area.x, px)
 			if sz.x <= area.x and sz.y <= area.y:
 				break
 			px = mini(px - 1, int(px * 0.92))
-		if px < AtlasView.MAP_MIN_TEXT_PX:
+		if px < MapView.MAP_MIN_TEXT_PX:
 			px = 0
 		view._fit_cache[key] = [stamp, px]
 		return px
@@ -2629,8 +2630,8 @@ class StarCanvas extends Control:
 	# walked road goes down first so the road ahead reads on top of it — that's
 	# the one carrying a decision.
 	func _draw_roads() -> void:
-		_draw_road(view._history, AtlasView.COL_HISTORY)
-		_draw_road(view._trail, AtlasView.COL_TRAIL)
+		_draw_road(view._history, MapView.COL_HISTORY)
+		_draw_road(view._trail, MapView.COL_TRAIL)
 
 	# One road. Every casing is laid down before any core, so one segment's core
 	# never sits on another's outline and read as a break in the road; arrowheads
@@ -2638,7 +2639,7 @@ class StarCanvas extends Control:
 	func _draw_road(segments: Array, col: Color) -> void:
 		if segments.is_empty():
 			return
-		var lay: AtlasLayout = view.layout
+		var lay: MapLayout = view.layout
 		# THINNER ON THE DRAWN MAP (the owner, 20 Nov 2026: "lets have the arrows in
 		# the map become thinner"): a pen-weight road over pen-weight lines, with
 		# narrower arrowheads.
@@ -2652,9 +2653,9 @@ class StarCanvas extends Control:
 			var a: Vector2 = ends[0]
 			var b: Vector2 = ends[1]
 			if _jumped(seg):
-				draw_dashed_line(a, b, AtlasView.COL_TRAIL_CASING, casing, dash, true)
+				draw_dashed_line(a, b, MapView.COL_TRAIL_CASING, casing, dash, true)
 			else:
-				draw_line(a, b, AtlasView.COL_TRAIL_CASING, casing, true)
+				draw_line(a, b, MapView.COL_TRAIL_CASING, casing, true)
 		for seg in segments:
 			var ends2: PackedVector2Array = _seg_ends(seg)
 			var a2: Vector2 = ends2[0]
@@ -2668,7 +2669,7 @@ class StarCanvas extends Control:
 		# always runs from the game nearer you to the game nearer the Amulet, and
 		# along the walked road from the older game to the newer one.
 		var head: float = clampf(core * 3.6, 6.0, 11.0) if drawn else clampf(core * 3.1, 8.0, 24.0)
-		var spread: float = AtlasView.MAP_CHEVRON_SPREAD if drawn else 0.44
+		var spread: float = MapView.MAP_CHEVRON_SPREAD if drawn else 0.44
 		for seg in segments:
 			var from_i: int = int(seg[0])
 			var to_i: int = int(seg[1])
@@ -2683,13 +2684,13 @@ class StarCanvas extends Control:
 			# borders, so there is nothing to clear.
 			var pad_a: float = 0.0
 			var pad_b: float = 0.0
-			for t in AtlasView.route_arrow_offsets(length, pad_a, pad_b, head):
+			for t in MapView.route_arrow_offsets(length, pad_a, pad_b, head):
 				_chevron(a3 + dir * t, dir, head, col, spread)
 
 	# The link the player clicked: drawn over the stars so it can't be lost in a
 	# hub's fan of lines, with both endpoints ringed so it's obvious which two
 	# games the card is talking about.
-	func _draw_picked_edge(lay: AtlasLayout) -> void:
+	func _draw_picked_edge(lay: MapLayout) -> void:
 		var e: int = view._selected_edge
 		if e < 0 or e >= lay.edge_count():
 			return
@@ -2699,20 +2700,20 @@ class StarCanvas extends Control:
 		var pa: Vector2 = view.to_screen(picked[0])
 		var pb: Vector2 = view.to_screen(picked[1])
 		var core: float = clampf(view._scale * 0.32, 2.0, 4.0)
-		draw_line(pa, pb, AtlasView.COL_TRAIL_CASING, core + 3.0, true)
-		draw_line(pa, pb, AtlasView.COL_SELECTED_EDGE, core, true)
+		draw_line(pa, pb, MapView.COL_TRAIL_CASING, core + 3.0, true)
+		draw_line(pa, pb, MapView.COL_SELECTED_EDGE, core, true)
 		# One arrowhead at the midpoint, pointing the way the influence ran.
 		var delta: Vector2 = pb - pa
 		if delta.length() > 1.0:
 			var dir: Vector2 = delta.normalized()
 			_chevron(pa + delta * 0.5, dir, clampf(core * 3.4, 10.0, 22.0),
-				AtlasView.COL_SELECTED_EDGE)
+				MapView.COL_SELECTED_EDGE)
 		for idx in [a, b]:
 			var p: Vector2 = view.to_screen(lay.position_of(idx))
 			var r: float = maxf(6.0, view.drawn_half_height(idx) + 3.0)
-			draw_arc(p, r, 0.0, TAU, 28, AtlasView.COL_SELECTED_EDGE, 1.8, true)
+			draw_arc(p, r, 0.0, TAU, 28, MapView.COL_SELECTED_EDGE, 1.8, true)
 
-	# A road segment's two ends on screen (AtlasView.road_ends).
+	# A road segment's two ends on screen (MapView.road_ends).
 	func _seg_ends(seg: Array) -> PackedVector2Array:
 		var e: PackedVector2Array = view.road_ends(int(seg[0]), int(seg[1]))
 		return PackedVector2Array([view.to_screen(e[0]), view.to_screen(e[1])])
@@ -2732,7 +2733,7 @@ class StarCanvas extends Control:
 		var right: Vector2 = -dir * size * 0.5 - perp * size * spread
 		var grow: float = (size + (2.0 if spread < 0.44 else 3.4)) / size
 		_polygon_at(at, PackedVector2Array([tip * grow, left * grow, right * grow]),
-			AtlasView.COL_TRAIL_CASING)
+			MapView.COL_TRAIL_CASING)
 		_polygon_at(at, PackedVector2Array([tip, left, right]), col)
 
 	# A small polygon drawn around `at`, its points given RELATIVE to it.
@@ -2753,7 +2754,7 @@ class StarCanvas extends Control:
 	# the spot is (and, for the Amulet, how many steps are left). A marker whose
 	# star is off screen becomes an arrow at the edge pointing the way, so the
 	# answer to "where am I" is never "somewhere off that way, keep panning".
-	func _draw_run_markers(lay: AtlasLayout, captions: bool = true) -> void:
+	func _draw_run_markers(lay: MapLayout, captions: bool = true) -> void:
 		var cur: int = view.current_index()
 		var goal: int = view.amulet_index()
 		var considering: int = view.preview_index()
@@ -2763,14 +2764,14 @@ class StarCanvas extends Control:
 		# The Amulet first, so the you-are-here badge wins any overlap — the map
 		# is read from where you stand.
 		if goal >= 0 and goal != cur and goal != considering:
-			_draw_marker(lay, goal, view.marker_text(goal), AtlasView.COL_GOAL, taken, captions)
+			_draw_marker(lay, goal, view.marker_text(goal), MapView.COL_GOAL, taken, captions)
 		if considering >= 0:
 			_draw_marker(lay, considering, view.marker_text(considering),
-				AtlasView.COL_CONSIDERING, taken, captions)
+				MapView.COL_CONSIDERING, taken, captions)
 		if cur >= 0:
-			_draw_marker(lay, cur, view.marker_text(cur), AtlasView.COL_YOU, taken, captions)
+			_draw_marker(lay, cur, view.marker_text(cur), MapView.COL_YOU, taken, captions)
 
-	func _draw_marker(lay: AtlasLayout, i: int, text: String, col: Color,
+	func _draw_marker(lay: MapLayout, i: int, text: String, col: Color,
 			taken: Array[Rect2], caption: bool = true) -> void:
 		var p: Vector2 = view.to_screen(lay.position_of(i))
 		if not Rect2(Vector2.ZERO, size).has_point(p):
@@ -2778,7 +2779,7 @@ class StarCanvas extends Control:
 			return
 		var r: float = maxf(11.0, view.drawn_half_height(i) + 7.0)
 		draw_arc(p, r + 7.0, 0.0, TAU, 40, Color(col, 0.22), 9.0, true)
-		draw_arc(p, r, 0.0, TAU, 40, AtlasView.COL_TRAIL_CASING, 5.5, true)
+		draw_arc(p, r, 0.0, TAU, 40, MapView.COL_TRAIL_CASING, 5.5, true)
 		draw_arc(p, r, 0.0, TAU, 40, col, 2.6, true)
 		draw_arc(p, r + 6.0, 0.0, TAU, 40, Color(col, 0.75), 1.4, true)
 		if not caption:

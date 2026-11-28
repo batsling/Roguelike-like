@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **MapView, and Show on map (28 Nov 2026).** The owner agreed to two follow-ups.
+  The map's classes are named for what they are now: `AtlasView` is `MapView`,
+  `AtlasLayout` is `MapLayout`, the baked file is `data/map_layout.tres` and the
+  tests are `test_map_view.gd`. A game's page in the Collection has
+  **🗺 Show on map** beside Play and Steam, for a game the drawing has: it opens
+  the map over the Collection on that game, zoomed in with its card up and its
+  lines lit, switching Owned off if it would hide the game.
+
 - **One map: the drawn one, now in Extras too (28 Nov 2026).** The owner: "get
   rid of the atlas and instead let's have the new map replace it and also include
   it in the extras section." The computed star chart is gone entirely: the

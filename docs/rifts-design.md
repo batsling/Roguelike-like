@@ -229,7 +229,7 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   **`RIFT_TRANSMUTE_RESERVE = 2`** off-map games; a genre with two or fewer keeps
   all of them. About 12 rifts a run still leaves most of the pool.
 - **The atlas** draws only real influences, so a route step through a rift is left
-  out of the atlas trail (`AtlasView._build_trail`). The walked path already marks
+  out of the atlas trail (`MapView._build_trail`). The walked path already marks
   a step that is not a connection, as it does for teleports.
 - **Tests.** Existing tests assume the map is exactly the influence graph
   (`test/test_amulet_pool.gd` asserts every map game can be the goal). Those need
@@ -268,14 +268,14 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 - `RouteLadder`: each segment carries a third entry, `rift`, drawn dashed in the
   rift colour; a rift game's rung has a teal border and a `🌀`. The run map uses
   the same ladder.
-- `AtlasView` (the owner's drawn map, 20 Nov 2026, "option A" of four mocked up):
+- `MapView` (the owner's drawn map, 20 Nov 2026, "option A" of four mocked up):
   every rift is a **seam** — a dashed teal curve between the two games it joins,
   bowed off the straight line so it never reads as an influence line, with a
   violet swirl badge at its middle and `RIFT · <game>` on a pill under it once
   names are legible. The rift game gets no box (`rift_seams()`; a keyed rift is a
   short hook off its one end). Seams go under the roads, badges over the boxes,
   and the legend keys `🌀 Rift`. Since 20 Nov 2026 each curve is CHOSEN
-  (`AtlasView.rift_curves`): bowed either way, by one of six depths, peaking at
+  (`MapView.rift_curves`): bowed either way, by one of six depths, peaking at
   the middle or leaning toward an end, and the one kept stays on the paper and
   crosses the fewest boxes, then is the shallowest. A rift is CLICKABLE — its
   badge or its curve — and its card shows the rift game's profile, the two

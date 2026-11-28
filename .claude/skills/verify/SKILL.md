@@ -42,7 +42,7 @@ video game you go and play is the combat). Mirror what the GUT suites do.
   `choose_start(0)`. See `test/test_overworld2.gd`.
 - **Screens built in code** (no scene file) — construct and `add_child` directly:
   `Collection.new()`, `RewardScreen`, `TierListScreen`, `RunOverScreen`,
-  `AtlasView`, `EventModal`. Set `set_anchors_preset(Control.PRESET_FULL_RECT)` if
+  `MapView`, `EventModal`. Set `set_anchors_preset(Control.PRESET_FULL_RECT)` if
   you want it to fill the viewport for a screenshot.
 - **`PlaySession2.tscn`** is the text-only precursor of the overworld, kept as a
   headless harness for the loop.

@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Bake the owner's hand-drawn map (tools/Roguelikes.drawio) into the game.
 
-Writes `data/atlas_layout_map.tres`: an `AtlasLayout` whose stars sit EXACTLY
+Writes `data/map_layout.tres`: an `MapLayout` whose stars sit EXACTLY
 where the owner drew each game's box, at the size they drew it, with every line
 as drawn (its colour and the points it leaves and enters its boxes at) and the
-year ruler down the left. `AtlasView` draws it (the owner, 19 Nov 2026: "a map
+year ruler down the left. `MapView` draws it (the owner, 19 Nov 2026: "a map
 that is shaped exactly as this is"): in a run, in Run History and from the main
 menu's Extras. It is the only map since the computed star chart went (28 Nov
 2026).
@@ -34,7 +34,7 @@ of the 1,657 lines leave the bottom middle and enter the top middle; the rest
 name their own. A line with no anchor is drawn the way draw.io draws one: from
 centre towards centre, cut at each box's border (stored as -1).
 
-    python3 tools/bake_drawio_map.py            # write data/atlas_layout_map.tres
+    python3 tools/bake_drawio_map.py            # write data/map_layout.tres
     python3 tools/bake_drawio_map.py --check    # CI: exit 1 if it is out of date
 """
 import importlib
@@ -49,7 +49,7 @@ import check_map_sync as C  # noqa: E402
 
 DRAWIO = os.path.join(TOOLS, "Roguelikes.drawio")
 XLSX = os.path.join(TOOLS, "Roguelikes.xlsx")
-OUT = os.path.join(ROOT, "data", "atlas_layout_map.tres")
+OUT = os.path.join(ROOT, "data", "map_layout.tres")
 GAMES_DIR = os.path.join(ROOT, "data", "games")
 # Margin around everything, in drawio units: the parchment sheet the game draws
 # the map on is the bounds, so this is the paper showing round the drawing.
@@ -68,7 +68,7 @@ def _style(s):
 
 
 def _ends(box, a, b, anchors):
-    """Where the line from box `a` to box `b` leaves and enters, as AtlasLayout
+    """Where the line from box `a` to box `b` leaves and enters, as MapLayout
     .edge_ends draws it: draw.io's anchor, else the centre line cut at the border."""
     def border(r, tx, ty):
         cx, cy = r[0] + r[2] / 2, r[1] + r[3] / 2
@@ -254,12 +254,12 @@ def bake(drawio=DRAWIO):
     def fl(v):
         return ", ".join(("%.3f" % x).rstrip("0").rstrip(".") if x != int(x) else str(int(x)) for x in v)
 
-    body = f"""[gd_resource type="Resource" script_class="AtlasLayout" load_steps=2 format=3 uid="uid://atlas_layout_map"]
+    body = f"""[gd_resource type="Resource" script_class="MapLayout" load_steps=2 format=3 uid="uid://map_layout"]
 
-[ext_resource type="Script" path="res://scripts/resources/AtlasLayout.gd" id="1_atlas"]
+[ext_resource type="Script" path="res://scripts/resources/MapLayout.gd" id="1_map"]
 
 [resource]
-script = ExtResource("1_atlas")
+script = ExtResource("1_map")
 source_filter = "drawn"
 game_ids = PackedStringArray({", ".join('"%s"' % g for g in ids)})
 xs = PackedFloat32Array({fl(cx)})
@@ -290,14 +290,14 @@ def main():
     if "--check" in sys.argv:
         current = open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""
         if current != body:
-            print("data/atlas_layout_map.tres is out of date with tools/Roguelikes.drawio.\n"
+            print("data/map_layout.tres is out of date with tools/Roguelikes.drawio.\n"
                   "Fix: python3 tools/bake_drawio_map.py, then commit it.")
             sys.exit(1)
         print("ok — the drawn map is current (%d games, %d lines, %d years)" % (n, e, y))
         return
     with open(OUT, "w", encoding="utf-8") as fh:
         fh.write(body)
-    print("wrote data/atlas_layout_map.tres: %d games, %d lines, %d years" % (n, e, y))
+    print("wrote data/map_layout.tres: %d games, %d lines, %d years" % (n, e, y))
 
 
 if __name__ == "__main__":

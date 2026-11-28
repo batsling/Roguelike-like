@@ -3,17 +3,17 @@ extends GutTest
 # The owner's hand-drawn map in the game (19 Nov 2026).
 #
 # `tools/bake_drawio_map.py` reads tools/Roguelikes.drawio into
-# data/atlas_layout_map.tres, and a run's Atlas draws that instead of the
+# data/map_layout.tres, and a run's Atlas draws that instead of the
 # computed constellations: every game a box exactly where and as big as the owner
 # drew it, every line as drawn, the year ruler beside them. The Collection keeps
 # the computed skies. These tests hold the file to the catalog and the view to
 # what the owner asked for: the shape as drawn, games the run can't enter greyed
 # in place rather than removed, and hovering a box putting up its card.
 
-const ATLAS := preload("res://scripts/ui/AtlasView.gd")
+const ATLAS := preload("res://scripts/ui/MapView.gd")
 const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 
-var _map: AtlasLayout
+var _map: MapLayout
 
 func before_all() -> void:
 	_map = ATLAS.load_drawn_map()
@@ -22,8 +22,8 @@ func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
 
-func _open_run_view() -> AtlasView:
-	var view: AtlasView = ATLAS.new()
+func _open_run_view() -> MapView:
+	var view: MapView = ATLAS.new()
 	add_child_autofree(view)
 	return view
 
@@ -36,7 +36,7 @@ func _start_run() -> Node:
 # --- the baked file -----------------------------------------------------------
 
 func test_the_drawn_map_is_baked() -> void:
-	assert_not_null(_map, "data/atlas_layout_map.tres exists (python3 tools/bake_drawio_map.py)")
+	assert_not_null(_map, "data/map_layout.tres exists (python3 tools/bake_drawio_map.py)")
 	if _map != null:
 		assert_true(_map.is_drawn_map(), "and it is a drawn map, with boxes")
 
@@ -114,7 +114,7 @@ func test_a_line_starts_on_its_box_and_ends_on_the_other() -> void:
 
 func test_an_unanchored_line_is_cut_at_the_box_border() -> void:
 	var r := Rect2(0, 0, 40, 20)
-	var hit: Vector2 = AtlasLayout._border_toward(r, Vector2(20, 200))
+	var hit: Vector2 = MapLayout._border_toward(r, Vector2(20, 200))
 	assert_almost_eq(hit.y, 20.0, 0.001, "straight down leaves the bottom edge")
 	assert_almost_eq(hit.x, 20.0, 0.001, "in the middle")
 
@@ -211,14 +211,14 @@ func test_every_name_drawn_fits_inside_its_box() -> void:
 			view.focus_game(gid)
 			view._scale *= zoom
 			var vis := Rect2(Vector2.ZERO, view._canvas_size())
-			var want: int = int(round(AtlasView.MAP_NAME_FONT * view._scale))
-			if want < AtlasView.MAP_MIN_TEXT_PX:
+			var want: int = int(round(MapView.MAP_NAME_FONT * view._scale))
+			if want < MapView.MAP_MIN_TEXT_PX:
 				continue
 			for i in range(view.layout.star_count()):
 				var r: Rect2 = view.screen_box(i)
 				if not vis.intersects(r):
 					continue
-				var inner: Rect2 = r.grow(-AtlasView.MAP_TEXT_PAD)
+				var inner: Rect2 = r.grow(-MapView.MAP_TEXT_PAD)
 				var label: String = view.game_at(i).display_name
 				var px: int = canvas._fit_px(font, i, label, inner.size, want)
 				if px == 0:
@@ -285,9 +285,9 @@ func test_every_rift_is_a_seam_between_its_two_games() -> void:
 	# middle half that far off the straight line.
 	var c: Dictionary = curves[two]
 	var chord_mid: Vector2 = ((c["pa"] as Vector2) + (c["pb"] as Vector2)) * 0.5
-	var curve_mid: Vector2 = AtlasView.bezier(c["pa"], c["c"], c["pb"], 0.5)
+	var curve_mid: Vector2 = MapView.bezier(c["pa"], c["c"], c["pb"], 0.5)
 	var chord_len: float = ((c["pb"] as Vector2) - (c["pa"] as Vector2)).length()
-	assert_gt(curve_mid.distance_to(chord_mid), chord_len * AtlasView.RIFT_BOWS[0] * 0.25,
+	assert_gt(curve_mid.distance_to(chord_mid), chord_len * MapView.RIFT_BOWS[0] * 0.25,
 		"bowed, so it never reads as an influence line")
 
 # THE CURVE GOES ROUND THE BOXES (the owner, 20 Nov 2026): of the bows tried, the
@@ -308,7 +308,7 @@ func test_a_rift_curve_crosses_the_fewest_boxes_it_can() -> void:
 		var d: Vector2 = pb - pa
 		var up := Vector2(-d.y, d.x).normalized()
 		for side in [1.0, -1.0]:
-			for k in AtlasView.RIFT_BOWS:
+			for k in MapView.RIFT_BOWS:
 				var alt: Vector2 = pa.lerp(pb, 0.5) + up * side * d.length() * k
 				if not view._curve_on_paper(pa, alt, pb):
 					continue    # off the paper is never chosen over on it
@@ -361,7 +361,7 @@ func test_the_map_outside_a_run_draws_no_run() -> void:
 	if _map == null:
 		pending("the drawn map is not baked")
 		return
-	var view: AtlasView = ATLAS.new()
+	var view: MapView = ATLAS.new()
 	add_child_autofree(view)
 	assert_true(view.outside_run(), "no run page, so no run")
 	assert_eq(view.trail_segment_count(), 0)
@@ -387,10 +387,10 @@ func test_the_run_map_toggles_between_optimal_and_full() -> void:
 	full.pressed.emit()
 	await wait_frames(2)
 	var atlas = ui._route_atlas
-	assert_true(atlas is AtlasView and is_instance_valid(atlas), "Full opens the map")
-	if not (atlas is AtlasView):
+	assert_true(atlas is MapView and is_instance_valid(atlas), "Full opens the map")
+	if not (atlas is MapView):
 		return
-	assert_true((atlas as AtlasView).layout.is_drawn_map(), "the owner's drawn map")
+	assert_true((atlas as MapView).layout.is_drawn_map(), "the owner's drawn map")
 	assert_false(is_instance_valid(win), "and the optimal path window is gone")
 	var back: Button = _button(atlas, "Optimal")
 	assert_not_null(back, "the map has the switch back")
@@ -409,8 +409,8 @@ func test_the_full_map_shows_owned_games_by_default_and_can_show_all() -> void:
 	if _map == null:
 		pending("the drawn map is not baked")
 		return
-	var was: bool = AtlasView.owned_only
-	AtlasView.owned_only = true
+	var was: bool = MapView.owned_only
+	MapView.owned_only = true
 	var ui = _start_run()
 	var atlas = ui.open_full_map()
 	await wait_frames(2)
@@ -425,7 +425,7 @@ func test_the_full_map_shows_owned_games_by_default_and_can_show_all() -> void:
 	if unowned < 0:
 		pending("every game off the route is owned")
 		ui._dismiss_route_map()
-		AtlasView.owned_only = was
+		MapView.owned_only = was
 		return
 	assert_true(atlas.hidden(unowned), "an unowned game is not drawn")
 	assert_eq(atlas._pick_box(atlas.screen_box(unowned).get_center()), -1,
@@ -439,7 +439,7 @@ func test_the_full_map_shows_owned_games_by_default_and_can_show_all() -> void:
 	assert_false(atlas.owned_filter_on(), "All games turns it off")
 	assert_false(atlas.hidden(unowned), "and the game is back")
 	ui._dismiss_route_map()
-	AtlasView.owned_only = was
+	MapView.owned_only = was
 
 # --- 26 Nov 2026: the owner's map pass ------------------------------------------
 
@@ -487,7 +487,7 @@ func test_a_box_wears_its_type_colour() -> void:
 	for i in range(mini(view.layout.star_count(), 40)):
 		var g: GameData = view.game_at(i)
 		assert_eq(view.map_type_color(i), RunGraph.type_color(g.type).darkened(0.3), g.display_name)
-	assert_eq(view.map_type_color(-1), AtlasView.MAP_INK, "no game, the ink")
+	assert_eq(view.map_type_color(-1), MapView.MAP_INK, "no game, the ink")
 
 # A LINE ON THE OPTIMAL PATH is known either way round, and so is a game on it.
 func test_the_optimal_path_is_known_line_by_line() -> void:

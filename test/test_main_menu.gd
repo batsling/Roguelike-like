@@ -373,14 +373,14 @@ func test_the_map_is_in_extras_after_the_collection_showing_every_game() -> void
 	var list: Control = menu.get_node("%ExtrasList")
 	var names: Array = list.get_children().map(func(c): return String(c.name))
 	assert_eq(names.find("MapBtn"), names.find("CollectionBtn") + 1, "right after the Collection")
-	var was: bool = AtlasView.owned_only_menu
-	AtlasView.owned_only_menu = false
+	var was: bool = MapView.owned_only_menu
+	MapView.owned_only_menu = false
 	menu.show_list(&"extras")
 	(menu.get_node("%MapBtn") as Button).pressed.emit()
 	await wait_frames(2)
-	var map: AtlasView = null
+	var map: MapView = null
 	for c in menu._modal_layer.get_children():
-		if c is AtlasView:
+		if c is MapView:
 			map = c
 	assert_not_null(map, "it opens the map")
 	if map != null:
@@ -390,5 +390,5 @@ func test_the_map_is_in_extras_after_the_collection_showing_every_game() -> void
 		assert_eq(map.trail_segment_count(), 0, "and no road")
 	for c in menu._modal_layer.get_children():
 		c.queue_free()
-	AtlasView.owned_only_menu = was
+	MapView.owned_only_menu = was
 	await wait_frames(2)

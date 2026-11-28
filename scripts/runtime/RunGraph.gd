@@ -988,7 +988,7 @@ static func dag_branch_scores_to(d_to_target: Dictionary,
 # caches are wiped together by invalidate_cache() when the filter changes.
 #
 # Read-only matters because five callers a click share one Dictionary now:
-# AtlasView's trail, RouteLadder's layout, the modal's label and legend all only
+# MapView's trail, RouteLadder's layout, the modal's label and legend all only
 # read it.
 static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:
 	var key: String = "%s>%s" % [start_id, amulet_id]

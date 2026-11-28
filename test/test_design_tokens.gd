@@ -82,7 +82,7 @@ const MIGRATED_FONTS := [
 	"res://scripts/redesign2/CollapseScreen.gd",
 	"res://scripts/redesign2/ShopModal2.gd",
 	"res://scripts/redesign2/ShopPanel2.gd",
-	"res://scripts/ui/AtlasView.gd",
+	"res://scripts/ui/MapView.gd",
 	"res://scripts/ui/GameProfile.gd",
 	"res://scripts/ui/Collection.gd",
 	"res://scripts/ui/LogoProgress.gd",
@@ -169,7 +169,7 @@ const MIGRATED_GAPS := [
 	"res://scripts/redesign2/CollapseScreen.gd",
 	"res://scripts/redesign2/ShopModal2.gd",
 	"res://scripts/redesign2/ShopPanel2.gd",
-	"res://scripts/ui/AtlasView.gd",
+	"res://scripts/ui/MapView.gd",
 	"res://scripts/ui/GameProfile.gd",
 	"res://scripts/ui/Collection.gd",
 	"res://scripts/ui/LogoProgress.gd",
@@ -320,7 +320,7 @@ func test_every_screen_that_sets_a_gap_is_on_the_gap_list() -> void:
 # The ones that are dark on purpose and are NOT surfaces, each with its reason.
 const OWN_DARK_COLOURS := {
 	"res://scripts/menu/MainMenu.gd": ["Color(0.06, 0.02, 0.02)"],      # the vortex's own red, not the theme's
-	"res://scripts/ui/AtlasView.gd": ["Color(0.32, 0.30, 0.28)",        # a modulate that darkens art
+	"res://scripts/ui/MapView.gd": ["Color(0.32, 0.30, 0.28)",        # a modulate that darkens art
 		"Color(0.227, 0.149, 0.078)",                                   # the parchment map's brown INK (MAP_INK), drawn on paper
 		"Color(0.353, 0.239, 0.133)"],                                  # the parchment sheet's wooden FRAME line, not a surface
 	"res://scripts/ui/Collection.gd": ["Color(0.10, 0.16, 0.26, 0.9)",  # Steam's own blue on its button
@@ -513,7 +513,7 @@ func test_the_theme_dresses_popup_menus() -> void:
 const DROPDOWN_SCREENS := [
 	"res://scripts/ui/Collection.gd",
 	"res://scripts/ui/SettingsModal.gd",
-	"res://scripts/ui/AtlasView.gd",
+	"res://scripts/ui/MapView.gd",
 	"res://scripts/menu/CustomRunScreen.gd",
 	"res://scripts/redesign2/DashFilterBar.gd",
 ]

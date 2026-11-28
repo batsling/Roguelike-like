@@ -46,7 +46,7 @@ var _title: String = ""
 # ladder and the sky are two views of ONE route, so they're wired together:
 # clicking a game here flies the chart to it, and the panel can re-frame the
 # whole corridor on it.
-var _atlas: AtlasView = null
+var _atlas: MapView = null
 
 var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
@@ -113,7 +113,7 @@ func _init() -> void:
 # would look like if you picked it:
 #   preview      bool       top node reads "if you go here"; no journey trail
 #   title        String     replaces the header title
-#   atlas        AtlasView  the star chart underneath, wired to the ladder
+#   atlas        MapView  the star chart underneath, wired to the ladder
 #   layer        int        the CanvasLayer to mount on (default 130)
 # False when the page that opened this has the chart switched off
 # (Overworld2.RUN_ATLAS): the window then does not offer to raise one.
@@ -257,7 +257,7 @@ func _build_header() -> Control:
 
 	if _to_full.is_valid():
 		var go: Callable = _to_full
-		stack.add_child(AtlasView.map_mode_toggle(false, Callable(), func():
+		stack.add_child(MapView.map_mode_toggle(false, Callable(), func():
 			_finish()
 			go.call()))
 
@@ -336,7 +336,7 @@ func _build_header() -> Control:
 		# Put the whole corridor back in frame on the chart behind — the window is
 		# a second view of the same route, and it should be able to point at it.
 		tools.add_child(_zoom_button("⌖ Frame route", _frame_route))
-	elif _offer_chart and not _to_full.is_valid() and AtlasView.load_drawn_map() != null:
+	elif _offer_chart and not _to_full.is_valid() and MapView.load_drawn_map() != null:
 		# Opened without a chart under it: offer to raise one. The start picker gets
 		# the offer too now — there is no longer a secret for the sky to give away.
 		tools.add_child(_zoom_button("✦ Star chart", _open_atlas))
@@ -635,7 +635,7 @@ func _zoom_button(text: String, cb: Callable) -> Button:
 func _open_atlas() -> void:
 	if _layer == null:
 		return
-	var atlas := AtlasView.open(_layer)
+	var atlas := MapView.open(_layer)
 	atlas.frame_trail.call_deferred()
 
 func _set_zoom(z: float) -> void:

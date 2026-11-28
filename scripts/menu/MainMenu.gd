@@ -961,9 +961,9 @@ func _delete_save(entry: Dictionary) -> void:
 # Run History sits ON TOP of the map: the strip lists each route in order and
 # the drawn map behind it is where that route went, so one screen answers both.
 func _on_run_history() -> void:
-	var atlas: AtlasView = null
-	if AtlasView.load_drawn_map() != null:
-		atlas = AtlasView.open(_modal_layer)
+	var atlas: MapView = null
+	if MapView.load_drawn_map() != null:
+		atlas = MapView.open(_modal_layer)
 	var history := RunHistoryScreen.open(_modal_layer, atlas)
 	if atlas != null:
 		# Closing the history closes the map it was laid over. `handed_to_map` is
@@ -980,10 +980,10 @@ func _on_collection() -> void:
 # THE MAP, outside a run (the owner, 28 Nov 2026: "let's have the new map replace
 # [the Atlas] and also include it in the extras section"): the owner's drawn map
 # of every game and how they influenced each other, with no road on it, All games
-# by default (AtlasView.owned_only_menu). In Extras after the Collection.
+# by default (MapView.owned_only_menu). In Extras after the Collection.
 func _on_map() -> void:
-	if AtlasView.load_drawn_map() != null:
-		AtlasView.open(_modal_layer)
+	if MapView.load_drawn_map() != null:
+		MapView.open(_modal_layer)
 
 # Costumes, icons and which title letters to spell with (docs/customization.md).
 # In Extras. Switching letters off draws the title again when the screen closes, so the

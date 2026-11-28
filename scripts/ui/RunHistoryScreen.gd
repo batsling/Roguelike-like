@@ -24,10 +24,10 @@ signal handed_to_map
 const COVER := Vector2(84, 112)
 const ARROW_W := 26.0
 
-var _atlas: AtlasView = null       # the map underneath, if one was opened with us
+var _atlas: MapView = null       # the map underneath, if one was opened with us
 var _rows: VBoxContainer = null
 
-static func open(parent: Node, atlas: AtlasView = null) -> RunHistoryScreen:
+static func open(parent: Node, atlas: MapView = null) -> RunHistoryScreen:
 	var s := RunHistoryScreen.new()
 	s._atlas = atlas
 	parent.add_child(s)

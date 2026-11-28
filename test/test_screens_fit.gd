@@ -334,16 +334,16 @@ func _close_button(root: Node) -> Button:
 # exactly 1280 and fitted.
 
 func test_the_map_fits_opened_from_the_menu() -> void:
-	if AtlasView.load_drawn_map() == null:
+	if MapView.load_drawn_map() == null:
 		pending("no drawn map in this checkout — run tools/bake_drawio_map.py")
 		return
-	var atlas := AtlasView.open(self)
+	var atlas := MapView.open(self)
 	await wait_frames(8)
 	_assert_fits("the map from Extras", atlas)
 	atlas.free()
 
 func test_the_atlas_fits_when_a_run_opens_it() -> void:
-	if AtlasView.load_drawn_map() == null:
+	if MapView.load_drawn_map() == null:
 		pending("no drawn map in this checkout — run tools/bake_drawio_map.py")
 		return
 	var ow = load("res://scenes/redesign2/Overworld2.tscn").instantiate()
@@ -351,7 +351,7 @@ func test_the_atlas_fits_when_a_run_opens_it() -> void:
 	await wait_frames(6)
 	ow.choose_start(0)
 	await wait_frames(6)
-	var atlas := AtlasView.open(ow)
+	var atlas := MapView.open(ow)
 	await wait_frames(8)
 	_assert_fits("the Atlas over a run", atlas)
 	atlas.free()
@@ -359,10 +359,10 @@ func test_the_atlas_fits_when_a_run_opens_it() -> void:
 # The legend is the other row that can grow with what is on the sky — it gains a
 # chip per run mark — so it gets the same guarantee before it becomes the next one.
 func test_the_atlas_legend_wraps_rather_than_widening_the_page() -> void:
-	if AtlasView.load_drawn_map() == null:
+	if MapView.load_drawn_map() == null:
 		pending("no drawn map in this checkout — run tools/bake_drawio_map.py")
 		return
-	var atlas := AtlasView.open(self)
+	var atlas := MapView.open(self)
 	await wait_frames(8)
 	var row: Control = atlas._legend_bar.get_child(0)
 	assert_true(row is HFlowContainer,

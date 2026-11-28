@@ -2,18 +2,18 @@ extends GutTest
 
 const Page := preload("res://test/helpers/run_page.gd")
 
-# Tests for the map view (AtlasView) — the owner's hand-drawn map of the games and
-# how they influenced each other (data/atlas_layout_map.tres, baked from
+# Tests for the map view (MapView) — the owner's hand-drawn map of the games and
+# how they influenced each other (data/map_layout.tres, baked from
 # tools/Roguelikes.drawio by tools/bake_drawio_map.py). The computed star chart
 # these tests were first written for was taken out on 28 Nov 2026; what is left
 # here is about the VIEW: it builds headless, frames itself, picks games in screen
 # space, and draws the run's route once a run is under way. The drawing's own
 # rules (boxes, lines, rifts, the Owned switch) are test_drawn_map.gd's.
 
-const ATLAS := preload("res://scripts/ui/AtlasView.gd")
+const ATLAS := preload("res://scripts/ui/MapView.gd")
 const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 
-var _layout: AtlasLayout
+var _layout: MapLayout
 
 func before_all() -> void:
 	_layout = ATLAS.load_drawn_map()
@@ -22,8 +22,8 @@ func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
 
-func _open() -> AtlasView:
-	var view: AtlasView = ATLAS.new()
+func _open() -> MapView:
+	var view: MapView = ATLAS.new()
 	view.layout = ATLAS.load_drawn_map()
 	add_child_autofree(view)
 	return view
@@ -33,7 +33,7 @@ func _open() -> AtlasView:
 # ---------------------------------------------------------------------------
 
 func test_layout_resource_exists() -> void:
-	assert_not_null(_layout, "data/atlas_layout_map.tres is baked (run tools/bake_drawio_map.py)")
+	assert_not_null(_layout, "data/map_layout.tres is baked (run tools/bake_drawio_map.py)")
 
 func test_layout_covers_every_game() -> void:
 	if _layout == null:
@@ -109,7 +109,7 @@ func test_zoom_is_clamped() -> void:
 	assert_lte(view.zoom_ratio(), view.zoom_max() + 0.001, "zoom stops at the ceiling")
 	for _i in range(60):
 		view.zoom_by(0.5, Vector2(400, 300))
-	assert_gte(view.zoom_ratio(), AtlasView.ZOOM_MIN - 0.001, "zoom stops at the floor")
+	assert_gte(view.zoom_ratio(), MapView.ZOOM_MIN - 0.001, "zoom stops at the floor")
 
 func test_no_trail_without_a_run() -> void:
 	var view := _open()
@@ -246,9 +246,9 @@ func test_a_one_connection_game_still_highlights() -> void:
 # The route is a distinct treatment, not a brighter background link — the three
 # line colours must stay tellable apart.
 func test_route_selection_and_background_lines_are_distinct() -> void:
-	var route: Color = AtlasView.COL_TRAIL
-	var picked: Color = AtlasView.COL_SELECTED_EDGE
-	var backdrop: Color = AtlasView.COL_EDGE
+	var route: Color = MapView.COL_TRAIL
+	var picked: Color = MapView.COL_SELECTED_EDGE
+	var backdrop: Color = MapView.COL_EDGE
 	assert_gt(_separation(route, picked), 0.25, "the route can't be mistaken for a selection")
 	assert_gt(_separation(route, backdrop), 0.25, "or for a background link")
 	assert_gt(picked.a, backdrop.a, "a clicked game's links are stronger than the backdrop")
@@ -257,12 +257,12 @@ func _separation(a: Color, b: Color) -> float:
 	return absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
 
 func test_walked_and_remaining_route_are_told_apart() -> void:
-	assert_gt(_separation(AtlasView.COL_TRAIL, AtlasView.COL_HISTORY), 0.4,
+	assert_gt(_separation(MapView.COL_TRAIL, MapView.COL_HISTORY), 0.4,
 		"the road behind you doesn't look like the road ahead")
 
 # A game the route does NOT already pass through, but that can still reach the
 # Amulet, so moving the run there changes the road. &"" when there is none.
-func _off_route_game(view: AtlasView) -> StringName:
+func _off_route_game(view: MapView) -> StringName:
 	var route: Dictionary = view.route_stars()
 	for g in Data.all_games():
 		var i: int = view.layout.index_of(g.id)
@@ -276,21 +276,21 @@ func test_arrows_clear_the_stars_at_both_ends() -> void:
 	var pad_a: float = 30.0
 	var pad_b: float = 18.0
 	var size: float = 14.0
-	var offsets: PackedFloat32Array = AtlasView.route_arrow_offsets(400.0, pad_a, pad_b, size)
+	var offsets: PackedFloat32Array = MapView.route_arrow_offsets(400.0, pad_a, pad_b, size)
 	assert_gt(offsets.size(), 0, "a long segment carries arrows")
 	for t in offsets:
 		assert_gte(t, pad_a, "no arrow sits on the star it leaves")
 		assert_lte(t, 400.0 - pad_b, "and none sits on the star it reaches")
 
 func test_a_long_segment_gets_several_arrows() -> void:
-	var few: PackedFloat32Array = AtlasView.route_arrow_offsets(160.0, 6.0, 6.0, 12.0)
-	var many: PackedFloat32Array = AtlasView.route_arrow_offsets(900.0, 6.0, 6.0, 12.0)
+	var few: PackedFloat32Array = MapView.route_arrow_offsets(160.0, 6.0, 6.0, 12.0)
+	var many: PackedFloat32Array = MapView.route_arrow_offsets(900.0, 6.0, 6.0, 12.0)
 	assert_gt(many.size(), few.size(),
 		"a route crossing the sky gets more arrows than a short hop")
 	assert_gte(few.size(), 1, "even a modest segment gets one")
 
 func test_arrows_are_evenly_spaced() -> void:
-	var offsets: PackedFloat32Array = AtlasView.route_arrow_offsets(900.0, 10.0, 10.0, 12.0)
+	var offsets: PackedFloat32Array = MapView.route_arrow_offsets(900.0, 10.0, 10.0, 12.0)
 	if offsets.size() < 3:
 		pending("the run did not reach this case (offsets.size() < 3)")
 		return
@@ -301,11 +301,11 @@ func test_arrows_are_evenly_spaced() -> void:
 
 # A plain line beats a smudge: too short to hold an arrowhead means no arrowhead.
 func test_a_short_segment_gets_no_arrow() -> void:
-	assert_eq(AtlasView.route_arrow_offsets(20.0, 8.0, 8.0, 14.0).size(), 0,
+	assert_eq(MapView.route_arrow_offsets(20.0, 8.0, 8.0, 14.0).size(), 0,
 		"a segment swallowed by its endpoints carries nothing")
-	assert_eq(AtlasView.route_arrow_offsets(0.0, 0.0, 0.0, 12.0).size(), 0,
+	assert_eq(MapView.route_arrow_offsets(0.0, 0.0, 0.0, 12.0).size(), 0,
 		"a zero-length segment carries nothing")
-	assert_eq(AtlasView.route_arrow_offsets(400.0, 0.0, 0.0, 0.0).size(), 0,
+	assert_eq(MapView.route_arrow_offsets(400.0, 0.0, 0.0, 0.0).size(), 0,
 		"a zero-size arrow is never placed")
 
 # Arrows have to point from the game nearer you toward the game nearer the
@@ -483,7 +483,7 @@ func test_my_run_framing_covers_both_roads() -> void:
 # Staleness — the baked map is a build artefact, and it can go out of date
 # ---------------------------------------------------------------------------
 #
-# data/atlas_layout_map.tres is generated from tools/Roguelikes.drawio by
+# data/map_layout.tres is generated from tools/Roguelikes.drawio by
 # tools/bake_drawio_map.py and committed. If the catalog changes and the bake
 # isn't re-run, the map keeps drawing the old shape and nothing complains. These
 # tests make that loud. The fix is almost always:  python3 tools/bake_drawio_map.py
@@ -652,9 +652,9 @@ func test_a_sequel_link_agrees_with_its_card() -> void:
 			"link %d draws as a sequel exactly when its card says so" % e)
 
 func test_sequel_stroke_is_distinct_from_the_other_lines() -> void:
-	assert_gt(_separation(AtlasView.COL_EDGE_SEQUEL, AtlasView.COL_EDGE), 0.3,
+	assert_gt(_separation(MapView.COL_EDGE_SEQUEL, MapView.COL_EDGE), 0.3,
 		"a sequel link doesn't look like a plain influence")
-	assert_gt(_separation(AtlasView.COL_EDGE_SEQUEL, AtlasView.COL_TRAIL), 0.3,
+	assert_gt(_separation(MapView.COL_EDGE_SEQUEL, MapView.COL_TRAIL), 0.3,
 		"nor like the route")
 
 func test_bad_edge_index_is_not_a_sequel() -> void:
@@ -870,21 +870,21 @@ func test_framing_an_anchor_puts_it_on_screen() -> void:
 # only counts as a pan past a 5px threshold; the right button only ever pans and
 # can be nudged a pixel at a time.
 
-func _press(view: AtlasView, button: int, pressed: bool, at: Vector2 = Vector2(400, 300)) -> void:
+func _press(view: MapView, button: int, pressed: bool, at: Vector2 = Vector2(400, 300)) -> void:
 	var ev := InputEventMouseButton.new()
 	ev.button_index = button
 	ev.pressed = pressed
 	ev.position = at
 	view._on_canvas_input(ev)
 
-func _move(view: AtlasView, by: Vector2) -> void:
+func _move(view: MapView, by: Vector2) -> void:
 	var ev := InputEventMouseMotion.new()
 	ev.relative = by
 	ev.position = Vector2(400, 300) + by
 	view._on_canvas_input(ev)
 
 func test_right_drag_pans_the_chart() -> void:
-	var view: AtlasView = _open()
+	var view: MapView = _open()
 	var before: Vector2 = view._offset
 	_press(view, MOUSE_BUTTON_RIGHT, true)
 	_move(view, Vector2(60, -25))
@@ -896,7 +896,7 @@ func test_right_drag_pans_the_chart() -> void:
 
 func test_right_drag_pans_by_a_single_pixel() -> void:
 	# No click-vs-drag threshold on this button, because it has nothing to click.
-	var view: AtlasView = _open()
+	var view: MapView = _open()
 	var before: Vector2 = view._offset
 	_press(view, MOUSE_BUTTON_RIGHT, true)
 	_move(view, Vector2(1, 0))
@@ -904,14 +904,14 @@ func test_right_drag_pans_by_a_single_pixel() -> void:
 	_press(view, MOUSE_BUTTON_RIGHT, false)
 
 func test_right_drag_never_selects_a_star() -> void:
-	var view: AtlasView = _open()
+	var view: MapView = _open()
 	view.select(-1)
 	_press(view, MOUSE_BUTTON_RIGHT, true)
 	_press(view, MOUSE_BUTTON_RIGHT, false)
 	assert_eq(view._selected, -1, "the pan button is not a picking button")
 
 func test_left_drag_still_pans() -> void:
-	var view: AtlasView = _open()
+	var view: MapView = _open()
 	var before: Vector2 = view._offset
 	_press(view, MOUSE_BUTTON_LEFT, true)
 	_move(view, Vector2(50, 30))
@@ -925,7 +925,7 @@ func test_left_drag_still_pans() -> void:
 # ---------------------------------------------------------------------------
 
 # The `rank`-th best-connected box on the map (0 the best).
-func _hub(view: AtlasView, rank: int = 0) -> int:
+func _hub(view: MapView, rank: int = 0) -> int:
 	var order: Array = range(view.layout.star_count())
 	order.sort_custom(func(a, b): return view.layout.degree_of(a) > view.layout.degree_of(b))
 	return int(order[mini(rank, order.size() - 1)])

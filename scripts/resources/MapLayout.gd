@@ -1,13 +1,14 @@
-class_name AtlasLayout
+class_name MapLayout
 extends Resource
 
 # The owner's hand-drawn map of the games (tools/Roguelikes.drawio), baked into
-# data/atlas_layout_map.tres by tools/bake_drawio_map.py and drawn by AtlasView.
+# data/map_layout.tres by tools/bake_drawio_map.py and drawn by MapView.
 # Nothing here is computed at runtime: every box is where it was drawn.
 #
 # (It was first the baked star chart of the computed Atlas, constellations
 # around hub games; that sky, its capitals, regions and tree, was taken out on
-# 28 Nov 2026 and the fields only it used went with it. The name stayed.)
+# 28 Nov 2026 and the fields only it used went with it, and the class, then
+# AtlasLayout, was renamed MapLayout the same day.)
 #
 # Every array below is indexed the same way — index i refers to `game_ids[i]` —
 # so a lookup is one Dictionary hit (see `index_of`) followed by array reads.

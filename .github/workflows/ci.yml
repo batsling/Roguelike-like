@@ -201,7 +201,7 @@ jobs:
 
       - name: The in-game map is baked from the drawio
         # A run's Atlas draws tools/Roguelikes.drawio, baked into
-        # data/atlas_layout_map.tres. This fails when the drawio changed and the
+        # data/map_layout.tres. This fails when the drawio changed and the
         # bake didn't follow, and the bake itself refuses a drawio the sheet
         # disagrees with (a game or a connection on one side only).
         run: python3 tools/bake_drawio_map.py --check

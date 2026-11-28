@@ -1529,6 +1529,27 @@ func _build_games() -> void:
 	_grid_and_detail()
 	_populate_games()
 
+# Whether the drawn map has `g` (a game the drawio has no box for has nowhere to
+# be shown).
+func _on_map(g: GameData) -> bool:
+	var lay: MapLayout = MapView.load_drawn_map()
+	return g != null and lay != null and lay.index_of(g.id) >= 0
+
+# The map over the Collection, on `g`: zoomed to its box with its card up, its
+# lines lit. With the Owned switch on, an unowned game would not be drawn, so the
+# switch goes to All for it. Returns the map. Public for the tests.
+func show_on_map(g: GameData) -> MapView:
+	if not _on_map(g):
+		return null
+	var view := MapView.open(get_parent() if get_parent() != null else self)
+	var i: int = view.layout.index_of(g.id)
+	if view.hidden(i):
+		view.set_owned_only(false)
+	# A frame on, once the view has measured the screen it fits (`_fit_to_viewport`
+	# sizes it deferred): focusing before that frames a 0x0 canvas.
+	view.focus_game.call_deferred(g.id)
+	return view
+
 func _populate_games() -> void:
 	_clear_children(_grid)
 	_owned_marks.clear()
@@ -1871,6 +1892,18 @@ func _show_game_detail(g: GameData) -> void:
 		steam_btn.add_theme_color_override("font_color", Color(0.68, 0.86, 1.0))
 		steam_btn.pressed.connect(func(): g.open_steam_page())
 		launch_row.add_child(steam_btn)
+	# WHERE IT SITS ON THE MAP (the owner, 28 Nov 2026): the drawn map, opened over
+	# the Collection and zoomed to this game with its card up. Only for a game the
+	# drawing has.
+	if _on_map(g):
+		var map_btn := HoverButton.new()
+		map_btn.name = "ShowOnMap"
+		map_btn.text = "🗺  Show on map"
+		map_btn.tooltip_text = "Open the map at %s, with who inspired it and whom it inspired." % g.display_name
+		map_btn.custom_minimum_size = Vector2(0, 32)
+		map_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		map_btn.pressed.connect(show_on_map.bind(g))
+		launch_row.add_child(map_btn)
 	if launch_row.get_child_count() > 0:
 		_detail_box.add_child(launch_row)
 

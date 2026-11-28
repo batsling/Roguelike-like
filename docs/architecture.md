@@ -276,7 +276,7 @@ ordinary scene.
   things read it: `ModalScaffold.centre` centres a modal in the band *below* the
   bar and never lets its top edge start above it; the map window
   (`RunMapModal`) sizes, opens and clamps its drag inside that band; and
-  **`AtlasView` offsets its whole page down by it**, so the chart's own header —
+  **`MapView` offsets its whole page down by it**, so the chart's own header —
   which holds its search box, its ✦ jump buttons and the `←  Back to the run`
   button that is the only way off it — lands under the bar instead of beneath it.
   It is cleared when the page leaves the tree and while the bar is down, so the
@@ -708,7 +708,7 @@ with their schemas defined in `scripts/resources/`:
 (`ScrollData` + `ScrollNames`, `PillData`, `PotionData`, `CardData` — the curse
 cards of `data/curses2.0/` included, `docs/loot-passives.md` §18 — `WandData`,
 `TrinketData`, `BagData`, `WeaponData`, `EvolutionData`), `StatDefinition`, and
-`AtlasLayout` (the owner's drawn map, baked from the drawio). The combat-era `CurseData` and its
+`MapLayout` (the owner's drawn map, baked from the drawio). The combat-era `CurseData` and its
 `data/curses/` set were deleted on 25 Oct 2026, with the pre-2.0 items and
 characters.
 

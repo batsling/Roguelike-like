@@ -454,9 +454,9 @@ func _buttons(accent: Color) -> Control:
 # The run at atlas altitude. Opened ON TOP of this screen, so closing the sky
 # drops the player back onto the verdict rather than into a finished overworld.
 func _open_atlas() -> void:
-	if AtlasView.load_drawn_map() == null:
+	if MapView.load_drawn_map() == null:
 		return
-	var atlas := AtlasView.open(_layer if _layer != null else self)
+	var atlas := MapView.open(_layer if _layer != null else self)
 	atlas.frame_trail.call_deferred()
 
 func _close() -> void:

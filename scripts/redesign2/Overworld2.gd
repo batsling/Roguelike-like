@@ -2275,9 +2275,9 @@ func preview_map(game_id: StringName) -> Node:
 # game being considered, as the window it came from did. Public for the tests.
 func open_full_map(preview: StringName = &"") -> Node:
 	_dismiss_route_map()
-	if load(ATLAS_VIEW_SCRIPT).load_drawn_map() == null:
+	if load(MAP_VIEW_SCRIPT).load_drawn_map() == null:
 		return null
-	var atlas = load(ATLAS_VIEW_SCRIPT).new()
+	var atlas = load(MAP_VIEW_SCRIPT).new()
 	if preview != &"":
 		atlas.preview_origin = preview
 	atlas.to_optimal = func():
@@ -2300,11 +2300,11 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
 	var wants_chart: bool = RUN_ATLAS and bool(opts.get("chart", true)) \
-		and load(ATLAS_VIEW_SCRIPT).load_drawn_map() != null
+		and load(MAP_VIEW_SCRIPT).load_drawn_map() != null
 	opts["offer_chart"] = RUN_ATLAS
 	opts.erase("chart")
 	if wants_chart:
-		var atlas = load(ATLAS_VIEW_SCRIPT).new()
+		var atlas = load(MAP_VIEW_SCRIPT).new()
 		# A preview routes the sky from the game being considered rather than from
 		# where the player stands, so the corridor drawn on the chart is the one
 		# the card is offering.
@@ -3483,7 +3483,7 @@ const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
 const RUN_LOG_SCREEN_SCRIPT := "res://scripts/redesign2/RunLogScreen.gd"
 const RUN_MAP_MODAL_SCRIPT := "res://scripts/redesign2/RunMapModal.gd"
 const RUN_OVER_SCREEN_SCRIPT := "res://scripts/redesign2/RunOverScreen.gd"
-const ATLAS_VIEW_SCRIPT := "res://scripts/ui/AtlasView.gd"
+const MAP_VIEW_SCRIPT := "res://scripts/ui/MapView.gd"
 const COLLECTION_SCRIPT := "res://scripts/ui/Collection.gd"
 const HOW_TO_PLAY_SCREEN_SCRIPT := "res://scripts/ui/HowToPlayScreen.gd"
 const RATE_GAME_MODAL_SCRIPT := "res://scripts/ui/RateGameModal.gd"

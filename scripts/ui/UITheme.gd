@@ -837,7 +837,7 @@ static func addon_row(addon: Dictionary, width: float = 0.0,
 # Cover art on a card is shown WHOLE — a card is where you went to LOOK at the
 # game, so nothing is cropped off it. The frame is the size the picture actually
 # needs: fitted to `width`, and shrunk further if that would make it taller than
-# `max_height` — never letterboxed, never cut. Moved here from AtlasView (which
+# `max_height` — never letterboxed, never cut. Moved here from MapView (which
 # forwards) so the route ladder's card can draw it without compiling the star
 # chart into every page load.
 const CARD_ART_MAX_HEIGHT := 300.0

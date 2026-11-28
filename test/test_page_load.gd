@@ -15,7 +15,7 @@ extends GutTest
 
 # The screens the page opens on demand, and what they drag in with them.
 const ON_DEMAND := [
-	"AtlasView", "Collection", "HowToPlayScreen", "SettingsModal",
+	"MapView", "Collection", "HowToPlayScreen", "SettingsModal",
 	"TierListScreen", "RunHistoryScreen", "RunLogScreen", "RunOverScreen",
 	"EventModal2", "RewardScreen", "GraveyardPanel", "CompletedGoalsPanel",
 	"RunMapModal", "GoalsBeatenView", "ShopModal2", "ShopPanel2",

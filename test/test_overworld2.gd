@@ -6307,9 +6307,9 @@ func test_the_amulet_report_says_the_goal_is_a_bonus() -> void:
 # The map: the ladder (the in-run star chart is off — Overworld2.RUN_ATLAS)
 # ---------------------------------------------------------------------------
 
-func _chart() -> AtlasView:
+func _chart() -> MapView:
 	for c in _ui.get_children():
-		if c is AtlasView and not c.is_queued_for_deletion():
+		if c is MapView and not c.is_queued_for_deletion():
 			return c
 	return null
 

@@ -629,7 +629,7 @@ still exists under an old name silently generates the wrong content.
 | `apply_tag_edits.py` | the `games` sheet's **Tags** column, from the game's tag export (Settings → Game tags; `tools/tag_edits.json`), writing only each game's added/removed tags, through `_xlsx_surgery` so the charts and formula columns survive — then runs `import-games-godot.py`. Idempotent; `--dry-run` shows the changes |
 | `apply_radio_import.py` | the `radio` sheet, from the Radio screen's *Export song list* (`tools/radio_import.json`): a row per new audio file in the player's music folder, from the file's own tags, its game matched from the folder it sits in. Only adds; through `_xlsx_surgery`, then runs `generate_song_tres.py`. `--dry-run`, `--game "Folder=Game"`; see `docs/roguelike-radio.md` §2a |
 | `tag_research.py` | **not data**: the tag sheets of `tools/Research.xlsx` (it leaves the other sheets alone), tag suggestions for the owner from each game's Steam tags, store text and title. It never writes `Roguelikes.xlsx`; the owner types the tags they agree with into `games` |
-| `bake_drawio_map.py` | `data/atlas_layout_map.tres` — **the owner's hand-drawn map**, read straight off `tools/Roguelikes.drawio`: every box where and as big as it was drawn, every line with its colour and anchors, the year ruler. It is the game's one map (a run's, Run History's and Extras'). Rerun after every drawio upload; CI's `--check` says when it is stale |
+| `bake_drawio_map.py` | `data/map_layout.tres` — **the owner's hand-drawn map**, read straight off `tools/Roguelikes.drawio`: every box where and as big as it was drawn, every line with its colour and anchors, the year ruler. It is the game's one map (a run's, Run History's and Extras'). Rerun after every drawio upload; CI's `--check` says when it is stale |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_events2_ranwid_setup.py` | one-shot: the Ranwid the Elder event row |
 | `_events2_tiny_rogues_setup.py` | one-shot: the `Opens With` column, the Potion Lab and Golden Monkey rows, and Ranwid's credit line |
@@ -676,9 +676,9 @@ Collection's filters) was taken out on 28 Nov 2026 (the owner: "get rid of the
 atlas and instead let's have the new map replace it"); it is in git history.
 
 **The map is the owner's drawing** (the owner, 19 Nov 2026). `tools/bake_drawio_map.py` reads `tools/Roguelikes.drawio`
-into `data/atlas_layout_map.tres`, an `AtlasLayout` with the drawn-map fields
+into `data/map_layout.tres`, an `MapLayout` with the drawn-map fields
 (`box_w`/`box_h`, `edge_dev`, `edge_anchors`, the `ruler_*` arrays;
-`is_drawn_map()`), and `AtlasView` draws it: old parchment,
+`is_drawn_map()`), and `MapView` draws it: old parchment,
 each game a box with its name, black and blue lines with draw.io's arrowheads,
 the grey year rules. Hovering a box lights it and puts up the game's card with
 its art. A game the run can't enter (outside the game filter, or off the run's
@@ -686,26 +686,29 @@ main group) is greyed in place, because the shape is the point.
 
 **Outside a run it is in the main menu's Extras** (🗺 Map, after the Collection;
 the owner, 28 Nov 2026): no road, no rifts, no You or Amulet, and **All games**
-by default (`AtlasView.owned_only_menu`, remembered apart from the run's).
+by default (`MapView.owned_only_menu`, remembered apart from the run's).
 Whether a map is outside a run is whether a run page is mounted
-(`AtlasView.outside_run`).
+(`MapView.outside_run`). **A game's page in the Collection has 🗺 Show on map**
+beside Play and Steam (the owner, 28 Nov 2026), for a game the drawing has: the
+map over the Collection, zoomed to that box with its card up and its lines lit,
+the Owned switch off if it would hide it (`Collection.show_on_map`).
 
 In a run it is the **Full map** half of the 🗺 Map's "Optimal path | Full map"
 switch (`Overworld2.open_full_map`), and it has a second switch, **All games |
 Owned games**, Owned by default (the owner, 20 Nov 2026): with Owned on, a game
 the player doesn't own is not drawn at all, nor its lines, unless the run's own
-road or its anchors use it (`AtlasView.hidden`). The run's **rifts** are drawn
+road or its anchors use it (`MapView.hidden`). The run's **rifts** are drawn
 on it as dashed teal seams with a clickable swirl badge, each curve picked from
 a range of bows to stay on the paper and cross as few boxes as it can
-(`AtlasView.rift_curves`, docs/rifts-design.md §9). Hovering a swirl puts up
+(`MapView.rift_curves`, docs/rifts-design.md §9). Hovering a swirl puts up
 the rift's card, as hovering a box does.
 
 Both switches sit in the map's one header row with its tools (the owner, 26 Nov
 2026: one bar of options, not two). Every box is outlined in its game's TYPE
-colour (`AtlasView.map_type_color`: `RunGraph.type_color` darkened a third to
+colour (`MapView.map_type_color`: `RunGraph.type_color` darkened a third to
 read on the paper); a picked game's lines are drawn over the roads in that
 colour, cased in the road's orange where the line is a step of the optimal path
-(`AtlasView.on_optimal_path`), and a neighbour on the optimal path is ringed in
+(`MapView.on_optimal_path`), and a neighbour on the optimal path is ringed in
 the same orange. The You and Amulet rings carry no caption on this map — the
 captions covered the boxes around them. A connection's card shows its proof
 screenshot (or a clip's poster) from `images2.0/proof/`, read through
@@ -715,7 +718,7 @@ The drawio is upstream of that file the way the sheet is upstream of `data/`:
 redraw, upload the `.drawio` alone (the SVG is exported from it), rerun:
 
 ```bash
-python3 tools/bake_drawio_map.py          # write data/atlas_layout_map.tres
+python3 tools/bake_drawio_map.py          # write data/map_layout.tres
 python3 tools/bake_drawio_map.py --check  # CI: is it current?
 ```
 
@@ -725,7 +728,7 @@ Two rules the owner set for it (19 Nov 2026), and how each is kept:
   game's font and shrinks it until it fits its box (the drawio's 10 px is the
   ceiling); a name that can't fit at `MAP_MIN_TEXT_PX` isn't drawn.
 - **No line through a box.** Lines go under the boxes and the run's road
-  follows the drawn line (`AtlasView.road_ends`). A line that passes through a
+  follows the drawn line (`MapView.road_ends`). A line that passes through a
   box other than its own two is the drawio's to fix, and the bake lists each
   one ("to fix in the drawio: …").
 
