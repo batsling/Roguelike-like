@@ -163,6 +163,19 @@ before the next can happen.
 - **A bomb** — one hit to each normal body in the blast (bosses take none), mines
   caught in it go off; kill chain, no loot drop.
 - **Lose a run** — the enemies take a turn (§3).
+- **A rank-up** — any XP above (a goal ticked, a game beaten) can rank the game or
+  the character up. Its reward (a song, a title letter or a look) is drawn and
+  saved there and then, as ever, but its toast is **held** for the post-game
+  wheel (`RankRewardQueue`, while `Overworld2.holds_rank_rewards`): the RANK UP!
+  banner only says a reward is waiting. Radio holds lining the song up next as well.
+
+```order
+scripts/autoload/Cosmetics.gd :: _refresh_unlocks
+_save()
+RankRewardQueue.offer(reward_entry(key))
+_announce(key)
+changed.emit()
+```
 
 ```order
 scripts/autoload/GameLoop2.gd :: fulfill
@@ -383,9 +396,16 @@ Once the animation ends (`_end_resolve`):
    bill — has no playback to wait for, so it waits for the player instead:
    `Overworld2._hold_death` puts up the **death card** (`DeathCard.gd`), or tells a
    pack piece's use screen it was fatal, and the run-over screen opens on Continue.)
-2. The **end-of-game screen** — the haul: kill drops that had no square, chests,
-   the boss warning, and *Go to Shop* at a game with a shop. Autosave
-   when it closes.
+2. The **end-of-game screen**. It opens on its **summary page** (the game's and
+   the character's XP and what each was for, `ReportSummary`), which takes every
+   rank-up reward held since the game was picked: the game's first, then the
+   character's. With any, the summary offers **🛞 Rank-up rewards**, a wheel per
+   reward in that order (`RankRewardPage`), each landing on what was already
+   drawn, or **Skip**, which toasts them all the way they were toasted before the
+   wheel. Then the haul: kill drops that had no square, chests, the boss warning,
+   and *Go to Shop* at a game with a shop. Autosave when it closes. A report with
+   no haul screen (the run over, or nothing to show) toasts whatever was held
+   instead.
 3. The **Collapse** screen, Fracture 10's Amulet only.
 4. **The bonus deal door**, if the deal chance came up — whether it is a Devil's
    or an Angel's is decided as it opens (`DealRooms.open_door`).
@@ -398,6 +418,24 @@ scripts/redesign2/Overworld2.gd :: _end_resolve
 _run_over_pending
 _show_run_over()
 _open_post_game()
+```
+
+```order
+scripts/redesign2/Overworld2.gd :: _open_post_game
+RankRewardQueue.release()
+PostCombatScreen.open(
+```
+
+```order
+scripts/redesign2/ReportSummary.gd :: setup
+RankRewardQueue.take(owners)
+open_rewards
+```
+
+```order
+scripts/redesign2/ReportSummary.gd :: proceed
+RankRewardQueue.tell(e)
+continued.emit()
 ```
 
 ```order

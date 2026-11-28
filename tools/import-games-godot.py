@@ -252,14 +252,9 @@ def main() -> int:
     if unresolved:
         print(f"[import-games-godot] {skipped} connection rows skipped — unresolved names: {sorted(unresolved)}")
 
-    # Re-bake the Atlas star chart. Its layout is a pure function of the games
-    # just written, so a new game or connection has to move the sky with it —
-    # otherwise the Atlas silently shows a stale catalog.
-    rc = subprocess.call([sys.executable, os.path.join(SCRIPT_DIR, "bake_atlas.py"),
-                          "--all-filters"])
-    if rc != 0:
-        print("[import-games-godot] atlas bake FAILED — run tools/bake_atlas.py to see why")
-        return rc
+    # (The computed Atlas star chart that used to be re-baked here is gone, 28 Nov
+    # 2026: the map is the owner's drawing, tools/bake_drawio_map.py, which a new
+    # game reaches only once the drawio has it.)
     _research_reminder(games)
     _refresh_research()
     return 0

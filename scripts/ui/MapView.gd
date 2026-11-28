@@ -1,77 +1,41 @@
-class_name AtlasView
+class_name MapView
 extends Control
 
-# The Atlas — the whole influence graph as a star chart.
+# THE MAP — the owner's hand-drawn map of every game and how they influenced each
+# other (tools/Roguelikes.drawio, baked into data/map_layout.tres by
+# tools/bake_drawio_map.py), drawn as old parchment: each game a box with its
+# name, the influence lines in ink, the year rules faint behind them.
 #
 # Where RunMapModal answers "what are my next three decisions", this answers
-# "where am I in the 751 games". Every game is a star, positioned by
-# `data/atlas_layout.tres` (baked by tools/bake_atlas.py), grouped into
-# constellations around the eight highest-degree hubs. Star size is connection
-# count; the outline colour is the game's type.
+# "where am I among all of it". It opens three ways: a run's 🗺 Map (its "Full
+# map" half), Run History and the run-over screen (the run's road laid over it),
+# and the main menu's Extras, outside any run (no road, All games by default;
+# `outside_run`). A run draws two roads over it, both cased and arrowed: the PATH
+# TAKEN in green (dashed across a Teleport / Winged Boots hop) and the ROUTE
+# AHEAD in ember, the same DAG the run minimap draws. Clicking a box isolates it:
+# its connections light up and the rest dims; hovering puts up its card.
 #
-# Nothing about the layout is computed here — positions are read straight off the
-# baked resource, so the sky is identical every session and only changes when the
-# catalog is re-imported and re-baked.
-#
-# Detail is tied to zoom, because 751 labels at once is not a map:
-#   far    — dots only, constellation names
-#   mid    — links inside a constellation, stars sized and outlined
-#   near   — every star labelled
-# Cover art arrives per star rather than all at once: a game turns into its box
-# art once that art would be at least MIN_COVER_PX wide, so hubs bloom first and
-# the fringe follows as you keep zooming.
-# A star's rim is its genre and so is its middle, so an unplayed game reads at
-# full colour. In the Collection's catalog view the middle turns metallic once
-# you have a record with it — silver for beaten, gold for a run won on it. During
-# a run no record is drawn at all: that sky is about the run.
-# Clicking a star isolates it: every one of its connections lights up, the games
-# they reach get rings, and the rest of the sky dims.
-# A run draws two roads over the sky, both cased and arrowed so they can be
-# followed at a glance: the PATH TAKEN in green (where the player has actually
-# been, dashed across any Teleport/Winged Boots hop, since no such link exists)
-# and the ROUTE AHEAD in ember — the same DAG the run minimap draws, so the run
-# map and the atlas are one picture at two altitudes.
+# THE COMPUTED STAR CHART IS GONE (the owner, 28 Nov 2026: "get rid of the atlas
+# and instead let's have the new map replace it"). It was this class's first job —
+# constellations around hub games, covers blooming with zoom, filters that re-laid
+# the sky (AtlasLayoutBuilder, tools/bake_atlas.py) — and is in git history. The
+# class was AtlasView until then (renamed the same day); its "star" vocabulary
+# means a box on the map.
 
 signal finished
 
-const LAYOUT_PATH := "res://data/atlas_layout.tres"
 
-# One baked sky per Settings.game_filter. The Atlas has to show the graph the run
-# actually travels: with an owned-only filter, routes through unowned games don't
-# exist, so drawing them would be a lie.
-# Alternate capital counts for the full catalog. Changing how many capitals there
-# are re-cuts every region AND re-packs the sky, so each is its own baked file —
-# it is not something that can be filtered at runtime.
-const CAPITAL_LAYOUTS := {
-	6: "res://data/atlas_layout_c6.tres",
-	8: "res://data/atlas_layout.tres",
-	12: "res://data/atlas_layout_c12.tres",
-}
-const CAPITAL_CHOICES := [6, 8, 12]
 
 # THE OWNER'S HAND-DRAWN MAP (tools/Roguelikes.drawio, baked by
-# tools/bake_drawio_map.py). A run draws this instead of a computed sky (the
-# owner, 19 Nov 2026: during runs it replaces the constellations; the Collection
-# keeps those and the Tree). It holds every game, whatever the game filter: the
+# tools/bake_drawio_map.py), the only map there is. It holds every game,
+# whatever the game filter: the
 # shape is the point, so a game the run can't enter is dimmed where it stands
 # rather than taken out and the map re-laid around the hole.
-const MAP_LAYOUT_PATH := "res://data/atlas_layout_map.tres"
+const MAP_LAYOUT_PATH := "res://data/map_layout.tres"
 
-const LAYOUT_PATHS := {
-	Settings.GameFilter.ALL: "res://data/atlas_layout.tres",
-	Settings.GameFilter.OWNED: "res://data/atlas_layout_owned.tres",
-	Settings.GameFilter.DOWNLOADED: "res://data/atlas_layout_downloaded.tres",
-}
 
-# Zoom thresholds, as multiples of the fit-to-screen scale. Below FIT the sky is
-# an overview and links would be noise; above LABELS every star is named.
-const ZOOM_LINKS := 0.85
-const ZOOM_RIMS := 1.35
-const ZOOM_LABELS := 3.6
+# How far out the map zooms, as a multiple of the fit-to-screen scale.
 const ZOOM_MIN := 0.55
-# Headroom above the point covers appear, so zooming further keeps growing the
-# art rather than hitting the ceiling the moment the first cover shows.
-const ZOOM_MAX := 26.0
 # The drawn map is ~35,000 units across with boxes ~40 wide, so fit-to-screen
 # makes a box a pixel or two: it needs far more headroom before its names read.
 const ZOOM_MAX_DRAWN := 90.0
@@ -179,7 +143,6 @@ const MAP_TEXT_PAD := 1.5
 
 const COL_EDGE := Color(0.902, 0.835, 0.722, 0.13)
 const COL_EDGE_CROSS := Color(0.86, 0.74, 0.62, 0.06)
-const COL_HULL := Color(0.902, 0.835, 0.722, 0.028)
 const COL_TRAIL := Color(1.0, 0.60, 0.24, 0.95)          # road ahead — ember
 const COL_HISTORY := Color(0.36, 0.85, 0.48, 0.92)       # the path actually walked — green
 const COL_TRAIL_CASING := Color(UITheme.WELL, 0.92)
@@ -194,8 +157,6 @@ const COL_EDGE_SEQUEL := Color(0.42, 0.62, 1.0, 0.26)
 # rim, so the sky still reads as genre at every zoom and the middles fill in gold
 # and silver as the collection does. Gold outranks silver: winning a run on a
 # game implies beating it, and the rarer fact is the one worth seeing.
-const COL_BEATEN := Color(0.78, 0.82, 0.88)        # silver — beaten at least once
-const COL_AMULET_WIN := Color(1.0, 0.80, 0.30)     # gold — won a run on it
 const COL_BASHED := Color(0.90, 0.26, 0.22, 0.95)
 # The run's two anchors. A ring the width of a hairline is what every other star
 # already wears, so these get their own colours AND their own marker treatment
@@ -213,26 +174,11 @@ const COL_DIM := Color(1, 1, 1, 0.11)
 # the near thing and everything else as the far one (StarCanvas._draw_stars).
 const COL_OFF_ROUTE_BG := UITheme.PANEL_HI
 const OFF_ROUTE_FADE := 0.5
-# How far a non-branch link fades on a tree sky. The influence graph is not a
-# tree — most of its links cut across the branches — so they have to stay
-# visible enough to read as cross-talk without drowning the shape.
-const TREE_CROSSLINK_FADE := 0.22
 
 const PICK_RADIUS := 14.0        # screen-space click tolerance, so tiny dots stay clickable
 const PICK_EDGE_RADIUS := 7.0    # how near a link you must click to open it
 
-# A star turns into its cover art as soon as that art would be drawn at least
-# this wide. This is a per-star test, not one global zoom threshold: a star's
-# reserved circle scales with its connection count, so the best-connected games
-# bloom into art first and dead ends follow as you keep zooming. Below this a
-# cover is an unreadable smudge and the dot carries more information.
-const MIN_COVER_PX := 26.0
 
-# Pure-catalog mode: the sky as the CATALOG, with no run laid over it. No routes,
-# no strike-throughs on bashed games, no transmute pastes, no you-are-here ring —
-# just the games and how they influenced each other. This is what the Collection
-# opens, because the Collection is about the catalog, not about a run in progress.
-var pure_catalog: bool = false
 
 # PREVIEW mode: draw the road ahead from a game the player is only CONSIDERING
 # rather than from the one they're standing on — the route an offered card would
@@ -241,7 +187,7 @@ var pure_catalog: bool = false
 # "here → if you take this → the Amulet".
 var preview_origin: StringName = &""
 
-var layout: AtlasLayout = null
+var layout: MapLayout = null
 
 var _scale: float = 1.0
 var _fit_scale: float = 1.0
@@ -274,13 +220,12 @@ func pair_of(a: int, b: int) -> int:
 # anchors and all; anything else (a computed sky, a hop with no line) runs
 # centre to centre.
 func road_ends(a: int, b: int) -> PackedVector2Array:
-	if layout.is_drawn_map():
-		var p: int = pair_of(a, b)
-		if p >= 0:
-			var ends: PackedVector2Array = layout.edge_ends(p)
-			if layout.edges[p * 2] == a:
-				return ends
-			return PackedVector2Array([ends[1], ends[0]])
+	var p: int = pair_of(a, b)
+	if p >= 0:
+		var ends: PackedVector2Array = layout.edge_ends(p)
+		if layout.edges[p * 2] == a:
+			return ends
+		return PackedVector2Array([ends[1], ends[0]])
 	return PackedVector2Array([layout.position_of(a), layout.position_of(b)])
 var _dragging: bool = false
 var _drag_moved: float = 0.0
@@ -295,20 +240,10 @@ var _trail: Array = []               # road ahead:  [[from_idx, to_idx], ...]
 # Both roads as a SET of star indices, built on demand off _trail + _history
 # (see route_stars). Wiped wherever those two are, through _clear_route_cache.
 var _route_stars: Dictionary = {}
-# The same answer again, as the two LISTS the draw loop actually wants: which
-# stars are scenery and which are the route (see star_indices). Derived from
-# _route_stars, so they are wiped with it and never separately.
-var _stars_off_route: PackedInt32Array = PackedInt32Array()
-var _stars_on_route: PackedInt32Array = PackedInt32Array()
-# And the no-route case: every star, in order. A pure function of the sky's SIZE,
-# so unlike the two above it survives a route change and is rebuilt only when the
-# layout is (the size test in star_indices catches that on its own).
-var _stars_all: PackedInt32Array = PackedInt32Array()
 var _steps_ahead: int = -1           # hops still to walk to the Amulet, -1 = no route
 var _reserve_left: float = 0.0       # screen edges something is floating over
 var _reserve_right: float = 0.0
 var _history: Array = []             # walked:      [[from_idx, to_idx, jumped: bool], ...]
-var _hulls: Array = []               # [{ci, centre: Vector2, radius: float}], built lazily
 var _sequel_cache: Dictionary = {}   # edge index -> bool, built lazily
 var _notes_refill: Callable = Callable()   # rebuilds the open notes panel
 
@@ -333,74 +268,25 @@ var _notes_refill: Callable = Callable()   # rebuilds the open notes panel
 # is cheap enough — with the id in hand, `passes_filter` is a few int compares
 # and at most two dictionary hits.
 var _ids_cache: Array[StringName] = []
-var _game_cache: Array = []          # star index -> GameData (or null)
-var _aspect_cache: PackedFloat32Array = PackedFloat32Array()  # cover h/w, 0 = unknown
 
-# The widest a cover can be for a given reserved radius, over any plausible cover
-# aspect. cover_size() divides the diameter by sqrt(1 + aspect²), so the WIDEST
-# result comes from the smallest aspect — box art is never wider than 2:1, which
-# puts the floor at 0.5 and the divisor at ~1.118.
-#
-# This exists so `shows_cover` can answer "definitely not" from the radius alone.
-# It used to answer by loading the cover to measure it, which meant every star in
-# the sky decoded its JPEG on the first redraw that looked at it — and
-# `cover_count()` looks at every star on EVERY redraw, so a pan across the chart
-# walked the whole 845-cover, ~200 MB catalog through the image decoder a few
-# stars at a time. That is the stutter.
-const MAX_COVER_WIDTH_FACTOR := 1.7889   # 2 / sqrt(1 + 0.5²)
 
-# Catalog-view filters. These pick a SUBGRAPH and the sky is rebuilt around it
-# (AtlasLayoutBuilder), rather than dimming stars where they stand: a filter that
-# only dims leaves the survivors scattered across the holes their neighbours left,
-# which is a picture of the full catalog with gaps in it rather than a map of what
-# you asked for. Filtering to Deckbuilders should give you the deckbuilders' own
-# constellations, with their own capitals.
-var _f_capitals: int = 8
-var _f_owned: int = 0                # 0 all · 1 owned · 2 downloaded · 3 not owned
-var _f_type: int = -1                # -1 all, else GameData.GameType
-var _f_record: int = 0               # 0 all · 1 beaten · 2 unbeaten · 3 amulet won · 4 has notes
-# -1 all, else an index into the BASE layout's capitals. Deliberately read off
-# the baked sky rather than whatever is currently drawn: a rebuilt sky cuts its
-# own regions, so a region index into it would mean something different after
-# every other filter change. "Which constellation is this game from" is a stable
-# fact about the canonical sky, and that is what this asks.
-var _f_region: int = -1
 
-# How the sky is arranged. CONSTELLATIONS is the baked star chart — hubs with
-# their influence trees packed around them. TREE is the radial timeline (see
-# AtlasLayoutBuilder._radial_tree): one ring per release year with the earliest
-# at the centre, so WHEN a game arrived is the thing you read instead of how it
-# clusters, with the influence branches running outward across the rings.
-enum Mode { CONSTELLATIONS, TREE }
-var _mode: int = Mode.CONSTELLATIONS
 
-# The game at the middle of the tree. Rogue is the root of the genre and the
-# oldest game with any connection at all; if a filter excludes it, the builder
-# falls back to the oldest connected game that survived.
-const TREE_ROOT := &"rogue"
 
-# The baked sky the filters are measured against, and which is drawn as-is when
-# nothing is filtered and the mode is CONSTELLATIONS. `layout` is what's actually
-# on screen — the same object when nothing narrows it, a freshly built one when
-# something does.
-var _base_layout: AtlasLayout = null
 
 var _canvas: Control = null
 var _card: PanelContainer = null
 var _card_box: VBoxContainer = null
 var _hud: Label = null
 var _search: LineEdit = null
-var _filter_bar: PanelContainer = null
 var _legend_bar: PanelContainer = null
-var _filter_count: Label = null
 
 # ---------------------------------------------------------------------------
 # Lifecycle
 # ---------------------------------------------------------------------------
 
-static func open(parent: Node, pure: bool = false) -> AtlasView:
-	var v := AtlasView.new()
-	v.pure_catalog = pure
+static func open(parent: Node) -> MapView:
+	var v := MapView.new()
 	parent.add_child(v)
 	return v
 
@@ -409,15 +295,10 @@ func _ready() -> void:
 	top_level = true
 	theme = UITheme.shared()
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	# A run is drawn on the owner's map; the Collection (`pure_catalog`) keeps
-	# the computed skies, its filters and its modes.
-	if layout == null and not pure_catalog:
-		layout = load_drawn_map()
+	# The owner's drawn map, the only map there is (the computed star chart was
+	# taken out on 28 Nov 2026). A test may hand one in first.
 	if layout == null:
-		layout = load_layout()
-	# The baked sky the filters measure against. Held separately from `layout`,
-	# which becomes a freshly built one as soon as anything narrows the catalog.
-	_base_layout = layout
+		layout = load_drawn_map()
 	_fit_to_viewport()
 	get_viewport().size_changed.connect(_fit_to_viewport)
 	# Before _build(): the header's "My run" button and the route legend both ask
@@ -428,31 +309,11 @@ func _ready() -> void:
 	frame_all()
 
 # The drawn map, or null if it was never baked.
-static func load_drawn_map() -> AtlasLayout:
+static func load_drawn_map() -> MapLayout:
 	if ResourceLoader.exists(MAP_LAYOUT_PATH):
 		var res: Resource = load(MAP_LAYOUT_PATH)
-		if res is AtlasLayout and (res as AtlasLayout).is_drawn_map():
-			return res as AtlasLayout
-	return null
-
-# Loads the sky matching the active game filter, falling back to the full one if
-# that variant was never baked. Returns null when nothing has been generated, and
-# every caller treats that as "the atlas isn't available" rather than crashing —
-# these resources are build artefacts, not authored content.
-static func load_layout(filter_value: int = -1) -> AtlasLayout:
-	var wanted: int = filter_value if filter_value >= 0 else Settings.game_filter
-	# The owned sky is baked from the CATALOG's Owned column (bake_atlas.py reads
-	# the .tres). A player using their own list owns a different set, so that
-	# variant would draw a subgraph the run doesn't travel — stars it can't enter,
-	# and none of the games it can. Fall back to the full sky, which is at least a
-	# superset of whatever they own.
-	if wanted == Settings.GameFilter.OWNED and Ownership.source != Ownership.Source.SPREADSHEET:
-		wanted = Settings.GameFilter.ALL
-	for path in [LAYOUT_PATHS.get(wanted, LAYOUT_PATH), LAYOUT_PATH]:
-		if ResourceLoader.exists(path):
-			var res: Resource = load(path)
-			if res is AtlasLayout and (res as AtlasLayout).star_count() > 0:
-				return res as AtlasLayout
+		if res is MapLayout and (res as MapLayout).is_drawn_map():
+			return res as MapLayout
 	return null
 
 # The chart fills the screen, minus whatever strip at the top of it belongs to
@@ -500,7 +361,8 @@ func neighbors_of(i: int) -> Array:
 func _build_trail() -> void:
 	_trail.clear()
 	_clear_route_cache()
-	if not has_layout() or pure_catalog:
+	# Outside a run (the Extras map) there is no road, whatever the last run left.
+	if not has_layout() or outside_run():
 		return
 	# In preview mode the road ahead starts at the game being considered — that is
 	# the whole question the preview asks.
@@ -556,7 +418,7 @@ func refresh_route() -> void:
 # Empty when there is no run and in the catalog view: with no route, nothing is
 # off it, and the whole sky is drawn at full strength as before.
 func route_stars() -> Dictionary:
-	if not _route_stars.is_empty() or pure_catalog:
+	if not _route_stars.is_empty():
 		return _route_stars
 	if _trail.is_empty() and _history.is_empty():
 		return _route_stars
@@ -572,7 +434,7 @@ func route_stars() -> Dictionary:
 	return _route_stars
 
 # Whether a route is on screen at all — the state the "push the scenery back"
-# treatment and the hover-only constellation names belong to.
+# treatment belongs to.
 func showing_route() -> bool:
 	return not route_stars().is_empty()
 
@@ -615,60 +477,7 @@ func map_type_color(i: int) -> Color:
 func _clear_route_cache() -> void:
 	_route_stars.clear()
 	_trail_keys.clear()
-	_stars_off_route = PackedInt32Array()
-	_stars_on_route = PackedInt32Array()
 
-# WHICH STARS a draw pass is for, as a list to walk rather than a test to apply.
-#
-# The split into scenery and route is what puts the roads between the two (see
-# draw_layers), and it is worth keeping — but it used to be paid for by running
-# the WHOLE sky once per star layer and skipping the half that belonged to the
-# other pass. 1704 iterations and 1704 dictionary hits to draw 852 stars, on
-# every redraw, which is every pan step. The membership question is asked once
-# per star here instead, and each pass walks only its own list.
-#
-# Built lazily and kept until the route changes; the full-sky list is a pure
-# function of the layout and is rebuilt with it.
-func star_indices(layer: int) -> PackedInt32Array:
-	var n: int = layout.star_count() if has_layout() else 0
-	if layer != LAYER_STARS_OFF_ROUTE and layer != LAYER_STARS_ON_ROUTE:
-		if _stars_all.size() != n:
-			_stars_all = PackedInt32Array()
-			_stars_all.resize(n)
-			for i in range(n):
-				_stars_all[i] = i
-		return _stars_all
-	if _stars_off_route.size() + _stars_on_route.size() != n:
-		_stars_off_route = PackedInt32Array()
-		_stars_on_route = PackedInt32Array()
-		var route: Dictionary = route_stars()
-		for i in range(n):
-			if route.has(i):
-				_stars_on_route.append(i)
-			else:
-				_stars_off_route.append(i)
-	return _stars_on_route if layer == LAYER_STARS_ON_ROUTE else _stars_off_route
-
-# --- what goes down over what -----------------------------------------------
-#
-# The stars and the roads are one pile of draw calls, and which of them is on
-# top is the difference between a route you can follow across the sky and a
-# route stitched out of whatever showed between 700 dots.
-#
-# With no route there is one star pass and the roads sit under it, as they
-# always did. With a route the stars split in two around them: SCENERY first,
-# then the roads, then the games the roads actually run between — so the
-# corridor crosses everything it has nothing to do with, and still tucks
-# politely behind the cover art of the games on it.
-const LAYER_STARS_ALL := 0
-const LAYER_STARS_OFF_ROUTE := 1
-const LAYER_STARS_ON_ROUTE := 2
-const LAYER_ROADS := 3
-
-func draw_layers() -> Array:
-	if not showing_route():
-		return [LAYER_ROADS, LAYER_STARS_ALL]
-	return [LAYER_STARS_OFF_ROUTE, LAYER_ROADS, LAYER_STARS_ON_ROUTE]
 
 # ---------------------------------------------------------------------------
 # The run's two anchors
@@ -682,18 +491,18 @@ func draw_layers() -> Array:
 # ---------------------------------------------------------------------------
 
 func current_index() -> int:
-	if pure_catalog or not has_layout():
+	if not has_layout() or outside_run():
 		return -1
 	return layout.index_of(GameState.current_game_id)
 
 func amulet_index() -> int:
-	if pure_catalog or not has_layout():
+	if not has_layout() or outside_run():
 		return -1
 	return layout.index_of(GameState.amulet_game_id)
 
 # The game a preview is routing FROM, when this sky is previewing one.
 func preview_index() -> int:
-	if pure_catalog or not has_layout() or preview_origin == &"":
+	if not has_layout() or preview_origin == &"":
 		return -1
 	var i: int = layout.index_of(preview_origin)
 	return -1 if i == current_index() else i
@@ -744,7 +553,7 @@ func marker_color(index: int) -> Color:
 func _build_history() -> void:
 	_history.clear()
 	_clear_route_cache()
-	if not has_layout() or pure_catalog:
+	if not has_layout() or outside_run():
 		return
 	var walked: Array = []
 	for id in GameState.visited_games:
@@ -761,22 +570,6 @@ func _build_history() -> void:
 
 func history_segment_count() -> int:
 	return _history.size()
-
-# Centre and radius of each constellation, read straight off the bake. Sorted
-# biggest-first so the largest region claims its name's spot before the rest.
-func hulls() -> Array:
-	if not _hulls.is_empty() or not has_layout():
-		return _hulls
-	for ci in range(layout.capitals.size()):
-		if ci >= layout.region_radius.size():
-			break
-		_hulls.append({
-			"ci": ci,
-			"centre": Vector2(layout.region_cx[ci], layout.region_cy[ci]),
-			"radius": float(layout.region_radius[ci]),
-		})
-	_hulls.sort_custom(func(a, b): return float(a["radius"]) > float(b["radius"]))
-	return _hulls
 
 # ---------------------------------------------------------------------------
 # Camera
@@ -880,90 +673,15 @@ func _clamp_view() -> void:
 		_offset.y -= tl.y - (view.y - margin)
 
 func zoom_max() -> float:
-	return ZOOM_MAX_DRAWN if has_layout() and layout.is_drawn_map() else ZOOM_MAX
+	return ZOOM_MAX_DRAWN
 
 func zoom_ratio() -> float:
 	return _scale / maxf(_fit_scale, 0.0001)
 
-# The size a cover is drawn at, inscribed in the circle the packing reserved for
-# that star. The bake guarantees those circles never overlap, so covers can't
-# either — which is the whole reason art can replace the dots without a second
-# layout pass. `aspect` is height / width.
-static func cover_size(reserved_radius: float, aspect: float) -> Vector2:
-	if reserved_radius <= 0.0 or aspect <= 0.0:
-		return Vector2.ZERO
-	var w: float = 2.0 * reserved_radius / sqrt(1.0 + aspect * aspect)
-	return Vector2(w, w * aspect)
-
-# Cover art for a star, or null when the game has none (the star stays a dot).
-#
-# READING THIS LOADS THE COVER (GameData.cover_image decodes on first access), so
-# it is only ever called for a star that is actually about to be drawn as art —
-# `shows_cover` answers the "is it big enough" question without it.
-func cover_texture(i: int) -> Texture2D:
-	if not has_layout():
-		return null
-	var game: GameData = game_at(i)
-	if game == null or game.cover_image == null:
-		return null
-	if game.cover_image.get_width() <= 0 or game.cover_image.get_height() <= 0:
-		return null
-	return game.cover_image
-
-# The reserved circle a star is packed into, in screen pixels. The one number
-# both the cover tests below are derived from, and free to compute.
-func _reserved_radius(i: int) -> float:
-	return AtlasLayout.star_radius(layout.degree_of(i)) * _scale
-
-# A cover's height/width, remembered per star so it is measured once. 0 until the
-# texture has been loaded for a draw — and it is only loaded when the star is
-# already over the size threshold, so a star that never blooms never pays.
-func _cover_aspect(i: int) -> float:
-	if _aspect_cache.size() != layout.star_count():
-		_aspect_cache.resize(layout.star_count())
-		_aspect_cache.fill(0.0)
-	if _aspect_cache[i] > 0.0:
-		return _aspect_cache[i]
-	var tex: Texture2D = cover_texture(i)
-	if tex == null:
-		return 0.0
-	var aspect: float = float(tex.get_height()) / float(tex.get_width())
-	_aspect_cache[i] = aspect
-	return aspect
-
-# Screen-space size this star's cover would be drawn at, or ZERO if it has none
-# — or if it is nowhere near big enough to be drawn, in which case the answer is
-# reached without touching the art.
-func cover_screen_size(i: int) -> Vector2:
-	if not has_layout():
-		return Vector2.ZERO
-	var reserved: float = _reserved_radius(i)
-	# The widest this star's cover could POSSIBLY be. Under the threshold there is
-	# no aspect that would put it over, so there is nothing to measure.
-	if reserved * MAX_COVER_WIDTH_FACTOR < MIN_COVER_PX:
-		return Vector2.ZERO
-	var aspect: float = _cover_aspect(i)
-	if aspect <= 0.0:
-		return Vector2.ZERO
-	return cover_size(reserved, aspect)
-
-# Whether this star is currently drawn as art rather than a dot. Big, well
-# connected games cross the threshold at a much lower zoom than dead ends do,
-# which is the whole point — the map fills in from its hubs outward.
-func shows_cover(i: int) -> bool:
-	if layout.is_drawn_map():
-		return false  # the drawn map is boxes and names; the art is on the card
-	return cover_screen_size(i).x >= MIN_COVER_PX
-
 # Half-height of whatever is actually drawn for a star, in screen pixels. Labels
 # hang off this so they clear the art instead of sitting on top of it.
 func drawn_half_height(i: int) -> float:
-	if layout.is_drawn_map():
-		return layout.box_h[i] * 0.5 * _scale
-	var size: Vector2 = cover_screen_size(i)
-	if size.x >= MIN_COVER_PX:
-		return size.y * 0.5
-	return AtlasLayout.star_radius(layout.degree_of(i)) * _scale
+	return layout.box_h[i] * 0.5 * _scale
 
 # Where arrowheads sit along one route segment, as distances from its start.
 #
@@ -1011,28 +729,6 @@ func sequel_link_count() -> int:
 			n += 1
 	return n
 
-# What fills the middle of a star: gold once a run has been won on that game,
-# silver once it has been beaten at all, and TRANSPARENT when neither — a game
-# you've never played has a hollow centre.
-#
-# COLLECTION ONLY. This is the lifetime record, which is what the Collection's
-# Constellations are for; during a run the sky should be about the run, and a
-# lifetime marker sitting next to the you-are-here ring competes with it.
-func star_record_color(i: int) -> Color:
-	if not has_layout() or not pure_catalog:
-		return Color(0, 0, 0, 0)
-	# Deliberately NOT cached. The two lookups behind it are dictionary hits, and
-	# the expensive half — rebuilding a StringName out of the layout's packed ids
-	# on every ask — is what `star_id` already took care of. Caching the answer
-	# instead would mean owning "has the lifetime record moved", and it moves from
-	# places that have no reason to tell a star chart about it.
-	var gid: StringName = star_id(i)
-	if GameStats.amulet_wins(gid) > 0:
-		return COL_AMULET_WIN
-	if GameStats.beaten_count(gid) > 0:
-		return COL_BEATEN
-	return Color(0, 0, 0, 0)
-
 # --- the per-star caches ---------------------------------------------------
 
 # The star's game id. `layout.id_at` builds a StringName out of the layout's
@@ -1052,10 +748,6 @@ func _invalidate_star_cache() -> void:
 	_ids_cache.clear()
 	_fit_cache.clear()
 	_pair_index.clear()
-	_game_cache.clear()
-	_aspect_cache.clear()
-	# A different sky is a different count at the same camera.
-	_cover_count_key = Vector4(-1, -1, -1, -1)
 
 # Whether a star survives the catalog filters. Always true outside the catalog
 # view, which has no filter bar — and, in it, true for everything currently
@@ -1071,7 +763,7 @@ func _invalidate_star_cache() -> void:
 # between the two games, never a box).
 func rift_seams() -> Array:
 	var out: Array = []
-	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+	if not has_layout() or outside_run():
 		return out
 	for r in RunGraph.rifts():
 		var a: int = layout.index_of(StringName(r.get("a", "")))
@@ -1093,12 +785,25 @@ func rift_seams() -> Array:
 # run's own route, the road walked and the two anchors stay whatever they are, so
 # a run on the full catalog never has its road run into nothing.
 #
-# Static, so the choice holds from one opening of the map to the next.
+# Static, so the choice holds from one opening of the map to the next — one
+# choice for a run (Owned by default) and one for the map opened from the main
+# menu's Extras, outside any run (ALL by default, the owner, 28 Nov 2026: with no
+# run on it the map is the whole catalog's shape).
 static var owned_only: bool = true
+static var owned_only_menu: bool = false
 var _owned_flags: PackedByteArray = PackedByteArray()
 
+# Whether this map is open outside a run (from the main menu): no run page is
+# mounted. (GameState.phase is no guide: a fresh run never moves it off MENU.)
+func outside_run() -> bool:
+	return GameState.overworld_scene == null or not is_instance_valid(GameState.overworld_scene)
+
+# The Owned switch as it stands for where this map is open.
+func owned_switch() -> bool:
+	return owned_only_menu if outside_run() else owned_only
+
 func owned_filter_on() -> bool:
-	return owned_only and not pure_catalog and has_layout() and layout.is_drawn_map()
+	return owned_switch() and has_layout()
 
 func hidden(i: int) -> bool:
 	if not owned_filter_on():
@@ -1114,9 +819,12 @@ func hidden(i: int) -> bool:
 	return i != current_index() and i != amulet_index() and i != preview_index()
 
 func set_owned_only(on: bool) -> void:
-	if owned_only == on:
+	if owned_switch() == on:
 		return
-	owned_only = on
+	if outside_run():
+		owned_only_menu = on
+	else:
+		owned_only = on
 	_selected_rift = -1
 	_hovered_rift = -1
 	if _hovered >= 0 and hidden(_hovered):
@@ -1158,7 +866,7 @@ var _hovered_rift: int = -1
 var _hover_card_rift: int = -1
 
 func rift_curves() -> Array:
-	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+	if not has_layout():
 		return []
 	var key: String = "%s|%s" % [str(RunGraph.rifts()), owned_filter_on()]
 	if key == _rift_curves_key:
@@ -1342,241 +1050,31 @@ func selected_rift() -> int:
 	return _selected_rift
 
 func off_run(i: int) -> bool:
-	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+	if not has_layout():
 		return false
 	return RunGraph.is_off_map(star_id(i))
-
-func passes_filter(i: int) -> bool:
-	if not pure_catalog or not has_layout():
-		return true
-	return passes_game_filter(Data.get_game(star_id(i)))
-
-# The same question asked of a game rather than a star index — this is what
-# selects the subgraph to lay out, so it cannot depend on the sky being drawn.
-func passes_game_filter(game: GameData) -> bool:
-	if game == null:
-		return false
-	match _f_owned:
-		1:
-			if not Ownership.is_owned(game):
-				return false
-		2:
-			if game.file_location.strip_edges() == "":
-				return false
-		3:
-			if Ownership.is_owned(game):
-				return false
-	if _f_type >= 0 and int(game.type) != _f_type:
-		return false
-	var gid: StringName = game.id
-	match _f_record:
-		1:
-			if GameStats.beaten_count(gid) <= 0:
-				return false
-		2:
-			if GameStats.beaten_count(gid) > 0:
-				return false
-		3:
-			if GameStats.amulet_wins(gid) <= 0:
-				return false
-		4:
-			if not GameStats.has_enemy_log(gid):
-				return false
-	# Region is measured against the BASE sky, so it keeps meaning something when
-	# the drawn sky has been recut around a narrower set.
-	if _f_region >= 0:
-		var base: AtlasLayout = _base_layout if _base_layout != null else layout
-		var bi: int = base.index_of(game.id)
-		if bi < 0 or base.region[bi] != _f_region:
-			return false
-	return true
-
-func filtered_count() -> int:
-	if not has_layout():
-		return 0
-	var n: int = 0
-	for i in range(layout.star_count()):
-		if passes_filter(i):
-			n += 1
-	return n
-
-# True when nothing narrows the catalog — the case where the baked sky is
-# exactly what should be drawn, so no rebuild happens at all.
-func _filters_clear() -> bool:
-	return _f_owned == 0 and _f_type < 0 and _f_record == 0 and _f_region < 0
-
-# Every game id that survives the filters, sorted, ready for the builder.
-func _filtered_ids() -> PackedStringArray:
-	var out := PackedStringArray()
-	var source: AtlasLayout = _base_layout if _base_layout != null else layout
-	if source == null:
-		return out
-	for i in range(source.star_count()):
-		var gid: StringName = source.id_at(i)
-		if passes_game_filter(Data.get_game(gid)):
-			out.append(String(gid))
-	return out
-
-# Rebuild the sky for the current mode + filters, and re-frame onto it.
-#
-# The unfiltered constellation view is the baked file, untouched: it is the sky
-# that shipped, it costs nothing to show, and it is the one the player has built
-# a sense of place in. Anything else is laid out here and now — half a second for
-# the whole catalog, less for the narrower sets that are the reason to filter at
-# all.
-func _relayout(reframe: bool = true) -> void:
-	if not pure_catalog:
-		return
-	var built: AtlasLayout = null
-	if _mode == Mode.TREE:
-		built = AtlasLayoutBuilder.build_tree(_filtered_ids(), TREE_ROOT, "tree")
-	elif not _filters_clear():
-		built = AtlasLayoutBuilder.build(_filtered_ids(), _f_capitals, "filtered")
-	if built == null and _base_layout != null:
-		built = _base_layout
-	if built == null:
-		return
-	# Only when the stars actually moved: a filter that clears back to the baked sky
-	# hands back the same layout, and dropping the caches there would throw away the
-	# covers the chart has already decoded for nothing.
-	if built != layout:
-		layout = built
-		_invalidate_star_cache()
-	_neighbors.clear()
-	_hulls.clear()
-	_sequel_cache.clear()
-	_trail.clear()
-	_history.clear()
-	_clear_route_cache()
-	select(-1)
-	select_edge(-1)
-	_build_trail()
-	_build_history()
-	_refresh_filter_count()
-	if reframe:
-		frame_all()
-	_redraw()
-
-# Switch between the constellation sky and the radial timeline.
-func set_mode(mode: int) -> void:
-	if mode == _mode:
-		return
-	_mode = mode
-	_rebuild_filter_bar()
-	_relayout()
-
-# Swap to the sky baked with `count` capitals. Keeps the filters, drops anything
-# derived from the old layout.
-func set_capital_count(count: int) -> void:
-	var path: String = String(CAPITAL_LAYOUTS.get(count, LAYOUT_PATH))
-	if not ResourceLoader.exists(path):
-		return
-	var res: Resource = load(path)
-	if not (res is AtlasLayout):
-		return
-	_f_capitals = count
-	_f_region = -1                    # region indices belong to the old sky
-	_base_layout = res as AtlasLayout
-	layout = _base_layout
-	# The sky is a different file with different star indices; nothing keyed by
-	# index survives it. _relayout would only notice if it ended up rebuilding.
-	_invalidate_star_cache()
-	_relayout(false)
-	_rebuild_filter_bar()
-	frame_all()
-
-# Whether this star's centre is filled. False outside the Collection's catalog
-# view, where the record isn't drawn at all.
-func has_record(i: int) -> bool:
-	if not has_layout() or not pure_catalog:
-		return false
-	# Exactly the question star_record_color already answers — an unplayed game's
-	# centre is transparent — so it is asked once and read twice.
-	return star_record_color(i).a > 0.0
 
 # Destroyed by Bash this run: the game is gone from the pool and no route can
 # pass through it any more.
 func is_bashed(i: int) -> bool:
-	return not pure_catalog and has_layout() and GameLoop2.is_bashed(star_id(i))
+	return has_layout() and GameLoop2.is_bashed(star_id(i))
 
 # A node Transmute has pasted a different game onto. The node keeps its place on
 # the graph — its routes are unchanged — but it now plays the replacement.
 func is_transmuted(i: int) -> bool:
-	return not pure_catalog and has_layout() and GameLoop2.is_transmuted(star_id(i))
+	return has_layout() and GameLoop2.is_transmuted(star_id(i))
 
 # The game actually AT a star now: the pasted replacement where there is one,
 # otherwise the node's own game.
 func game_at(i: int) -> GameData:
 	if not has_layout():
 		return null
-	# Only the catalog's answer is cached. In a run the game AT a node is whatever
-	# Transmute last pasted there, and that can change while the chart is open —
-	# a lookup per star is the honest price of drawing what is actually there.
-	if not pure_catalog:
-		return GameLoop2.game_at(star_id(i))
-	if _game_cache.size() != layout.star_count():
-		_game_cache.resize(layout.star_count())
-		_game_cache.fill(null)
-	var cached = _game_cache[i]
-	if cached is GameData:
-		return cached
-	var game: GameData = Data.get_game(star_id(i))
-	_game_cache[i] = game
-	return game
+	# The game AT a node is whatever Transmute last pasted there, and that can
+	# change while the map is open — a lookup per box is the honest price of
+	# drawing what is actually there. Outside a run it is the node's own game.
+	return GameLoop2.game_at(star_id(i))
 
-# How many stars are showing art right now — drives the zoom readout.
-#
-# ON SCREEN only, and that is not a compromise: this runs on every redraw, and
-# `shows_cover` has to load a cover to measure it once the star is over the size
-# threshold. Counting the whole sky therefore meant that zooming in far enough
-# for every star to qualify decoded all 845 covers, in a HUD label, on every pan
-# step. Bounded to the viewport it can never cost more than the frame is drawing
-# anyway — and "12 showing art" reading as twelve you can see is the more useful
-# sentence besides.
-#
-# And MEMOIZED against the camera, because it is still a HUD label and it was
-# still walking the sky for one. `_refresh_hud` is called by `_redraw`, so every
-# pan step, every zoom step and every SELECTION CHANGE re-counted the stars
-# (~2 ms) to decide whether the readout reads "overview" or "12 showing art".
-# The answer only moves when the camera does — same scale, same offset, same
-# canvas, same number — and a selection change cannot alter it at all, which is
-# most of what _redraw is for.
-var _cover_count_key := Vector4(-1, -1, -1, -1)
-var _cover_count_value: int = 0
 
-func cover_count() -> int:
-	if not has_layout():
-		return 0
-	var box: Vector2 = _canvas_size()
-	var key := Vector4(_scale, _offset.x, _offset.y, box.x + box.y * 65536.0)
-	if key == _cover_count_key:
-		return _cover_count_value
-	var vis: Rect2 = _visible_rect()
-	var n: int = 0
-	for i in range(layout.star_count()):
-		if vis.has_point(to_screen(layout.position_of(i))) and shows_cover(i):
-			n += 1
-	_cover_count_key = key
-	_cover_count_value = n
-	return n
-
-# The canvas rect a star has to fall inside to be worth drawing, widened by
-# COVER_CULL_MARGIN because a cover is far bigger than the dot at its centre and
-# a star just off the edge can still have art on screen. Shared by the count
-# above and StarCanvas._draw, so the two agree about what is showing.
-const COVER_CULL_MARGIN := 400.0
-
-#
-# The box is _canvas_size(), the same one the camera frames against. It used to
-# read `_canvas.size` raw, which is 0x0 until the canvas is laid out (always, in
-# a headless test): the camera framed the sky in 1280x720 while the cull box
-# was an 800px square at the origin, and the count saw a star only if the bake
-# happened to put it there. Re-baking for eighteen new games moved Slay the
-# Spire to x=539 and test_the_cover_count_memo_follows_the_camera read 0.
-func _visible_rect() -> Rect2:
-	var box: Vector2 = _canvas_size()
-	return Rect2(Vector2(-COVER_CULL_MARGIN, -COVER_CULL_MARGIN),
-		box + Vector2(COVER_CULL_MARGIN, COVER_CULL_MARGIN) * 2.0)
 
 # ---------------------------------------------------------------------------
 # Picking
@@ -1587,16 +1085,7 @@ func _visible_rect() -> Rect2:
 func pick(at: Vector2) -> int:
 	if not has_layout():
 		return -1
-	if layout.is_drawn_map():
-		return _pick_box(at)
-	var best: int = -1
-	var best_d: float = PICK_RADIUS * PICK_RADIUS
-	for i in range(layout.star_count()):
-		var d: float = to_screen(layout.position_of(i)).distance_squared_to(at)
-		if d < best_d:
-			best_d = d
-			best = i
-	return best
+	return _pick_box(at)
 
 # The drawn map's boxes are what a click lands on: the box under the cursor, grown
 # a few pixels so a box drawn a pixel wide can still be hit. Later boxes win, as
@@ -1701,8 +1190,7 @@ func focus_game(game_id: StringName, zoom: float = 5.0) -> bool:
 	var i: int = layout.index_of(game_id)
 	if i < 0:
 		return false
-	if layout.is_drawn_map():
-		zoom = maxf(zoom, _canvas_size().x / DRAWN_FOCUS_SPAN / maxf(_fit_scale, 0.0001))
+	zoom = maxf(zoom, _canvas_size().x / DRAWN_FOCUS_SPAN / maxf(_fit_scale, 0.0001))
 	_scale = clampf(_fit_scale * zoom, _fit_scale * ZOOM_MIN, _fit_scale * zoom_max())
 	_offset = _canvas_size() * 0.5 - layout.position_of(i) * _scale
 	select(i)
@@ -1728,11 +1216,6 @@ func _build() -> void:
 	# header row (the owner, 26 Nov 2026: one bar of options along the top, not
 	# two). `_build_header` makes their holder.
 	root.add_child(_build_header())
-	if pure_catalog:
-		_filter_bar = PanelContainer.new()
-		_filter_bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
-		root.add_child(_filter_bar)
-		_rebuild_filter_bar()
 
 	_canvas = StarCanvas.new()
 	(_canvas as StarCanvas).view = self
@@ -1750,132 +1233,6 @@ func _build() -> void:
 	add_child(_card)
 	_refresh_card()
 
-# The catalog's filter row. Rebuilt wholesale when the capital count changes,
-# since the list of constellations to filter by changes with it.
-func _rebuild_filter_bar() -> void:
-	if _filter_bar == null:
-		return
-	for c in _filter_bar.get_children():
-		c.queue_free()
-	# A FLOW, for the same reason the legend below is one — and this is the row
-	# that was actually breaking the page.
-	#
-	# Thirteen controls, one of which is the REGION dropdown, and an OptionButton
-	# is as wide as its widest item. Those items are the capitals' full display
-	# names, so this row's minimum width is set by whichever game happens to be a
-	# hub of the baked sky — a number that moves when the catalog does. It came to
-	# 1275, which with the bar's margins laid the whole view out at 1291 in a 1280
-	# canvas and pushed the header's ✕ Close a pixel off the right edge.
-	#
-	# A flow's minimum is its widest single control, so a filter row too long for
-	# one line takes a second line instead of taking it out of the page.
-	var row := HFlowContainer.new()
-	row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
-	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
-	_filter_bar.add_child(row)
-
-	# Two ways of arranging the same graph. Constellations cluster it around its
-	# hubs; the tree runs it outward from Rogue, generation by generation.
-	row.add_child(_filter_label("Layout"))
-	var modes := OptionButton.new()
-	modes.add_item("Constellations", Mode.CONSTELLATIONS)
-	modes.add_item("Tree", Mode.TREE)
-	for i in range(modes.item_count):
-		if modes.get_item_id(i) == _mode:
-			modes.select(i)
-	modes.item_selected.connect(func(idx): set_mode(modes.get_item_id(idx)))
-	row.add_child(modes)
-
-	# How many hubs the constellation sky is cut around. Meaningless in the tree,
-	# which has one root and no regions at all, so it isn't offered there.
-	if _mode == Mode.CONSTELLATIONS:
-		row.add_child(_filter_label("Constellations"))
-		var caps := OptionButton.new()
-		for count in CAPITAL_CHOICES:
-			caps.add_item(str(count), count)
-		for i in range(caps.item_count):
-			if caps.get_item_id(i) == _f_capitals:
-				caps.select(i)
-		caps.item_selected.connect(func(idx): set_capital_count(caps.get_item_id(idx)))
-		row.add_child(caps)
-
-	row.add_child(_filter_label("Library"))
-	row.add_child(_filter_option(["Any", "Owned", "Downloaded", "Not owned"], _f_owned,
-		func(v): _f_owned = v))
-
-	row.add_child(_filter_label("Type"))
-	var types: Array = ["Any"]
-	for t in RunGraph.TYPE_ORDER:
-		types.append(RunGraph.type_label(t))
-	row.add_child(_filter_option(types, _f_type + 1, func(v): _f_type = v - 1))
-
-	row.add_child(_filter_label("Record"))
-	row.add_child(_filter_option(
-		["Any", "Beaten", "Never beaten", "Amulet won", "Has notes"], _f_record,
-		func(v): _f_record = v))
-
-	# Named off the BASE sky, not the drawn one — the drawn one may have been
-	# recut around a handful of games and have entirely different capitals, and
-	# "games from the Slay the Spire constellation" has to keep meaning that.
-	var base: AtlasLayout = _base_layout if _base_layout != null else layout
-	if base != null and base.capitals.size() > 0:
-		row.add_child(_filter_label("Region"))
-		var regions: Array = ["Any"]
-		for ci in range(base.capitals.size()):
-			var cap: GameData = Data.get_game(base.id_at(base.capitals[ci]))
-			regions.append(cap.display_name if cap != null else "Region %d" % ci)
-		row.add_child(_filter_option(regions, _f_region + 1, func(v): _f_region = v - 1))
-
-	var clear := Button.new()
-	clear.text = "Clear"
-	clear.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	clear.pressed.connect(func():
-		_f_owned = 0
-		_f_type = -1
-		_f_record = 0
-		_f_region = -1
-		_rebuild_filter_bar()
-		_relayout())
-	row.add_child(clear)
-
-	_filter_count = Label.new()
-	# No EXPAND_FILL / right-align: those pushed the count to the far end of an
-	# HBox, and in a flow they would win it a line of its own. Beside the Clear
-	# button it also sits with the filters it is counting.
-	_filter_count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	_filter_count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(_filter_count)
-	_refresh_filter_count()
-
-func _filter_label(text: String) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	return l
-
-func _filter_option(items: Array, selected: int, on_pick: Callable) -> OptionButton:
-	var opt := OptionButton.new()
-	for i in range(items.size()):
-		opt.add_item(String(items[i]), i)
-	opt.select(clampi(selected, 0, items.size() - 1))
-	opt.item_selected.connect(func(idx):
-		on_pick.call(int(idx))
-		# The sky is the filter's output, not a backdrop it dims: changing one
-		# re-lays the survivors and frames the result.
-		_relayout())
-	return opt
-
-func _refresh_filter_count() -> void:
-	if _filter_count == null or not has_layout():
-		return
-	# The drawn sky IS the survivors, so the interesting number is how many of
-	# the whole catalog they are — which the base layout still knows.
-	var shown: int = layout.star_count()
-	var total: int = _base_layout.star_count() if _base_layout != null else shown
-	_filter_count.text = Plural.count(shown, "game") if shown == total \
-		else ("%d of %s" % [shown, Plural.count(total, "game")])
-
 func _build_header() -> Control:
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 10, 0))
@@ -1883,7 +1240,7 @@ func _build_header() -> Control:
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	bar.add_child(row)
 
-	var switches: bool = not pure_catalog and has_layout() and layout.is_drawn_map()
+	var switches: bool = has_layout()
 	if switches:
 		# The switches stand where the title was: "Full map", lit, says which
 		# page this is.
@@ -1894,7 +1251,7 @@ func _build_header() -> Control:
 		_rebuild_mode_strip()
 	else:
 		var title := Label.new()
-		title.text = "✦  Constellations" if pure_catalog else "✦  Atlas"
+		title.text = "🗺  Map"
 		title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 		title.add_theme_color_override("font_color", UITheme.GOLD)
 		row.add_child(title)
@@ -1924,7 +1281,7 @@ func _build_header() -> Control:
 		row.add_child(_tool_button("▶ This game", func(): _frame_star(preview_index())))
 	if amulet_index() >= 0:
 		row.add_child(_tool_button("🏆 Amulet", func(): _frame_star(amulet_index())))
-	if not pure_catalog and (not _trail.is_empty() or not _history.is_empty()):
+	if not _trail.is_empty() or not _history.is_empty():
 		row.add_child(_tool_button("My run", frame_trail))
 	row.add_child(_tool_button("−", func(): zoom_by(1.0 / 1.3, _canvas_size() * 0.5)))
 	row.add_child(_tool_button("+", func(): zoom_by(1.3, _canvas_size() * 0.5)))
@@ -1935,7 +1292,7 @@ func _build_header() -> Control:
 	# the run, and "Close" on a page that replaced everything reads as ambiguous at
 	# exactly the moment the player wants out of it.
 	var close := Button.new()
-	close.text = "✕  Close" if pure_catalog else ("←  Back" if switches else "←  Back to the run")
+	close.text = "✕  Close" if outside_run() else ("←  Back" if switches else "←  Back to the run")
 	close.tooltip_text = "Leave the chart (Esc)."
 	close.add_theme_color_override("font_color", UITheme.GOLD)
 	close.pressed.connect(_finish)
@@ -1948,9 +1305,7 @@ func _frame_star(index: int) -> void:
 	if not has_layout() or index < 0 or index >= layout.star_count():
 		return
 	var p: Vector2 = layout.position_of(index)
-	var span: float = maxf(layout.bounds.size.x, layout.bounds.size.y) * 0.12
-	if layout.is_drawn_map():
-		span = DRAWN_FOCUS_SPAN
+	var span: float = DRAWN_FOCUS_SPAN
 	frame_rect(Rect2(p - Vector2(span, span) * 0.5, Vector2(span, span)))
 
 func _tool_button(text: String, cb: Callable) -> Button:
@@ -1996,17 +1351,9 @@ func _fill_legend() -> void:
 	row.add_theme_constant_override("h_separation", UITheme.GAP_SECTION)
 	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	bar.add_child(row)
-	var drawn: bool = layout != null and layout.is_drawn_map()
+	var drawn: bool = layout != null
 	# The drawn map has no genre rims to key: its lines are the owner's two kinds.
-	if drawn:
-		row.add_child(_route_key("Inspired", UITheme.TEXT))
-	else:
-		for t in RunGraph.TYPE_ORDER:
-			row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
-	# The record is only drawn in the catalog view, so only key it there.
-	if pure_catalog:
-		row.add_child(_legend_chip("⚔ Beaten", COL_BEATEN, true))
-		row.add_child(_legend_chip("👑 Amulet won", COL_AMULET_WIN, true))
+	row.add_child(_route_key("Inspired", UITheme.TEXT))
 	if sequel_link_count() > 0:
 		row.add_child(_legend_chip("Sequel / same devs", COL_EDGE_SEQUEL))
 	# The two anchors are keyed FIRST among the run's marks, because they're what
@@ -2024,8 +1371,8 @@ func _fill_legend() -> void:
 	if drawn and not rift_seams().is_empty():
 		row.add_child(_route_key("🌀 Rift", UITheme.RIFT))
 	var note := Label.new()
-	note.text = "Greyed = off this run's map · hover a game for its card" if drawn \
-		else "Star size = connections"
+	note.text = "Hover a game for its card · click a line for who inspired whom" \
+		if outside_run() else "Greyed = off this run's map · hover a game for its card"
 	# No EXPAND_FILL: in the HBox this used to be, that let the note swallow the
 	# slack and drew its text at the left of it — the same place a flow puts it
 	# anyway. In a flow it would claim a line of its own instead.
@@ -2076,7 +1423,7 @@ class RouteKey extends Control:
 
 	func _draw() -> void:
 		var y: float = size.y * 0.5
-		draw_line(Vector2(0, y), Vector2(size.x, y), AtlasView.COL_TRAIL_CASING, 6.0, true)
+		draw_line(Vector2(0, y), Vector2(size.x, y), MapView.COL_TRAIL_CASING, 6.0, true)
 		draw_line(Vector2(0, y), Vector2(size.x, y), core, 3.0, true)
 		var tip := Vector2(size.x, y)
 		draw_colored_polygon(PackedVector2Array([
@@ -2123,7 +1470,7 @@ func _fit_card() -> void:
 
 # Cover art on a card is shown WHOLE. The two builders live on UITheme now
 # (UITheme.card_art / card_art_size), because the route ladder's card draws the
-# same art and naming AtlasView for it pulled this 2,800-line file into every
+# same art and naming MapView for it pulled this 2,800-line file into every
 # run's page load (docs/performance-backlog.md §6). These forward, so nothing
 # that already calls them here changes.
 const CARD_ART_WIDTH := 248.0
@@ -2152,7 +1499,7 @@ func _refresh_card() -> void:
 	if _selected_rift >= 0 and has_layout() and _selected_rift < rift_curves().size():
 		_fill_rift_card(rift_curves()[_selected_rift])
 		return
-	if _selected < 0 and _hover_card_rift >= 0 and has_layout() and layout.is_drawn_map() \
+	if _selected < 0 and _hover_card_rift >= 0 and has_layout() \
 			and _hover_card_rift < rift_curves().size():
 		_fill_rift_card(rift_curves()[_hover_card_rift])
 		return
@@ -2203,17 +1550,6 @@ func _refresh_card() -> void:
 	if game != null and game.year > 0:
 		facts.add_child(_fact("Released", str(game.year)))
 	facts.add_child(_fact("Connections", str(layout.degree_of(sel))))
-	var region_label: String = layout.region_name(sel)
-	if layout.is_drawn_map():
-		pass  # the hand-drawn map has no constellations
-	elif region_label == "":
-		facts.add_child(_fact("Region", "drifting — no capital reaches it"))
-	elif layout.is_capital(sel):
-		facts.add_child(_fact("Region", "%s (capital)" % region_label))
-	else:
-		facts.add_child(_fact("Region", region_label))
-		facts.add_child(_fact("From capital", "%d hop%s" %
-			[layout.hops[sel], "" if layout.hops[sel] == 1 else "s"]))
 	# A pasted node reports both games: what you play here now, and what this spot
 	# was on the map before.
 	if pasted and original != null:
@@ -2229,7 +1565,7 @@ func _refresh_card() -> void:
 			"" if amulet_runs == 1 else "s"]))
 	if is_bashed(sel):
 		facts.add_child(_fact("Status", "destroyed — bashed this run"))
-	elif not pure_catalog and GameState.has_beaten_game(id):
+	elif not outside_run() and GameState.has_beaten_game(id):
 		facts.add_child(_fact("Status", "beaten this run"))
 	if Ownership.is_owned(game):
 		facts.add_child(_fact("Owned", "yes"))
@@ -2328,7 +1664,7 @@ func _fill_rift_card(curve: Dictionary) -> void:
 func card_star() -> int:
 	if _selected >= 0:
 		return _selected
-	if has_layout() and layout.is_drawn_map():
+	if has_layout():
 		return _hover_card
 	return -1
 
@@ -2387,7 +1723,7 @@ func _fill_connection_card() -> void:
 	# games the map records — so the card keeps naming those, and says separately
 	# what has been pasted over them this run.
 	for endpoint in [from_game, to_game]:
-		if pure_catalog or not GameLoop2.is_transmuted(endpoint.id):
+		if not GameLoop2.is_transmuted(endpoint.id):
 			continue
 		var now: GameData = GameLoop2.game_at(endpoint.id)
 		if now == null:
@@ -2400,7 +1736,7 @@ func _fill_connection_card() -> void:
 		note.add_theme_color_override("font_color", UITheme.ACCENT)
 		_card_box.add_child(note)
 	for endpoint in [from_game, to_game]:
-		if pure_catalog or not GameLoop2.is_bashed(endpoint.id):
+		if not GameLoop2.is_bashed(endpoint.id):
 			continue
 		var gone := Label.new()
 		gone.text = "%s was bashed — this route is gone" % endpoint.display_name
@@ -2720,77 +2056,11 @@ func _on_search(text: String) -> void:
 func _refresh_hud() -> void:
 	if _hud == null:
 		return
-	# NOT ON THE RUN'S DRAWN MAP (the owner, 20 Nov 2026): where you are and the
-	# Amulet are on the run's own header strip, so the line stays empty — it is
-	# kept as the header's spacer.
-	if not pure_catalog and has_layout() and layout.is_drawn_map():
-		_hud.text = ""
-		return
-	if not has_layout():
-		_hud.text = "No baked layout — run tools/bake_atlas.py"
-		return
-	var detail: String = "overview"
-	var arts: int = cover_count()
-	if arts > 0:
-		detail = "%d showing art" % arts
-	elif zoom_ratio() >= ZOOM_LABELS:
-		detail = "labelled"
-	elif zoom_ratio() >= ZOOM_LINKS:
-		detail = "links shown"
-	var scope: String = ""
-	if layout.source_filter == "owned":
-		scope = " · owned only"
-	elif layout.source_filter == "downloaded":
-		scope = " · downloaded only"
-	# A tree has no constellations to count; what it has instead is a root and a
-	# depth, which is the thing worth saying about it.
-	var shape: String = Plural.count(layout.capitals.size(), "constellation")
-	if layout.is_drawn_map():
-		shape = "the drawn map"
-		detail = "labelled" if MAP_NAME_FONT * _scale >= MAP_MIN_TEXT_PX else "overview"
-	elif layout.is_tree():
-		var root_game: GameData = Data.get_game(layout.id_at(_tree_root_index()))
-		shape = "rooted at %s, %d deep" % [
-			root_game.display_name if root_game != null else "?", _tree_depth()]
-	var games_n: int = layout.star_count()
-	var links_n: int = layout.edge_count()
-	if owned_filter_on():
-		scope = " · owned games"
-		games_n = 0
-		for i in range(layout.star_count()):
-			if not hidden(i):
-				games_n += 1
-		links_n = 0
-		for e in range(layout.edge_count()):
-			if not hidden(layout.edges[e * 2]) and not hidden(layout.edges[e * 2 + 1]):
-				links_n += 1
-	_hud.text = "%s · %s · %s%s · %s" % [
-		Plural.count(games_n, "game"), Plural.count(links_n, "link"),
-		shape, scope, detail]
-	var run_line: String = run_summary()
-	if run_line != "":
-		_hud.text = "%s\n%s" % [run_line, _hud.text]
+	# NOT ON THE DRAWN MAP (the owner, 20 Nov 2026): where you are and the Amulet
+	# are on the run's own header strip, so the line stays empty — it is kept as
+	# the header's spacer, and says so when there is no map baked at all.
+	_hud.text = "" if has_layout() else "No map baked — run tools/bake_drawio_map.py"
 
-# The tree's root — the only star with no parent. -1 on a constellation sky.
-func _tree_root_index() -> int:
-	if not has_layout() or not layout.is_tree():
-		return -1
-	for i in range(layout.star_count()):
-		if layout.parent[i] < 0 and layout.hops[i] == 0:
-			return i
-	return 0
-
-# How many generations the tree runs to.
-func _tree_depth() -> int:
-	if not has_layout():
-		return 0
-	var deepest: int = 0
-	for h in layout.hops:
-		deepest = maxi(deepest, h)
-	return deepest
-
-# The run in one line: the game you're standing on, the game you're going to, and
-# how far apart they are. Empty outside a run (and in the catalog view).
 func run_summary() -> String:
 	var cur: int = current_index()
 	var goal: int = amulet_index()
@@ -2849,7 +2119,7 @@ func _rebuild_mode_strip() -> void:
 			_finish()
 			go.call(), Callable(), true))
 	var games := segmented(["All games", "Owned"], ["AllGames", "OwnedGames"],
-		1 if owned_only else 0, [func(): set_owned_only(false), func(): set_owned_only(true)],
+		1 if owned_switch() else 0, [func(): set_owned_only(false), func(): set_owned_only(true)],
 		["Every game on the map.", "Only the games you own, and the lines between them."], true)
 	games.name = "OwnedToggle"
 	row.add_child(games)
@@ -2990,14 +2260,14 @@ func _on_canvas_input(event: InputEvent) -> void:
 					if over_rift >= 0 else Control.CURSOR_ARROW
 				# A RIFT PUTS ITS CARD UP ON HOVER, as a box does (the owner, 26 Nov
 				# 2026), and it stays up until another box or rift is hovered.
-				if over_rift >= 0 and over_rift != _hover_card_rift and layout.is_drawn_map():
+				if over_rift >= 0 and over_rift != _hover_card_rift:
 					_hover_card_rift = over_rift
 					if _selected < 0 and _selected_edge < 0 and _selected_rift < 0:
 						_refresh_card()
 				_redraw()
 			if hit != _hovered:
 				_hovered = hit
-				if hit >= 0 and (hit != _hover_card or _hover_card_rift >= 0) and layout.is_drawn_map():
+				if hit >= 0 and (hit != _hover_card or _hover_card_rift >= 0):
 					_hover_card = hit
 					_hover_card_rift = -1
 					if _selected < 0 and _selected_edge < 0 and _selected_rift < 0:
@@ -3010,7 +2280,7 @@ func _on_canvas_input(event: InputEvent) -> void:
 # ---------------------------------------------------------------------------
 
 class StarCanvas extends Control:
-	var view: AtlasView = null
+	var view: MapView = null
 
 	func _gui_input(event: InputEvent) -> void:
 		if view != null:
@@ -3018,63 +2288,21 @@ class StarCanvas extends Control:
 
 	func _draw() -> void:
 		if view == null or not view.has_layout():
-			var msg: String = "The atlas hasn't been baked yet.\nRun: python3 tools/bake_atlas.py"
+			var msg: String = "The map hasn't been baked yet.\nRun: python3 tools/bake_drawio_map.py"
 			draw_string(get_theme_default_font(), Vector2(28, 44), msg,
 				HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UITheme.TEXT_DIM)
 			return
 
-		var lay: AtlasLayout = view.layout
-		if lay.is_drawn_map():
-			_draw_drawn_map(lay)
-			return
-		var ratio: float = view.zoom_ratio()
-		var show_links: bool = ratio >= AtlasView.ZOOM_LINKS
-		var show_rims: bool = ratio >= AtlasView.ZOOM_RIMS
-		var show_labels: bool = ratio >= AtlasView.ZOOM_LABELS
-		var focused: bool = view._selected >= 0
-		# Covers are far bigger than dots, so a star whose centre is off-screen can
-		# still have art on screen — the cull margin is widened generously for it.
-		var visible_rect: Rect2 = view._visible_rect()
-
-		_draw_hulls(lay)
-		# Background links fade out when zoomed way out, but a game you actually
-		# clicked shows its connections at every zoom — that's the question the
-		# click asked, and the answer shouldn't depend on the camera.
-		if show_links or focused:
-			_draw_edges(lay, focused)
-		# The roads go down BETWEEN the two halves of the sky (view.draw_layers):
-		# over the scenery, under the games they actually run between. A corridor
-		# that crosses 700 stars was being chopped into dashes by every one of them
-		# it passed behind — and the ones doing the chopping were the games the
-		# route has nothing to do with.
-		for layer in view.draw_layers():
-			match layer:
-				AtlasView.LAYER_ROADS:
-					_draw_roads()
-				AtlasView.LAYER_STARS_OFF_ROUTE:
-					_draw_stars(lay, show_rims, focused, visible_rect, AtlasView.LAYER_STARS_OFF_ROUTE)
-				AtlasView.LAYER_STARS_ON_ROUTE:
-					_draw_stars(lay, show_rims, focused, visible_rect, AtlasView.LAYER_STARS_ON_ROUTE)
-				_:
-					_draw_stars(lay, show_rims, focused, visible_rect, AtlasView.LAYER_STARS_ALL)
-		_draw_picked_edge(lay)
-		_draw_capital_rings(lay)
-		_draw_region_names(lay)
-		if show_labels:
-			_draw_star_labels(lay, focused, visible_rect)
-		# Last, over everything and never dropped for want of room: during a run
-		# the two questions the sky exists to answer are where you stand and what
-		# you came for.
-		_draw_run_markers(lay)
+		_draw_drawn_map(view.layout)
 
 	# THE OWNER'S MAP, drawn as draw.io draws it (the owner, 19 Nov 2026:
 	# "exactly like the drawio"): white paper, a faint grey rule per year with its
 	# year beside it, black lines for influence and blue for sequels and same
 	# studio, each with draw.io's filled arrowhead where it enters, and every game
 	# a white box with a thin black border and its name. Hovering a box puts its
-	# card up (AtlasView.card_star). During a run, games the run can't enter are
+	# card up (MapView.card_star). During a run, games the run can't enter are
 	# greyed where they stand; the run's own roads and markers go on top.
-	func _draw_drawn_map(lay: AtlasLayout) -> void:
+	func _draw_drawn_map(lay: MapLayout) -> void:
 		var vis := Rect2(Vector2.ZERO, size)
 		_draw_parchment(lay, vis)
 		var font: Font = get_theme_default_font()
@@ -3084,25 +2312,25 @@ class StarCanvas extends Control:
 		# The year ruler.
 		var x0: float = view.to_screen(Vector2(lay.ruler_x.x, 0)).x
 		var x1: float = view.to_screen(Vector2(lay.ruler_x.y, 0)).x
-		var year_px: int = int(round(AtlasView.MAP_YEAR_FONT * sc))
+		var year_px: int = int(round(MapView.MAP_YEAR_FONT * sc))
 		for k in range(lay.ruler_years.size()):
 			var y: float = view.to_screen(Vector2(0, lay.ruler_ys[k])).y
 			if y < -40.0 or y > vis.size.y + 40.0:
 				continue
 			draw_line(Vector2(maxf(x0, -10.0), y), Vector2(minf(x1, vis.size.x + 10.0), y),
-				AtlasView.MAP_RULE, 1.0)
-			if year_px >= AtlasView.MAP_MIN_TEXT_PX:
+				MapView.MAP_RULE, 1.0)
+			if year_px >= MapView.MAP_MIN_TEXT_PX:
 				var lr: Rect2 = lay.ruler_label_rect
 				var box := Rect2(view.to_screen(Vector2(lr.position.x, lay.ruler_label_ys[k])),
 					lr.size * sc)
 				var ypx: int = _fit_px(font, -1 - k, str(lay.ruler_years[k]), box.size, year_px)
 				if ypx > 0:
-					_text_in(font, box, str(lay.ruler_years[k]), ypx, AtlasView.MAP_INK)
+					_text_in(font, box, str(lay.ruler_years[k]), ypx, MapView.MAP_INK)
 
 		# The lines, under the boxes as in draw.io.
 		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
 		var width: float = clampf(sc * 0.55, 0.7, 1.5)
-		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 10.0)
+		var head: float = clampf(MapView.MAP_ARROW * sc, 3.0, 10.0)
 		# The picked game's own lines are held back and drawn over the roads below,
 		# in the picked game's TYPE colour (the owner, 26 Nov 2026).
 		var picked_lines: Array = []
@@ -3116,12 +2344,12 @@ class StarCanvas extends Control:
 			var pb: Vector2 = view.to_screen(ends[1])
 			if not vis.grow(head).intersects(Rect2(pa, Vector2.ZERO).expand(pb)):
 				continue
-			var col: Color = AtlasView.MAP_BLUE if lay.is_dev_edge(pair) else AtlasView.MAP_INK
+			var col: Color = MapView.MAP_BLUE if lay.is_dev_edge(pair) else MapView.MAP_INK
 			if focused and (a == view._selected or b == view._selected):
 				picked_lines.append([pa, pb, view.on_optimal_path(a, b)])
 				continue
 			if focused or view.off_run(a) or view.off_run(b):
-				col = Color(col, AtlasView.MAP_FADE)
+				col = Color(col, MapView.MAP_FADE)
 			_draw_map_line(pa, pb, col, width, head)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
@@ -3142,35 +2370,35 @@ class StarCanvas extends Control:
 			var pick_w: float = width + 1.8
 			for line in picked_lines:
 				if bool(line[2]):
-					draw_line(line[0], line[1], AtlasView.COL_TRAIL_CASING, pick_w + 7.0, true)
-					draw_line(line[0], line[1], AtlasView.COL_TRAIL, pick_w + 4.5, true)
+					draw_line(line[0], line[1], MapView.COL_TRAIL_CASING, pick_w + 7.0, true)
+					draw_line(line[0], line[1], MapView.COL_TRAIL, pick_w + 4.5, true)
 				_draw_map_line(line[0], line[1], pick_col, pick_w, head + 1.5)
 		_draw_picked_edge(lay)
 
 		# The boxes.
-		var name_px: int = int(round(AtlasView.MAP_NAME_FONT * sc))
+		var name_px: int = int(round(MapView.MAP_NAME_FONT * sc))
 		for i in range(lay.star_count()):
 			var r: Rect2 = view.screen_box(i)
 			if not vis.intersects(r.grow(2.0)) or view.hidden(i):
 				continue
 			var faded: bool = view.off_run(i) or (focused and not view._near.has(i))
-			var fill: Color = AtlasView.MAP_BOX
-			var ink: Color = AtlasView.MAP_INK
+			var fill: Color = MapView.MAP_BOX
+			var ink: Color = MapView.MAP_INK
 			if faded:
-				fill = AtlasView.MAP_PAPER_DIM
-				ink = Color(AtlasView.MAP_INK, 0.35)
+				fill = MapView.MAP_PAPER_DIM
+				ink = Color(MapView.MAP_INK, 0.35)
 			# THE BOX UNDER THE CURSOR LIGHTS UP (the owner, 20 Nov 2026): tinted
 			# and ringed in the pick colour, with a soft halo outside the ring, so
 			# a small box at a low zoom still says which one the card is about.
 			var lit: bool = i == view._selected or i == view._hovered
 			if lit:
-				fill = AtlasView.MAP_BOX.lerp(AtlasView.MAP_PICK, 0.22)
-				ink = AtlasView.MAP_INK
-				draw_rect(r.grow(3.0), Color(AtlasView.MAP_PICK, 0.35), false, 4.0)
+				fill = MapView.MAP_BOX.lerp(MapView.MAP_PICK, 0.22)
+				ink = MapView.MAP_INK
+				draw_rect(r.grow(3.0), Color(MapView.MAP_PICK, 0.35), false, 4.0)
 			# A neighbour of the picked game that is on the optimal path wears the
 			# road's orange outside its own outline.
 			if focused and not lit and view._near.has(i) and view.on_optimal_path(i, i):
-				draw_rect(r.grow(3.0), AtlasView.COL_TRAIL, false, 3.0)
+				draw_rect(r.grow(3.0), MapView.COL_TRAIL, false, 3.0)
 			draw_rect(r, fill)
 			# EVERY BOX IS OUTLINED IN ITS GAME'S TYPE COLOUR (the owner, 26 Nov
 			# 2026), the colours the legend and every card use for the four types.
@@ -3179,18 +2407,18 @@ class StarCanvas extends Control:
 			if faded:
 				edge_col = Color(edge_col, 0.4)
 			if lit:
-				edge_col = AtlasView.MAP_PICK
+				edge_col = MapView.MAP_PICK
 				edge_w = 2.5
 			draw_rect(r, edge_col, false, edge_w)
 			# A game bashed this run is a road that no longer exists: crossed out.
 			if view.is_bashed(i):
-				draw_line(r.position, r.end, AtlasView.COL_EDGE_BASHED, 2.0, true)
+				draw_line(r.position, r.end, MapView.COL_EDGE_BASHED, 2.0, true)
 				draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y),
-					AtlasView.COL_EDGE_BASHED, 2.0, true)
-			if name_px >= AtlasView.MAP_MIN_TEXT_PX:
+					MapView.COL_EDGE_BASHED, 2.0, true)
+			if name_px >= MapView.MAP_MIN_TEXT_PX:
 				var game: GameData = view.game_at(i)
 				var label: String = game.display_name if game != null else String(view.star_id(i))
-				var inner: Rect2 = r.grow(-AtlasView.MAP_TEXT_PAD)
+				var inner: Rect2 = r.grow(-MapView.MAP_TEXT_PAD)
 				var px: int = _fit_px(font, i, label, inner.size, name_px)
 				if px > 0:
 					_text_in(font, inner, label, px, ink)
@@ -3213,9 +2441,9 @@ class StarCanvas extends Control:
 			var dir: Vector2 = d.normalized()
 			var perp := Vector2(-dir.y, dir.x)
 			_polygon_at(pb, PackedVector2Array([Vector2.ZERO,
-				-dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
+				-dir * head + perp * head * MapView.MAP_ARROW_SPREAD,
 				-dir * head * 0.75,
-				-dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
+				-dir * head - perp * head * MapView.MAP_ARROW_SPREAD]), col)
 
 	# A seam fades with the other lines when something else is picked.
 	func _rift_alpha(k: int, seam: Dictionary, focused: bool) -> float:
@@ -3229,12 +2457,12 @@ class StarCanvas extends Control:
 		if not Rect2(Vector2.ZERO, size).grow(40.0).intersects(_bounds_of(pts)):
 			return
 		var core: float = clampf(view._scale * 0.9, 1.6, 3.5)
-		draw_polyline(pts, Color(AtlasView.MAP_RIFT_GLOW, AtlasView.MAP_RIFT_GLOW.a * alpha),
+		draw_polyline(pts, Color(MapView.MAP_RIFT_GLOW, MapView.MAP_RIFT_GLOW.a * alpha),
 			core * 3.2, true)
 		# Dashed along the curve's length, so the dashes stay even round the bend.
 		var dash: float = maxf(7.0, core * 3.5)
 		var gap: float = dash * 0.6
-		var col := Color(AtlasView.MAP_RIFT, alpha)
+		var col := Color(MapView.MAP_RIFT, alpha)
 		var on: bool = true
 		var left: float = dash
 		for i in range(pts.size() - 1):
@@ -3271,8 +2499,8 @@ class StarCanvas extends Control:
 		var glow := Color(UITheme.RIFT, alpha)
 		# Picked or under the cursor: ringed in the pick colour, as a box is.
 		if lit:
-			draw_circle(at, rad + 5.0, Color(AtlasView.MAP_PICK, 0.45))
-			draw_arc(at, rad + 3.5, 0.0, TAU, 32, AtlasView.MAP_PICK, 2.5, true)
+			draw_circle(at, rad + 5.0, Color(MapView.MAP_PICK, 0.45))
+			draw_arc(at, rad + 3.5, 0.0, TAU, 32, MapView.MAP_PICK, 2.5, true)
 		draw_circle(at, rad + 1.5, glow)
 		draw_circle(at, rad, deep)
 		var spiral := PackedVector2Array()
@@ -3281,11 +2509,11 @@ class StarCanvas extends Control:
 			var ang: float = t * TAU * 2.2
 			spiral.append(at + Vector2(cos(ang), sin(ang)) * rad * 0.82 * t)
 		draw_polyline(spiral, glow, maxf(1.2, rad * 0.14), true)
-		if name_px < AtlasView.MAP_MIN_TEXT_PX:
+		if name_px < MapView.MAP_MIN_TEXT_PX:
 			return
 		var game: GameData = Data.get_game(seam["game"])
 		var label: String = "RIFT · " + (game.display_name if game != null else String(seam["game"]))
-		var px: int = clampi(int(name_px * 1.1), AtlasView.MAP_MIN_TEXT_PX + 4, 22)
+		var px: int = clampi(int(name_px * 1.1), MapView.MAP_MIN_TEXT_PX + 4, 22)
 		var sz: Vector2 = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
 		var pad := Vector2(px * 0.6, px * 0.25)
 		var pill := Rect2(Vector2(at.x - sz.x * 0.5, at.y + rad + 4.0) - pad, sz + pad * 2.0)
@@ -3306,12 +2534,12 @@ class StarCanvas extends Control:
 	# which the bake pads with a margin), lying on the game's own dark background
 	# with a shadow under it, edges darkened the way old paper browns, and a frame.
 	# It pans and zooms with the map, so it reads as a thing you are looking at.
-	func _draw_parchment(lay: AtlasLayout, vis: Rect2) -> void:
+	func _draw_parchment(lay: MapLayout, vis: Rect2) -> void:
 		draw_rect(vis, UITheme.BG_DEEP)
 		var sheet := Rect2(view.to_screen(lay.bounds.position), lay.bounds.size * view._scale)
 		var lift: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.01, 3.0, 12.0)
-		draw_rect(Rect2(sheet.position + Vector2(lift, lift * 1.4), sheet.size), AtlasView.MAP_SHADOW)
-		draw_rect(sheet, AtlasView.MAP_PAPER)
+		draw_rect(Rect2(sheet.position + Vector2(lift, lift * 1.4), sheet.size), MapView.MAP_SHADOW)
+		draw_rect(sheet, MapView.MAP_PAPER)
 		_draw_grain(sheet, vis)
 		# The browned edges, darkest at the border and fading over 8% of the
 		# sheet's short side (the owner, 19 Nov 2026: "make the edges stronger").
@@ -3330,16 +2558,16 @@ class StarCanvas extends Control:
 			var toward: Vector2 = (sheet.get_center() - outer[k]).sign()
 			mid.append(outer[k] + toward * depth * 0.35)
 			inner.append(outer[k] + toward * depth)
-		var dark := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA)
-		var half := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA * 0.35)
-		var clear := Color(AtlasView.MAP_PAPER_EDGE, 0.0)
+		var dark := Color(MapView.MAP_PAPER_EDGE, MapView.MAP_EDGE_ALPHA)
+		var half := Color(MapView.MAP_PAPER_EDGE, MapView.MAP_EDGE_ALPHA * 0.35)
+		var clear := Color(MapView.MAP_PAPER_EDGE, 0.0)
 		for k in range(4):
 			var n: int = (k + 1) % 4
 			draw_polygon(PackedVector2Array([outer[k], outer[n], mid[n], mid[k]]),
 				PackedColorArray([dark, dark, half, half]))
 			draw_polygon(PackedVector2Array([mid[k], mid[n], inner[n], inner[k]]),
 				PackedColorArray([half, half, clear, clear]))
-		draw_rect(sheet, AtlasView.MAP_FRAME, false, clampf(lift * 0.6, 2.0, 6.0))
+		draw_rect(sheet, MapView.MAP_FRAME, false, clampf(lift * 0.6, 2.0, 6.0))
 
 	# Paper grain: a tile of fibres and specks laid over the sheet at a fixed
 	# SCREEN size, anchored to the sheet's corner, so it moves with the paper when
@@ -3349,7 +2577,7 @@ class StarCanvas extends Control:
 		var area: Rect2 = sheet.intersection(vis)
 		if area.size.x <= 0.0 or area.size.y <= 0.0:
 			return
-		var tex: Texture2D = AtlasView.paper_grain()
+		var tex: Texture2D = MapView.paper_grain()
 		var t: float = float(tex.get_width())
 		var start := sheet.position + ((area.position - sheet.position) / t).floor() * t
 		var y: float = start.y
@@ -3377,13 +2605,13 @@ class StarCanvas extends Control:
 		if not hit.is_empty() and hit[0] == stamp:
 			return int(hit[1])
 		var px: int = want
-		while px >= AtlasView.MAP_MIN_TEXT_PX:
+		while px >= MapView.MAP_MIN_TEXT_PX:
 			var sz: Vector2 = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER,
 				area.x, px)
 			if sz.x <= area.x and sz.y <= area.y:
 				break
 			px = mini(px - 1, int(px * 0.92))
-		if px < AtlasView.MAP_MIN_TEXT_PX:
+		if px < MapView.MAP_MIN_TEXT_PX:
 			px = 0
 		view._fit_cache[key] = [stamp, px]
 		return px
@@ -3397,65 +2625,13 @@ class StarCanvas extends Control:
 		draw_multiline_string(font, Vector2(box.position.x, top), text,
 			HORIZONTAL_ALIGNMENT_CENTER, box.size.x, px, -1, col)
 
-	# A faint disc behind each constellation, so a region reads as a place even
-	# before its name is legible.
-	func _draw_hulls(_lay: AtlasLayout) -> void:
-		for hull in view.hulls():
-			draw_circle(view.to_screen(hull["centre"]),
-				(float(hull["radius"]) + 6.0) * view._scale, AtlasView.COL_HULL)
-
-	func _draw_edges(lay: AtlasLayout, focused: bool) -> void:
-		var width: float = clampf(view._scale * 0.22, 0.8, 2.0)
-		var sel_width: float = clampf(view._scale * 0.3, 1.6, 3.0)
-		var e: int = 0
-		while e + 1 < lay.edges.size():
-			var a: int = lay.edges[e]
-			var b: int = lay.edges[e + 1]
-			var edge_index: int = e / 2      # `edges` is flat pairs; this is the pair's index
-			e += 2
-			var incident: bool = focused and (a == view._selected or b == view._selected)
-			if focused and not incident:
-				continue
-			# A link is only drawn when both games it joins survive the filter.
-			if not (view.passes_filter(a) and view.passes_filter(b)):
-				continue
-			var col: Color = AtlasView.COL_EDGE
-			var w: float = width
-			# A link into a destroyed game is a route that no longer exists.
-			if view.is_bashed(a) or view.is_bashed(b):
-				draw_line(view.to_screen(lay.position_of(a)), view.to_screen(lay.position_of(b)),
-					AtlasView.COL_EDGE_BASHED, width * 1.3, true)
-				continue
-			if incident:
-				col = AtlasView.COL_SELECTED_EDGE
-				w = sel_width
-			elif view.is_sequel_link(edge_index):
-				# A sequel or same-studio link is a stronger claim than "inspired",
-				# so it reads stronger — and matches the hand map's blue.
-				col = AtlasView.COL_EDGE_SEQUEL
-				w = width * 1.5
-			elif lay.region[a] != lay.region[b]:
-				col = AtlasView.COL_EDGE_CROSS
-			# On a tree, the branch a game hangs off is the whole point of the
-			# arrangement, and the other 900-odd links are chords straight across
-			# the disk. Drawn at equal weight they bury it, so the branches keep
-			# their colour and everything else drops to a whisper.
-			if lay.is_tree() and not incident:
-				if lay.is_tree_edge(a, b):
-					w = maxf(w, width * 1.4)
-				else:
-					col = Color(col, col.a * AtlasView.TREE_CROSSLINK_FADE)
-					w = width * 0.7
-			draw_line(view.to_screen(lay.position_of(a)), view.to_screen(lay.position_of(b)),
-				col, w, true)
-
 	# The two roads of a run, drawn as cased lines with arrowheads along them:
 	# where the player has been (green) and where they are going (ember). The
 	# walked road goes down first so the road ahead reads on top of it — that's
 	# the one carrying a decision.
 	func _draw_roads() -> void:
-		_draw_road(view._history, AtlasView.COL_HISTORY)
-		_draw_road(view._trail, AtlasView.COL_TRAIL)
+		_draw_road(view._history, MapView.COL_HISTORY)
+		_draw_road(view._trail, MapView.COL_TRAIL)
 
 	# One road. Every casing is laid down before any core, so one segment's core
 	# never sits on another's outline and read as a break in the road; arrowheads
@@ -3463,14 +2639,13 @@ class StarCanvas extends Control:
 	func _draw_road(segments: Array, col: Color) -> void:
 		if segments.is_empty():
 			return
-		var lay: AtlasLayout = view.layout
+		var lay: MapLayout = view.layout
 		# THINNER ON THE DRAWN MAP (the owner, 20 Nov 2026: "lets have the arrows in
 		# the map become thinner"): a pen-weight road over pen-weight lines, with
-		# narrower arrowheads. The computed skies keep the heavier road.
-		var drawn: bool = lay.is_drawn_map()
-		var core: float = clampf(view._scale * 0.2, 1.2, 2.2) if drawn \
-			else clampf(view._scale * 0.42, 2.0, 5.0)
-		var casing: float = core + (maxf(1.0, core * 0.45) if drawn else maxf(2.0, core * 0.75))
+		# narrower arrowheads.
+		var drawn: bool = true
+		var core: float = clampf(view._scale * 0.2, 1.2, 2.2)
+		var casing: float = core + maxf(1.0, core * 0.45)
 		var dash: float = maxf(9.0, casing * 2.4)
 
 		for seg in segments:
@@ -3478,9 +2653,9 @@ class StarCanvas extends Control:
 			var a: Vector2 = ends[0]
 			var b: Vector2 = ends[1]
 			if _jumped(seg):
-				draw_dashed_line(a, b, AtlasView.COL_TRAIL_CASING, casing, dash, true)
+				draw_dashed_line(a, b, MapView.COL_TRAIL_CASING, casing, dash, true)
 			else:
-				draw_line(a, b, AtlasView.COL_TRAIL_CASING, casing, true)
+				draw_line(a, b, MapView.COL_TRAIL_CASING, casing, true)
 		for seg in segments:
 			var ends2: PackedVector2Array = _seg_ends(seg)
 			var a2: Vector2 = ends2[0]
@@ -3494,7 +2669,7 @@ class StarCanvas extends Control:
 		# always runs from the game nearer you to the game nearer the Amulet, and
 		# along the walked road from the older game to the newer one.
 		var head: float = clampf(core * 3.6, 6.0, 11.0) if drawn else clampf(core * 3.1, 8.0, 24.0)
-		var spread: float = AtlasView.MAP_CHEVRON_SPREAD if drawn else 0.44
+		var spread: float = MapView.MAP_CHEVRON_SPREAD if drawn else 0.44
 		for seg in segments:
 			var from_i: int = int(seg[0])
 			var to_i: int = int(seg[1])
@@ -3507,15 +2682,15 @@ class StarCanvas extends Control:
 			var dir: Vector2 = delta / length
 			# On the drawn map the road already starts and ends at the boxes'
 			# borders, so there is nothing to clear.
-			var pad_a: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(from_i)
-			var pad_b: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(to_i)
-			for t in AtlasView.route_arrow_offsets(length, pad_a, pad_b, head):
+			var pad_a: float = 0.0
+			var pad_b: float = 0.0
+			for t in MapView.route_arrow_offsets(length, pad_a, pad_b, head):
 				_chevron(a3 + dir * t, dir, head, col, spread)
 
 	# The link the player clicked: drawn over the stars so it can't be lost in a
 	# hub's fan of lines, with both endpoints ringed so it's obvious which two
 	# games the card is talking about.
-	func _draw_picked_edge(lay: AtlasLayout) -> void:
+	func _draw_picked_edge(lay: MapLayout) -> void:
 		var e: int = view._selected_edge
 		if e < 0 or e >= lay.edge_count():
 			return
@@ -3525,20 +2700,20 @@ class StarCanvas extends Control:
 		var pa: Vector2 = view.to_screen(picked[0])
 		var pb: Vector2 = view.to_screen(picked[1])
 		var core: float = clampf(view._scale * 0.32, 2.0, 4.0)
-		draw_line(pa, pb, AtlasView.COL_TRAIL_CASING, core + 3.0, true)
-		draw_line(pa, pb, AtlasView.COL_SELECTED_EDGE, core, true)
+		draw_line(pa, pb, MapView.COL_TRAIL_CASING, core + 3.0, true)
+		draw_line(pa, pb, MapView.COL_SELECTED_EDGE, core, true)
 		# One arrowhead at the midpoint, pointing the way the influence ran.
 		var delta: Vector2 = pb - pa
 		if delta.length() > 1.0:
 			var dir: Vector2 = delta.normalized()
 			_chevron(pa + delta * 0.5, dir, clampf(core * 3.4, 10.0, 22.0),
-				AtlasView.COL_SELECTED_EDGE)
+				MapView.COL_SELECTED_EDGE)
 		for idx in [a, b]:
 			var p: Vector2 = view.to_screen(lay.position_of(idx))
 			var r: float = maxf(6.0, view.drawn_half_height(idx) + 3.0)
-			draw_arc(p, r, 0.0, TAU, 28, AtlasView.COL_SELECTED_EDGE, 1.8, true)
+			draw_arc(p, r, 0.0, TAU, 28, MapView.COL_SELECTED_EDGE, 1.8, true)
 
-	# A road segment's two ends on screen (AtlasView.road_ends).
+	# A road segment's two ends on screen (MapView.road_ends).
 	func _seg_ends(seg: Array) -> PackedVector2Array:
 		var e: PackedVector2Array = view.road_ends(int(seg[0]), int(seg[1]))
 		return PackedVector2Array([view.to_screen(e[0]), view.to_screen(e[1])])
@@ -3558,7 +2733,7 @@ class StarCanvas extends Control:
 		var right: Vector2 = -dir * size * 0.5 - perp * size * spread
 		var grow: float = (size + (2.0 if spread < 0.44 else 3.4)) / size
 		_polygon_at(at, PackedVector2Array([tip * grow, left * grow, right * grow]),
-			AtlasView.COL_TRAIL_CASING)
+			MapView.COL_TRAIL_CASING)
 		_polygon_at(at, PackedVector2Array([tip, left, right]), col)
 
 	# A small polygon drawn around `at`, its points given RELATIVE to it.
@@ -3572,128 +2747,6 @@ class StarCanvas extends Control:
 		draw_colored_polygon(pts, col)
 		draw_set_transform(Vector2.ZERO)
 
-	# One pass over the sky. `layer` says WHICH stars this pass is for — all of
-	# them (no route), the scenery, or the route itself — so the roads can be laid
-	# down in between the last two (see _draw / AtlasView.draw_layers).
-	func _draw_stars(lay: AtlasLayout, show_rims: bool, focused: bool, vis: Rect2,
-			layer: int = AtlasView.LAYER_STARS_ALL) -> void:
-		var current: int = -1
-		var amulet: int = -1
-		if not view.pure_catalog:
-			current = lay.index_of(GameState.current_game_id)
-			amulet = lay.index_of(GameState.goal_game_id())
-		# WHICH stars this pass is for is answered once, as a list, rather than by
-		# running the whole sky and skipping the half belonging to the other pass
-		# (see AtlasView.star_indices — that skipping was 1704 iterations and 1704
-		# dictionary hits per redraw to draw 852 stars).
-		for i in view.star_indices(layer):
-			var p: Vector2 = view.to_screen(lay.position_of(i))
-			if not vis.has_point(p):
-				continue
-			# What's drawn is what's actually there — a transmuted node wears the
-			# game pasted onto it, not the game it used to be.
-			var game: GameData = view.game_at(i)
-			var col: Color = RunGraph.type_color(game.type) if game != null else UITheme.TEXT_DIM
-			var reserved: float = AtlasLayout.star_radius(lay.degree_of(i)) * view._scale
-			var r: float = maxf(1.2, reserved * 0.9)
-			# NO FILTER TEST HERE. Every star in `layout` passes the filters by
-			# construction: the catalog view rebuilds the sky out of the survivors
-			# (_relayout -> _filtered_ids), and outside the catalog there are no
-			# filters at all. So `passes_filter(i)` was answering "yes" 852 times a
-			# pass — 2.4 ms of it — and the dim-in-place branch it fed was
-			# unreachable, left over from the older design where filtering dimmed
-			# the sky where it stood instead of re-laying it.
-			var faded: bool = focused and not view._near.has(i)
-			# While a route is on the sky, everything that isn't part of it is
-			# SCENERY: still there, still in place, but pushed back a step so the
-			# corridor the run actually runs down is what the eye lands on. A
-			# lighter touch than `faded` on purpose — this is depth, not a filter,
-			# and an off-route game is still a game you might Dash to.
-			var off_route: bool = not faded and not view.on_route(i)
-			# Genre owns the rim at every zoom; the record fills the middle, so the
-			# sky stays readable as genre while the centres light up as you play.
-			#
-			# ONE lookup, read twice. `has_record(i)` is defined as
-			# `star_record_color(i).a > 0.0` — asking it here recomputed the colour
-			# that is already in hand, which doubled the GameStats round-trips of
-			# the hottest loop in the project for a boolean the value already
-			# carries. Measured over the whole sky: 6.5 ms a pass became 2.9.
-			var record: Color = view.star_record_color(i)
-			var earned: bool = record.a > 0.0
-			if faded:
-				record = record.lerp(UITheme.BG_DEEP, 0.78)
-			elif off_route:
-				record = record.lerp(AtlasView.COL_OFF_ROUTE_BG, AtlasView.OFF_ROUTE_FADE)
-			# Every game is drawn at full strength. Dimming the ones you hadn't
-			# played made most of the sky washed out and fought the point of a
-			# catalog — what you HAVE played is said by the middle instead.
-			if faded:
-				col = col.lerp(UITheme.BG_DEEP, 0.78)
-			elif off_route:
-				# Toward grey as well as toward the background: losing the genre
-				# colour is what makes the route's own colour read as nearer.
-				col = col.lerp(AtlasView.COL_OFF_ROUTE_BG, AtlasView.OFF_ROUTE_FADE)
-
-			var art: Texture2D = view.cover_texture(i) if view.shows_cover(i) else null
-			if art != null:
-				# The star becomes its box art, inscribed in the circle the packing
-				# reserved for it — so covers can never overlap either. The type
-				# colour survives as the frame.
-				var aspect: float = float(art.get_height()) / float(art.get_width())
-				var box_size: Vector2 = AtlasView.cover_size(reserved, aspect)
-				var box := Rect2(p - box_size * 0.5, box_size)
-				var art_tint: Color = Color.WHITE
-				if faded:
-					art_tint = Color(0.32, 0.30, 0.28)
-				elif off_route:
-					art_tint = Color(0.52, 0.52, 0.54)
-				draw_texture_rect(art, box, false, art_tint)
-				draw_rect(box, col, false, maxf(1.0, reserved * 0.09))
-				r = maxf(box_size.x, box_size.y) * 0.5
-			elif show_rims and r > 3.4:
-				draw_circle(p, r, UITheme.BG_DEEP)
-				# A game you've never played is solid in its own colour; one you
-				# have wears a silver or gold pip instead, so the record reads as
-				# something gained rather than as the absence of dimming.
-				draw_circle(p, r * 0.52, record if earned else col)
-				draw_arc(p, r, 0.0, TAU, 24, col, maxf(1.0, r * 0.4), true)
-			else:
-				draw_circle(p, r, col)
-
-			# Neighbours of the clicked star get a ring of their own — the lines say
-			# how many connections there are, the rings say which games they reach.
-			if focused and not faded and i != view._selected:
-				draw_arc(p, r + 2.5, 0.0, TAU, 24, AtlasView.COL_SELECTED_EDGE, 1.4, true)
-			# Destroyed: struck through, so it reads as gone rather than merely dim.
-			if view.is_bashed(i):
-				var d: float = r * 1.5 + 2.0
-				draw_line(p + Vector2(-d, -d), p + Vector2(d, d), AtlasView.COL_BASHED, maxf(1.6, r * 0.32), true)
-				draw_line(p + Vector2(-d, d), p + Vector2(d, -d), AtlasView.COL_BASHED, maxf(1.6, r * 0.32), true)
-			# Transmuted: a second ring, because the star is no longer the game the
-			# map says lives at that spot.
-			elif view.is_transmuted(i):
-				draw_arc(p, r + 3.5, 0.0, TAU, 26, UITheme.ACCENT, 1.6, true)
-			# A game the player owns wears a ring, so the sky doubles as a shelf.
-			if not faded and Ownership.is_owned(game):
-				draw_arc(p, r + 2.0, 0.0, TAU, 20, Color(UITheme.TEXT_DIM, 0.5), 1.0, true)
-			if not faded and i == view._hovered:
-				draw_arc(p, r + 3.0, 0.0, TAU, 24, UITheme.TEXT, 1.5, true)
-			# The you-are-here and the Amulet used to be one more thin ring among
-			# the owned / hovered / transmuted rings. They're drawn as full
-			# markers instead, after everything else (_draw_run_markers) — but
-			# their stars still refuse to fade, so a click elsewhere can never
-			# grey out the two spots the run is about.
-			if (i == current or i == amulet) and faded:
-				draw_arc(p, r + 2.0, 0.0, TAU, 24,
-					AtlasView.COL_YOU if i == current else AtlasView.COL_GOAL, 1.6, true)
-		# The clicked star's ring belongs to the sky, not to one pass of it: drawn on
-		# the LAST pass only, so a split draw doesn't ring the same star twice.
-		if view._selected >= 0 and layer != AtlasView.LAYER_STARS_OFF_ROUTE:
-			var sp: Vector2 = view.to_screen(lay.position_of(view._selected))
-			var sr: float = maxf(7.0,
-				AtlasLayout.star_radius(lay.degree_of(view._selected)) * view._scale * 1.7)
-			draw_arc(sp, sr, 0.0, TAU, 32, UITheme.ACCENT, 1.8, true)
-
 	# --- the run's two anchors ------------------------------------------------
 	#
 	# Where the player stands and where the Amulet is, drawn as MARKERS rather
@@ -3701,7 +2754,7 @@ class StarCanvas extends Control:
 	# the spot is (and, for the Amulet, how many steps are left). A marker whose
 	# star is off screen becomes an arrow at the edge pointing the way, so the
 	# answer to "where am I" is never "somewhere off that way, keep panning".
-	func _draw_run_markers(lay: AtlasLayout, captions: bool = true) -> void:
+	func _draw_run_markers(lay: MapLayout, captions: bool = true) -> void:
 		var cur: int = view.current_index()
 		var goal: int = view.amulet_index()
 		var considering: int = view.preview_index()
@@ -3711,14 +2764,14 @@ class StarCanvas extends Control:
 		# The Amulet first, so the you-are-here badge wins any overlap — the map
 		# is read from where you stand.
 		if goal >= 0 and goal != cur and goal != considering:
-			_draw_marker(lay, goal, view.marker_text(goal), AtlasView.COL_GOAL, taken, captions)
+			_draw_marker(lay, goal, view.marker_text(goal), MapView.COL_GOAL, taken, captions)
 		if considering >= 0:
 			_draw_marker(lay, considering, view.marker_text(considering),
-				AtlasView.COL_CONSIDERING, taken, captions)
+				MapView.COL_CONSIDERING, taken, captions)
 		if cur >= 0:
-			_draw_marker(lay, cur, view.marker_text(cur), AtlasView.COL_YOU, taken, captions)
+			_draw_marker(lay, cur, view.marker_text(cur), MapView.COL_YOU, taken, captions)
 
-	func _draw_marker(lay: AtlasLayout, i: int, text: String, col: Color,
+	func _draw_marker(lay: MapLayout, i: int, text: String, col: Color,
 			taken: Array[Rect2], caption: bool = true) -> void:
 		var p: Vector2 = view.to_screen(lay.position_of(i))
 		if not Rect2(Vector2.ZERO, size).has_point(p):
@@ -3726,7 +2779,7 @@ class StarCanvas extends Control:
 			return
 		var r: float = maxf(11.0, view.drawn_half_height(i) + 7.0)
 		draw_arc(p, r + 7.0, 0.0, TAU, 40, Color(col, 0.22), 9.0, true)
-		draw_arc(p, r, 0.0, TAU, 40, AtlasView.COL_TRAIL_CASING, 5.5, true)
+		draw_arc(p, r, 0.0, TAU, 40, MapView.COL_TRAIL_CASING, 5.5, true)
 		draw_arc(p, r, 0.0, TAU, 40, col, 2.6, true)
 		draw_arc(p, r + 6.0, 0.0, TAU, 40, Color(col, 0.75), 1.4, true)
 		if not caption:
@@ -3790,89 +2843,3 @@ class StarCanvas extends Control:
 		draw_string(get_theme_default_font(),
 			box.position + Vector2(8.0, float(BADGE_FONT_SIZE) + 1.0), text,
 			HORIZONTAL_ALIGNMENT_LEFT, -1, BADGE_FONT_SIZE, col)
-
-	func _draw_capital_rings(lay: AtlasLayout) -> void:
-		for ci in range(lay.capitals.size()):
-			var cap: int = lay.capitals[ci]
-			var p: Vector2 = view.to_screen(lay.position_of(cap))
-			var r: float = maxf(4.0,
-				AtlasLayout.star_radius(lay.degree_of(cap)) * view._scale * 1.3)
-			draw_arc(p, r, 0.0, TAU, 28, Color(UITheme.GOLD, 0.85), 1.4, true)
-
-	# Constellation names — the big gold capitals the sky's regions are named
-	# after. Biggest region claims its spot first; a smaller one steps up rather
-	# than printing on top of it.
-	#
-	# WHILE A ROUTE IS ON THE SKY they are drawn ON HOVER ONLY. A dozen names in
-	# 17px gold is the loudest thing on the chart, and when the question is "which
-	# way does my run go" they are answering a different one — they sit right on
-	# top of the corridor and out-shout it. The name of the hub under the cursor
-	# is one label, asked for, so that one still prints.
-	func _draw_region_names(lay: AtlasLayout) -> void:
-		var font: Font = get_theme_default_font()
-		var hover_only: bool = view.showing_route()
-		var taken: Array[Rect2] = []
-		for entry in view.hulls():
-			var cap: int = lay.capitals[int(entry["ci"])]
-			if hover_only and cap != view._hovered:
-				continue
-			var game: GameData = Data.get_game(lay.id_at(cap))
-			var label: String = (game.display_name if game != null else String(lay.id_at(cap))).to_upper()
-			var fs: int = int(clampf(8.0 + float(entry["radius"]) * view._scale * 0.03, 11.0, 17.0))
-			var w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-			# Anchored just above the capital, not the top of the hull: a region
-			# 190 units across would otherwise fly its name over its neighbour.
-			var anchor: Vector2 = view.to_screen(lay.position_of(cap))
-			var lift: float = AtlasLayout.star_radius(lay.degree_of(cap)) * view._scale * 1.3
-			var y: float = anchor.y - lift - fs * 0.7
-			var box := Rect2(anchor.x - w * 0.5 - 5.0, y - fs, w + 10.0, fs * 1.5)
-			var tries: int = 0
-			while tries < 9 and taken.any(func(t): return t.intersects(box)):
-				box.position.y -= fs * 1.1
-				y -= fs * 1.1
-				tries += 1
-			if tries >= 9:
-				continue
-			taken.append(box)
-			draw_rect(box, Color(UITheme.BG_DEEP, 0.8))
-			draw_string(font, Vector2(anchor.x - w * 0.5, y), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, UITheme.GOLD)
-
-	# Star names, best-connected first. A label that would land on another label
-	# or across a star is dropped rather than overprinted.
-	func _draw_star_labels(lay: AtlasLayout, focused: bool, vis: Rect2) -> void:
-		var font: Font = get_theme_default_font()
-		var fs: int = 11
-		var visible: Array = []
-		for i in range(lay.star_count()):
-			var p: Vector2 = view.to_screen(lay.position_of(i))
-			if not vis.has_point(p):
-				continue
-			if focused and not view._near.has(i):
-				continue
-			if not view.passes_filter(i):
-				continue
-			visible.append(i)
-		visible.sort_custom(func(a, b): return lay.degree_of(a) > lay.degree_of(b))
-		var taken: Array[Rect2] = []
-		for i in visible:
-			var p: Vector2 = view.to_screen(lay.position_of(i))
-			var r: float = view.drawn_half_height(i)
-			taken.append(Rect2(p.x - r, p.y - r, r * 2.0, r * 2.0))
-		for i in visible:
-			var game: GameData = view.game_at(i)
-			var label: String = game.display_name if game != null else String(view.star_id(i))
-			var p: Vector2 = view.to_screen(lay.position_of(i))
-			var r: float = view.drawn_half_height(i)
-			var w: float = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-			var box := Rect2(p.x - w * 0.5 - 2.0, p.y + r + 1.0, w + 4.0, fs + 3.0)
-			if taken.any(func(t): return t.intersects(box)):
-				continue
-			taken.append(box)
-			# A name goes back with the star it names: an off-route game's label at
-			# full strength would undo the depth the dimming just bought.
-			var tint: Color = UITheme.TEXT_DIM
-			if not view.on_route(i):
-				tint = tint.lerp(AtlasView.COL_OFF_ROUTE_BG, AtlasView.OFF_ROUTE_FADE)
-			draw_string(font, Vector2(p.x - w * 0.5, p.y + r + fs), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tint)

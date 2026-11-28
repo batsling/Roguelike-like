@@ -126,11 +126,36 @@ func _refresh_unlocks(announce: bool) -> void:
 	_save()
 	if announce:
 		for key in fresh:
-			_announce(key)
+			# Held for the post-game wheel while a game is on (RankRewardQueue).
+			if RankRewardQueue.offer(reward_entry(key)):
+				look_unlocked.emit(key)
+			else:
+				_announce(key)
 	changed.emit()
+
+# A rank's look for the post-game wheel (RankRewardQueue).
+func reward_entry(key: String) -> Dictionary:
+	return {"kind": "look", "key": key, "owner": String(_unlocked.get(key, "")),
+		"text": announce_text(key), "what": "✦ New %s" % look_kind(key),
+		"name": CosmeticCatalog.label(CosmeticCatalog.entry(key)),
+		"toast": _toast_unlock.bind(key)}
 
 # The toast for a look just earned ("✦ New hat: Super Auto Pets — Top Hat").
 func _announce(key: String) -> void:
+	_toast_unlock(key)
+	look_unlocked.emit(key)
+
+func _toast_unlock(key: String) -> void:
+	var e: Dictionary = CosmeticCatalog.entry(key)
+	Notifications.announce(announce_text(key), Color(0.95, 0.8, 0.45),
+		CosmeticCatalog.texture((CosmeticCatalog.paths(e) + [""])[0]), "cosmetic")
+
+# "✦ New hat: Super Auto Pets — Top Hat", "✦ New Bleed icon: …".
+func announce_text(key: String) -> String:
+	return "✦ New %s: %s" % [look_kind(key), CosmeticCatalog.label(CosmeticCatalog.entry(key))]
+
+# What kind of look `key` is, in words: "costume", "hat", "key icon", "Bleed icon".
+func look_kind(key: String) -> String:
 	var e: Dictionary = CosmeticCatalog.entry(key)
 	var unit := String(e.get("unit", ""))
 	var what: String = unit if unit in ["costume", "hat"] \
@@ -141,10 +166,7 @@ func _announce(key: String) -> void:
 			String(e.get("kind", "")), "look")
 	if bool(e.get("status", false)):
 		what = "%s icon" % String(e.get("kind", "")).capitalize()
-	Notifications.announce("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
-		Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
-			(CosmeticCatalog.paths(e) + [""])[0]), "cosmetic")
-	look_unlocked.emit(key)
+	return what
 
 # A SPECIAL HAT is earned by a rule of its own, never by a rank
 # (CosmeticCatalog.is_special): the owner, 14 Nov 2026 — "don't add special hats

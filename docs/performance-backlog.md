@@ -72,7 +72,7 @@ notes, the map plumbing, the save/restore of view state, and `_build_ui`.
 `GameLoop2.gd` is 6869. It was 6704 when this entry was written claiming
 `Overworld2.gd` at 5825 was the biggest — so the sentence was wrong by nine
 hundred lines on the day it was typed, in the document whose whole point is that
-numbers go stale. The comparison it reached for (`AtlasView.gd` is 2794) is the
+numbers go stale. The comparison it reached for (`MapView.gd` is 2794) is the
 biggest file *in `scripts/ui/`*, which is how the mistake reads from the inside:
 the measurement was real, the set it was measured over was not the one the
 sentence claimed. **`GameLoop2.gd` has never had a seam table.** It is the run
@@ -512,7 +512,7 @@ it.
   reward modals, the map window, and the two popups. The vars holding them are
   untyped.
 - Three second-hand chains to the 2,800-line star chart: the route ladder's card
-  art moved to `UITheme.card_art` (AtlasView forwards); the road strip's arrow
+  art moved to `UITheme.card_art` (MapView forwards); the road strip's arrow
   moved out of `RunHistoryScreen` into `RouteArrow.gd`; and `PostCombatScreen`
   loads the tier list at the click.
 

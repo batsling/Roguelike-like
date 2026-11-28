@@ -480,20 +480,51 @@ func _refresh_unlocks(announce: bool) -> void:
 		return
 	_save_unlocked()
 	if announce:
+		# HELD FOR THE WHEEL while a game is on (RankRewardQueue): no toast, and
+		# not lined up next either, since hearing it would give the prize away.
+		var now: Array = []
+		for song in fresh:
+			if not RankRewardQueue.offer(reward_entry(song)):
+				now.append(song)
 		# Newest first in the queue: the LAST one announced plays next, and the
 		# rest follow it, so a report that unlocks two plays both.
-		for i in range(fresh.size() - 1, -1, -1):
-			var song: SongData = fresh[i]
-			_queue.erase(song.id)
-			if has_file(song) and on_station(song):
-				_queue.push_front(song.id)
+		for i in range(now.size() - 1, -1, -1):
+			_line_up(now[i])
+		for song in now:
+			_toast_unlock(song)
 		for song in fresh:
-			Notifications.announce("📻 New on Roguelike Radio: %s" % _label(song),
-				Color(0.95, 0.8, 0.45), null, "radio")
 			song_unlocked.emit(song)
-		if current == &"" and not paused and autoplay:
-			_advance()
+		if not now.is_empty():
+			_play_if_idle()
 	changed.emit()
+
+# A rank's song for the post-game wheel (RankRewardQueue). Its owner is the
+# character it was drawn for, or else its own game.
+func reward_entry(song: SongData) -> Dictionary:
+	var by: String = String(_drawn_by.get(String(song.id), ""))
+	return {"kind": "song", "key": String(song.id),
+		"owner": RankRewards.character_key(StringName(by)) if by != "" \
+			else RankRewards.game_key(song.game_id),
+		"text": "📻 New on Roguelike Radio: %s" % _label(song),
+		"what": "📻 New on Roguelike Radio", "name": _label(song),
+		"toast": _toast_unlock.bind(song),
+		"after": func() -> void:
+			_line_up(song)
+			_play_if_idle()}
+
+func _toast_unlock(song: SongData) -> void:
+	Notifications.announce("📻 New on Roguelike Radio: %s" % _label(song),
+		Color(0.95, 0.8, 0.45), null, "radio")
+
+# Put a new song next in line.
+func _line_up(song: SongData) -> void:
+	_queue.erase(song.id)
+	if has_file(song) and on_station(song):
+		_queue.push_front(song.id)
+
+func _play_if_idle() -> void:
+	if current == &"" and not paused and autoplay:
+		_advance()
 
 # Draw `owed` songs out of `pool`'s locked ones into `fresh`, for character `by`
 # ("" for the game itself). A pool's FIRST song is its menu song, when it has

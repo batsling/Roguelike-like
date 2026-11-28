@@ -1655,3 +1655,43 @@ func test_curses_are_their_own_tab() -> void:
 	col._set_tab(Collection.Tab.LOOT)
 	assert_false(Page.text_of(col._content).contains("Curses ("), "and no Curses sub-tab under Loot")
 
+
+# SHOW ON MAP (the owner, 28 Nov 2026): a game the drawn map has gets a button on
+# its page that opens the map on it — zoomed to its box, its card up — and a game
+# the drawing lacks gets none.
+func test_a_game_page_shows_its_game_on_the_map() -> void:
+	var lay: MapLayout = MapView.load_drawn_map()
+	if lay == null:
+		pending("the drawn map is not baked — run tools/bake_drawio_map.py")
+		return
+	var on_map: GameData = null
+	var off_map: GameData = null
+	for g in Data.all_games():
+		if lay.index_of(g.id) >= 0:
+			if on_map == null:
+				on_map = g
+		elif off_map == null:
+			off_map = g
+	var col := _new_collection()
+	col._show_game_detail(on_map)
+	await wait_frames(1)
+	var btn: Button = col._detail_box.find_child("ShowOnMap", true, false)
+	assert_not_null(btn, "a game on the map has the button")
+	var was: bool = MapView.owned_only_menu
+	MapView.owned_only_menu = true
+	var view: MapView = col.show_on_map(on_map)
+	await wait_frames(2)
+	assert_not_null(view, "it opens the map")
+	if view != null:
+		var i: int = view.layout.index_of(on_map.id)
+		assert_eq(view.selected_index(), i, "on that game, selected")
+		assert_false(view.hidden(i), "and drawn, even with Owned on")
+		assert_true(Rect2(Vector2.ZERO, view._canvas_size()).has_point(
+			view.to_screen(view.layout.position_of(i))), "and framed in view")
+		view.queue_free()
+	MapView.owned_only_menu = was
+	if off_map != null:
+		col._show_game_detail(off_map)
+		await wait_frames(1)
+		assert_null(col._detail_box.find_child("ShowOnMap", true, false),
+			"a game the drawing lacks has no button")

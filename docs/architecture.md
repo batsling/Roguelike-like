@@ -128,10 +128,9 @@ ordinary scene.
     58px picture. Every one of them is still in the detail panel, where the
     footprint is a drawn board rather than "▦ 2 x 2" — which is the reading worth
     having anyway.
-    It is also **the only door onto the Atlas
-    that is always open** — the Games tab's *✦ Show constellation* draws the same
-    catalog as the star chart, which is why the main menu no longer carries an
-    Atlas button of its own (Run History still lays its routes over the sky).
+    (Its Games tab used to have *✦ Show constellation*, the computed star chart;
+    that chart was taken out on 28 Nov 2026. The one map, the owner's drawing,
+    opens from Extras' **🗺 Map**, Run History and a run.)
     Enemies and Bosses sort by A-Z, Tier, Damage and **Ability** — an ability is
     the one thing about a body that isn't a number, and it is what the roster is
     browsed for. **Loot is one tab with nine sub-tabs** —
@@ -221,7 +220,7 @@ ordinary scene.
   screen is built around it — its art and its name are the banner across the top
   (`StartPicker`), so each road's distance line only counts
   (`5 from the Amulet`, `_start_distance_text`; its popup's tooltip names the
-  game), and the ladder a road opens names it on its last rung. (That ladder is the ladder alone — the star chart stays down on the
+  game), and the ladder a road opens names it on its last rung. (That ladder is the ladder alone — the map stays down on the
   start screen; see `RouteLadder.gd`.) Choosing a start is a routing decision, and
   the game the road ends on is half of what makes one road different from
   another.
@@ -277,7 +276,7 @@ ordinary scene.
   things read it: `ModalScaffold.centre` centres a modal in the band *below* the
   bar and never lets its top edge start above it; the map window
   (`RunMapModal`) sizes, opens and clamps its drag inside that band; and
-  **`AtlasView` offsets its whole page down by it**, so the chart's own header —
+  **`MapView` offsets its whole page down by it**, so the chart's own header —
   which holds its search box, its ✦ jump buttons and the `←  Back to the run`
   button that is the only way off it — lands under the bar instead of beneath it.
   It is cleared when the page leaves the tree and while the bar is down, so the
@@ -358,7 +357,7 @@ ordinary scene.
   layout).
   **Every dropdown in the project is drawn by the same two theme entries.** There
   are thirteen `OptionButton`s across six screens — the Collection's type and
-  record filters, the Atlas's mode and region pickers, Custom Run's four filter
+  record filters, Custom Run's four filter
   columns, the Dash panel's type filter and Settings' display, window-size and
   audio lists — and each is a bare `OptionButton.new()`, so the theme is the only
   thing deciding how any of them look. `test_design_tokens.gd` fails a screen that
@@ -447,8 +446,8 @@ ordinary scene.
     one size. Given a `room`, the map is sized to it on both axes. Shared: the 🗺
     map window (`RunMapModal`) and `GameChoiceModal` draw the same map from it; the
     window spreads to its room when it is on its own, and draws at the map's
-    natural size over the star chart, where the sky needs the space.
-    Over the star chart the map window has **no Close of its own** — the chart
+    natural size over the full map, where the map needs the space.
+    Over the full map the map window has **no Close of its own** — the map
     owns the screen and its Close takes the window with it — so the button in its
     corner rolls it up to its title bar instead. Opened without a chart under it
     it is the only thing on screen, and there it keeps one — which is what the
@@ -607,7 +606,7 @@ it says the rest.
 |---|---|
 | `menu/ProfilePicker.gd` | Choose or make a save profile (`Profiles`) |
 | `menu/MenuFallingArt.gd`, `MenuFallingArtLayer.gd` | The main menu's falling enemies, items, loot and covers (CLAUDE.md has the four things to know before touching it) |
-| `ui/RunHistoryScreen.gd` | **Run History**: every finished run, its route laid over the star chart |
+| `ui/RunHistoryScreen.gd` | **Run History**: every finished run, its route laid over the drawn map |
 | `ui/RadioScreen.gd`, `RadioMiniPlayer.gd` | Roguelike Radio's screen and the 📻 player on the run header (`docs/roguelike-radio.md`) |
 | `ui/SettingsModal.gd` | Settings, one row per setting in two columns |
 | `ui/TagEditor.gd` | Edit a game's tags in game, on the Collection page and the run map's card (`GameTags`) |
@@ -709,7 +708,7 @@ with their schemas defined in `scripts/resources/`:
 (`ScrollData` + `ScrollNames`, `PillData`, `PotionData`, `CardData` — the curse
 cards of `data/curses2.0/` included, `docs/loot-passives.md` §18 — `WandData`,
 `TrinketData`, `BagData`, `WeaponData`, `EvolutionData`), `StatDefinition`, and
-`AtlasLayout` (the baked star chart). The combat-era `CurseData` and its
+`MapLayout` (the owner's drawn map, baked from the drawio). The combat-era `CurseData` and its
 `data/curses/` set were deleted on 25 Oct 2026, with the pre-2.0 items and
 characters.
 

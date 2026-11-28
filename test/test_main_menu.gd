@@ -209,7 +209,7 @@ func test_play_and_extras_swap_the_row_for_their_lists() -> void:
 	var lists := {
 		"PlayBtn": ["%PlayList", "PlayBackBtn", ["StartRunBtn", "ContinueBtn", "CustomRunBtn"]],
 		"ExtrasBtn": ["%ExtrasList", "ExtrasBackBtn", ["HowToPlayBtn", "CollectionBtn",
-			"RunHistoryBtn", "TierListBtn", "AchievementsBtn", "CustomizeBtn"]],
+			"MapBtn", "RunHistoryBtn", "TierListBtn", "AchievementsBtn", "CustomizeBtn"]],
 	}
 	for opener in lists:
 		var list: Control = menu.get_node(lists[opener][0])
@@ -228,7 +228,7 @@ func test_each_extras_entry_opens_its_screen_and_the_list_stays() -> void:
 	await wait_frames(2)
 	var list: Control = menu.get_node("%ExtrasList")
 	menu.show_list(&"extras")
-	for btn in ["HowToPlayBtn", "CollectionBtn", "RunHistoryBtn", "TierListBtn",
+	for btn in ["HowToPlayBtn", "CollectionBtn", "MapBtn", "RunHistoryBtn", "TierListBtn",
 			"AchievementsBtn", "CustomizeBtn"]:
 		(menu.get_node("%" + btn) as Button).pressed.emit()
 		await wait_frames(1)
@@ -364,3 +364,31 @@ func test_a_main_buttons_glow_sits_behind_its_letters() -> void:
 	var src: String = FileAccess.get_file_as_string("res://scripts/menu/MainMenu.gd")
 	assert_false(src.contains("= row.position + row.ink.position"),
 		"and neither the glow nor the outline adds the row's position on top of its own")
+
+# THE MAP IN EXTRAS (the owner, 28 Nov 2026): right after the Collection, the drawn
+# map with no run on it, every game shown until the Owned switch says otherwise.
+func test_the_map_is_in_extras_after_the_collection_showing_every_game() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var list: Control = menu.get_node("%ExtrasList")
+	var names: Array = list.get_children().map(func(c): return String(c.name))
+	assert_eq(names.find("MapBtn"), names.find("CollectionBtn") + 1, "right after the Collection")
+	var was: bool = MapView.owned_only_menu
+	MapView.owned_only_menu = false
+	menu.show_list(&"extras")
+	(menu.get_node("%MapBtn") as Button).pressed.emit()
+	await wait_frames(2)
+	var map: MapView = null
+	for c in menu._modal_layer.get_children():
+		if c is MapView:
+			map = c
+	assert_not_null(map, "it opens the map")
+	if map != null:
+		assert_true(map.has_layout() and map.layout.is_drawn_map(), "the owner's drawn map")
+		assert_true(map.outside_run(), "with no run on it")
+		assert_false(map.owned_filter_on(), "every game, by default")
+		assert_eq(map.trail_segment_count(), 0, "and no road")
+	for c in menu._modal_layer.get_children():
+		c.queue_free()
+	MapView.owned_only_menu = was
+	await wait_frames(2)

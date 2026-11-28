@@ -7,9 +7,9 @@ one of these was an assertion that was only *usually* true, and the diagnostics
 that found them (a stress loop of one test run 40-50 times, printing the board on
 failure; diffing a passing and failing run's Control tree) are the reusable part.
 
-- **The same goes for a FAILURE that comes and goes.** `test_atlas.gd::test_the_route_set_is_rebuilt_when_the_run_moves`
+- **The same goes for a FAILURE that comes and goes.** `test_map_view.gd::test_the_route_set_is_rebuilt_when_the_run_moves`
   failed on roughly one run in four, on any tree, because it asserted that
-  `AtlasView.route_stars()` DIFFERS after the run moves. It doesn't always:
+  `MapView.route_stars()` DIFFERS after the run moves. It doesn't always:
   that set is the union of the road ahead and the road walked, so stepping along
   the optimal path moves the game you left from one half into the other and
   leaves the union identical — a correct rebuild that reads exactly like a stale
@@ -66,6 +66,12 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     `test_overworld2`, once its orphans number in the thousands. Raising
     `memory/limits/message_queue/max_size_mb` would hide it rather than find it;
     if it recurs, log the queue's size per test to see which one fills it.
+    **It recurred on 28 Nov 2026** (the rank-up wheel / one-map branch, CI run
+    1543), again in `Container::_sort_children`, this time during
+    `test_game_choice_modal.gd::test_key_roads_are_drawn_only_while_a_key_is_held`
+    on the 0/2 machine. The same half of the split (shards 0–3 of 8) passed
+    locally, 1,894 of 1,894, so it is still a CI-only crash and still not caught;
+    the per-test queue log is the next step.
   - **CI's GUT job crashing with signal 11** (main on 19 Nov 2026, PR #366
     twice on 20 Nov), at a random point after `test_overworld2`'s orphan
     list, with no failed assertion. Each crash log that reaches back far enough
@@ -297,7 +303,7 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     with two engine errors, `Condition "indices.is_empty()" is true`, every
     assertion passing. **A small polygon far from the origin**: Godot
     triangulates `draw_colored_polygon` from its ABSOLUTE coordinates in 32-bit
-    floats, and the road's 6 px arrowheads (`AtlasView` `_chevron`) are drawn
+    floats, and the road's 6 px arrowheads (`MapView` `_chevron`) are drawn
     for the whole road, most of it off screen — about 17,000 px out at the close
     zoom the test focuses on — where the rounding is as big as the triangle and
     its area comes out zero. Which ones land there depends on the random run.

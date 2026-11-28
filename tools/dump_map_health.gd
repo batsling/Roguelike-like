@@ -15,7 +15,7 @@ extends GutTest
 # slack, spread and all — rather than reimplementing its rules, so what comes out
 # is what a player would actually be offered. Two filters are measured because
 # they are two different maps: ALL is the default, OWNED is what the Owned column
-# and `atlas_layout_owned.tres` are for.
+# is for.
 #
 # MAP_HEALTH_ROLLS sets the sample size (default 200).
 

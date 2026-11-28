@@ -6,8 +6,9 @@ extends HBoxContainer
 # stood when it was picked to where this game has put it, rolling over through
 # every rank gained on the way. Won or lost — a lost game's goals still count.
 #
-# The song a rank-up draws was already unlocked, and toasted, the moment the XP
-# landed (Radio); this is only where the climb is SHOWN.
+# What a rank-up draws was already unlocked the moment the XP landed, and is
+# revealed on the wheel after the game (RankRewardQueue, RankRewardPage); this is
+# only where the climb is SHOWN.
 #
 # The CHARACTER's rank (§20.9) fills the same way, under the game's. Both lead
 # with the name of whose rank it is (`label`); `is_character` picks the tooltip.
@@ -99,10 +100,10 @@ func _ready() -> void:
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.draw.connect(_draw_bar)
 	col.add_child(_bar)
-	tooltip_text = ("%s's rank: every %d XP is a rank, and each rank unlocks a song from their game on Roguelike Radio." \
-		if is_character else \
-		"%s's rank: every %d XP is a rank, and each rank unlocks one of its songs on Roguelike Radio.") \
-		% [label if label != "" else "This game", GameRanks.XP_PER_RANK]
+	# A rank pays a song, a title letter or a look (RankRewards.split), not only a
+	# song as this once said.
+	tooltip_text = "%s's rank: every %d XP is a rank, and each rank unlocks a Roguelike Radio song, a title letter or a look (a costume, an icon or a hat)." \
+		% [label if label != "" else ("This character" if is_character else "This game"), GameRanks.XP_PER_RANK]
 	_paint()
 	if to_xp > from_xp:
 		create_tween().tween_method(_set_shown, float(from_xp), float(to_xp), FILL_TIME) \

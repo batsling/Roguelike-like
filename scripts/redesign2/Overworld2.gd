@@ -631,6 +631,9 @@ func _ready() -> void:
 	# XP landing mid-game slides the rank bars up from the corner (XpPopup).
 	if not GameStats.changed.is_connected(_on_stats_changed_for_xp):
 		GameStats.changed.connect(_on_stats_changed_for_xp)
+	# A rank-up's reward is HELD while a game is on, for the post-game wheel to
+	# reveal (RankRewardQueue, RankRewardPage).
+	RankRewardQueue.hold_while(holds_rank_rewards)
 	# Register as the mounted overworld so overworld-active items (Ride the Bus,
 	# Wand of Wishing) can route their effect here, and so item pickups refresh
 	# the inventory panel.
@@ -1610,6 +1613,17 @@ func show_xp_gain(gfrom: int, gto: int, cfrom: int, cto: int) -> Control:
 		Data.get_character2(GameState.character_id), cfrom, cto)
 	return _xp_popup
 
+# WHILE A RANK-UP'S REWARD IS HELD FOR THE WHEEL (RankRewardQueue): a game in
+# play, the report resolving, the haul not opened yet, and the haul's summary page
+# while it still has the wheel to offer. Public for the tests.
+func holds_rank_rewards() -> bool:
+	if not is_inside_tree() or GameLoop2.run_over:
+		return false
+	if _phase == Phase.PLAYING or _resolving or not _post_snapshot.is_empty():
+		return true
+	return _post_screen != null and is_instance_valid(_post_screen) \
+		and _post_screen.summary() != null
+
 # The XP `game` had when it was picked (GameLoop2.rank_start), or its XP now when
 # that was not recorded for it.
 func _rank_from(game: GameData) -> int:
@@ -2261,9 +2275,9 @@ func preview_map(game_id: StringName) -> Node:
 # game being considered, as the window it came from did. Public for the tests.
 func open_full_map(preview: StringName = &"") -> Node:
 	_dismiss_route_map()
-	if load(ATLAS_VIEW_SCRIPT).load_drawn_map() == null:
+	if load(MAP_VIEW_SCRIPT).load_drawn_map() == null:
 		return null
-	var atlas = load(ATLAS_VIEW_SCRIPT).new()
+	var atlas = load(MAP_VIEW_SCRIPT).new()
 	if preview != &"":
 		atlas.preview_origin = preview
 	atlas.to_optimal = func():
@@ -2286,11 +2300,11 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
 	var wants_chart: bool = RUN_ATLAS and bool(opts.get("chart", true)) \
-		and load(ATLAS_VIEW_SCRIPT).load_layout() != null
+		and load(MAP_VIEW_SCRIPT).load_drawn_map() != null
 	opts["offer_chart"] = RUN_ATLAS
 	opts.erase("chart")
 	if wants_chart:
-		var atlas = load(ATLAS_VIEW_SCRIPT).new()
+		var atlas = load(MAP_VIEW_SCRIPT).new()
 		# A preview routes the sky from the game being considered rather than from
 		# where the player stands, so the corridor drawn on the chart is the one
 		# the card is offering.
@@ -3218,6 +3232,7 @@ func _open_post_game() -> void:
 		_post_screen.abandon()
 		_post_screen = null
 	if _post_snapshot.is_empty():
+		RankRewardQueue.release()
 		_open_pending_event()
 		return
 	# HELD, NOT CLEARED YET. Between this and the screen actually standing up, the
@@ -3468,7 +3483,7 @@ const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
 const RUN_LOG_SCREEN_SCRIPT := "res://scripts/redesign2/RunLogScreen.gd"
 const RUN_MAP_MODAL_SCRIPT := "res://scripts/redesign2/RunMapModal.gd"
 const RUN_OVER_SCREEN_SCRIPT := "res://scripts/redesign2/RunOverScreen.gd"
-const ATLAS_VIEW_SCRIPT := "res://scripts/ui/AtlasView.gd"
+const MAP_VIEW_SCRIPT := "res://scripts/ui/MapView.gd"
 const COLLECTION_SCRIPT := "res://scripts/ui/Collection.gd"
 const HOW_TO_PLAY_SCREEN_SCRIPT := "res://scripts/ui/HowToPlayScreen.gd"
 const RATE_GAME_MODAL_SCRIPT := "res://scripts/ui/RateGameModal.gd"
@@ -4221,6 +4236,8 @@ func _on_arrived(game_id: StringName) -> void:
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	# Whatever rank reward is still held is told now: no page, no wheel.
+	RankRewardQueue.stop_holding(holds_rank_rewards)
 	if GameStats.changed.is_connected(_on_stats_changed_for_xp):
 		GameStats.changed.disconnect(_on_stats_changed_for_xp)
 	# The header bar goes with the page. Leaving its height published would push
@@ -6294,6 +6311,7 @@ func _flush_loop_refresh() -> void:
 
 func _refresh(_a = null) -> void:
 	_loop_refresh_owed = false
+	RankRewardQueue.settle()
 	if _board == null:
 		return
 	_refresh_stats()
@@ -7977,6 +7995,10 @@ func refresh_board() -> void:
 var _pack_drag: Dictionary = {}
 
 func _notification(what: int) -> void:
+	# The window is closing: a rank reward still held stays on file for the next
+	# session's wheel, rather than being toasted on the way out (RankRewardQueue).
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		RankRewardQueue.closing = true
 	if _drops == null:
 		return
 	match what:
@@ -8124,6 +8146,8 @@ func _result_text(res: Dictionary) -> String:
 
 func _on_run_lost() -> void:
 	_phase = Phase.OVER
+	# No haul screen follows, so no wheel: a held rank reward is toasted now.
+	RankRewardQueue.release()
 	_drop_queue.clear()
 	SaveSystem.clear_autosave()
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
@@ -8197,6 +8221,8 @@ func _arrive_home_if_due(dest: StringName) -> bool:
 
 func _on_run_won() -> void:
 	_phase = Phase.OVER
+	# No haul screen follows, so no wheel: a held rank reward is toasted now.
+	RankRewardQueue.release()
 	_drop_queue.clear()
 	SaveSystem.clear_autosave()
 	if GameState.carrying_amulet:

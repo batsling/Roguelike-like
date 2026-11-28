@@ -43,6 +43,9 @@ func run() -> void:
 	# Costumes and icons (Customization) are drawn the same way, into a scratch file.
 	Cosmetics.path_override = "user://test_customization.json"
 	Cosmetics.reset_for_tests()
+	# …and the rank rewards held for the wheel, which a run page reads back in.
+	RankRewardQueue.path_override = "user://test_held_rank_rewards.json"
+	RankRewardQueue.reset_for_tests()
 	_take_shard()
 	_time_tests()
 

@@ -5,10 +5,16 @@ way to organize the map, and what can be done with a graph this connected?" The
 ranked recommendations below are still the honest analysis, but the decision has
 since been made and one option shipped.
 
-**What shipped: the constellation atlas** (§4.5 here, "name the regions after
+**Superseded (28 Nov 2026): the map is now the owner's hand-drawn drawio**
+(`tools/bake_drawio_map.py` → `data/map_layout.tres`, drawn by
+`scripts/ui/MapView.gd`; docs/content-authoring.md has it), and the computed
+constellation atlas described below was taken out. The rest of this note is the
+record of how that atlas was chosen.
+
+**What shipped first: the constellation atlas** (§4.5 here, "name the regions after
 their capitals"), taken further than this note proposed — regions are not just
-named, they are the layout. `tools/bake_atlas.py` writes
-`data/atlas_layout.tres` and `scripts/ui/AtlasView.gd` draws it. Eight capitals,
+named, they are the layout. `bake_atlas.py` wrote `atlas_layout.tres` (both since
+deleted) and `MapView` drew it. Eight capitals,
 chosen over six and twelve by comparing cross-region link counts: 6 gives 17.8%,
 8 gives 20.4%, 12 gives 23.9%, but 12 also produces regions of seven games,
 which read as arbitrary rather than as places.

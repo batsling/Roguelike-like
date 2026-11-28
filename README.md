@@ -49,7 +49,7 @@ rather than trusting them later.
 
 | Area | What there is |
 |---|---|
-| **The map** | 1,000 real games (612 owned, 28 Oct), the influence graph between them, rifts that pull off-map games in, and an Atlas star chart of the whole catalogue |
+| **The map** | 1,000 real games (612 owned, 28 Oct), the influence graph between them, rifts that pull off-map games in, and the owner's hand-drawn map of the whole catalogue (in a run, Run History and Extras) |
 | **Characters** | 12, each with a level-up goal; Mysterious Mask adds a second |
 | **Enemies** | 66 goal-enemies and 50 bosses (some with phases) across four game types, 31 abilities, 7 statuses, tile effects and units on the board |
 | **Things you carry** | 77 relics, plus eight kinds of loot in a shaped pack: 9 scrolls, 10 pills and 15 potions (each identified per run), 37 cards, 12 wands, 22 trinkets, 5 bags, 13 weapons with 6 evolutions |
@@ -110,7 +110,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 │   ├── redesign2/   # the run's screens: Overworld2, BattlefieldView, ReportChecklist,
 │   │                #   GameChoiceModal, PostCombatScreen, the loot pack, the shop, …
 │   ├── menu/        # MainMenu, PlayerPicker, CharacterPicker, StartPicker, CustomRunScreen, …
-│   ├── ui/          # shared UI: UITheme, Collection, AtlasView, HowToPlay*, Radio*, Rank*, …
+│   ├── ui/          # shared UI: UITheme, Collection, MapView, HowToPlay*, Radio*, Rank*, …
 │   ├── runtime/     # rules that aren't screens: RunGraph, Fracture, GameRanks, LootPassives, …
 │   └── resources/   # the Resource schemas every .tres is typed by
 │

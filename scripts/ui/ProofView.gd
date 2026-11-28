@@ -3,7 +3,7 @@ extends RefCounted
 
 # A CONNECTION'S PROOF, SHOWN: the thumbnail that stands in a proof slot and the
 # full-size view a click on it opens. Two screens show a proof — the game card
-# (GameChoiceModal's source block) and the full map's connection card (AtlasView)
+# (GameChoiceModal's source block) and the full map's connection card (MapView)
 # — and they used to carry a copy each, which had already drifted (the map's clip
 # had no ✕). Both build from here now.
 #

@@ -289,6 +289,8 @@ The reward screen opens on the game you just played: how it went, the XP it and 
 
 XP lands as you earn it: tick a goal mid-game and the game's and your character's rank bars slide up in the bottom-right corner and fill. A bar that reaches a new rank says RANK UP.
 
+Every rank unlocks something: a Roguelike Radio song, a title letter, or a look (a costume, an icon or a hat). It is yours the moment the rank lands, but what it is stays a secret until the game is over: the summary page then offers Rank-up rewards, a wheel for each one, which you spin with a click or by dragging it round and letting go. Skip shows them all at once, and Skip on the summary goes straight on with each one announced as you go. Once it lands you can play the song, wear the costume or hat, or use the icon right there.
+
 Under the board, "Beat it:" shows what beating the game would pay right now — its chests and the loot on the board.
 
 > Bosses are not in that pool. A boss drops a chest of its own, on its own terms, and it is paid whether or not the game went your way.
@@ -674,7 +676,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 
 - **→ Optimal Path** — The shortest road from where you stand to the Amulet, rung by rung, with your shops marked. It lives in the offering's heading row, and on every offered card — a card's own button routes the path as it would be if you took it.
 - **🗺 Map** — The Optimal Path from where you stand. It lives in the header, so it opens from anywhere in a run, mid-game included. The switch at its top flips to the Full map: the whole drawn map with your route and the run's rifts on it, and back. On the full map, Owned (the default) draws only the games you own and the lines between them; All games draws every one. Each game's box is outlined in its type's colour, and clicking one lights its lines in that colour, cased in orange where a line is a step of the optimal path. Click a line for who inspired whom and its proof. Hover or click a rift's swirl for the game inside it.
-- **✦ Atlas** — The star chart of every game, opened from the Collection. Not a run tool — a thing to look at.
+- **🗺 Map (Extras)** — The same full map outside a run, from the main menu's Extras: every game and who inspired whom, with All games / Owned to narrow it. Not a run tool — a thing to look at.
 - **Collection** — Every item, scroll, enemy, event and status in the game, and whether you have met it.
 - **🏆 Tier List** — Your own ranking of every game you have beaten, across all runs, with the notes you wrote at the time.
 - **⚙ Custom Run** — Build a run out of a chosen slice of the catalog — which games can be on the map, which can start it, which can be the Amulet, and how long the road is.

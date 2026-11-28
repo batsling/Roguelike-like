@@ -8,7 +8,7 @@ extends Control
 # The menu itself is Start Run, Continue (when there is a save), Custom Run,
 # Extras and Settings, with the profile, the radio and Exit in three corners.
 # Extras is a pop-over holding the screens you look at rather than play: the
-# manual, Collection, Run History, Tier List, Achievements, Customization.
+# manual, Collection, the Map, Run History, Tier List, Achievements, Customization.
 
 const OVERWORLD2_SCENE := "res://scenes/redesign2/Overworld2.tscn"
 
@@ -40,6 +40,7 @@ func _ready() -> void:
 	%ContinueBtn.pressed.connect(_on_continue_toggle)
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
+	%MapBtn.pressed.connect(_on_map)
 	%CustomizeBtn.pressed.connect(_on_customize)
 	%AchievementsBtn.pressed.connect(_on_achievements)
 	%TierListBtn.pressed.connect(_on_tier_list)
@@ -328,7 +329,7 @@ func _letter_buttons() -> Array:
 	if _lettered.is_empty():
 		_lettered = [%PlayBtn, %ExtrasBtn, %SettingsBtn, %QuitBtn, %ProfileBtn,
 			%StartRunBtn, %ContinueBtn, %CustomRunBtn, %PlayBackBtn,
-			%HowToPlayBtn, %CollectionBtn, %RunHistoryBtn, %TierListBtn,
+			%HowToPlayBtn, %CollectionBtn, %MapBtn, %RunHistoryBtn, %TierListBtn,
 			%AchievementsBtn, %CustomizeBtn, %ExtrasBackBtn]
 	return _lettered
 
@@ -957,12 +958,12 @@ func _delete_save(entry: Dictionary) -> void:
 # Stub buttons — backing systems land later.
 # ---------------------------------------------------------------------------
 
-# Run History sits ON TOP of the Atlas: the strip lists each route in order and
-# the sky behind it is where that route went, so one screen answers both.
+# Run History sits ON TOP of the map: the strip lists each route in order and
+# the drawn map behind it is where that route went, so one screen answers both.
 func _on_run_history() -> void:
-	var atlas: AtlasView = null
-	if AtlasView.load_layout() != null:
-		atlas = AtlasView.open(_modal_layer)
+	var atlas: MapView = null
+	if MapView.load_drawn_map() != null:
+		atlas = MapView.open(_modal_layer)
 	var history := RunHistoryScreen.open(_modal_layer, atlas)
 	if atlas != null:
 		# Closing the history closes the map it was laid over. `handed_to_map` is
@@ -976,11 +977,13 @@ func _on_run_history() -> void:
 func _on_collection() -> void:
 	Collection.open(_modal_layer)
 
-# THERE IS NO ATLAS BUTTON HERE ANY MORE. The star chart is still in the game and
-# still opened from two places that need it — the Collection's own Games tab, and
-# Run History, which lays its routes over the sky (_on_run_history above). A third
-# door onto the same screen, sitting in the menu column beside the Collection that
-# already contains it, was one more row of buttons for no more game.
+# THE MAP, outside a run (the owner, 28 Nov 2026: "let's have the new map replace
+# [the Atlas] and also include it in the extras section"): the owner's drawn map
+# of every game and how they influenced each other, with no road on it, All games
+# by default (MapView.owned_only_menu). In Extras after the Collection.
+func _on_map() -> void:
+	if MapView.load_drawn_map() != null:
+		MapView.open(_modal_layer)
 
 # Costumes, icons and which title letters to spell with (docs/customization.md).
 # In Extras. Switching letters off draws the title again when the screen closes, so the

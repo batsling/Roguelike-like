@@ -20,6 +20,23 @@ set -u
 cd "$(dirname "$0")/.."
 LOG="${GUT_LOG:-/tmp/gut_last.log}"
 
+# A RUN THAT DID NOT REALLY RUN IS A FAILURE. GUT exits 0 when a test script fails
+# to PARSE: the file is skipped, nothing in it is counted, and the totals read
+# green (28 Nov 2026: a test using PackedStringArray.filter passed this way). So a
+# "Parse Error" anywhere in the log, or a log with no Totals block at all, fails
+# the run whatever GUT's own exit code says. Returns 1 (and says why) if so.
+broken() {
+	if grep -q "Parse Error" "$1"; then
+		echo "FAIL: a script did not parse (its tests never ran) — see 'Parse Error' in $1"
+		return 1
+	fi
+	if ! grep -q "^Totals" "$1"; then
+		echo "FAIL: no Totals in $1 — GUT did not finish"
+		return 1
+	fi
+	return 0
+}
+
 # --PARALLEL: the whole suite as N shards running side by side. Each process keeps
 # every N-th test of every file (GUT_SHARD, read by test/pre_run_hook.gd) and gets
 # its own user:// through XDG_DATA_HOME, which is where Godot keeps it on Linux,
@@ -62,6 +79,9 @@ if [ "${1:-}" = "--parallel" ]; then
 		END{printf "Tests %d  Passing %d  Failing %d  Risky/Pending %d  (%d of %d shards)\n", a, p, f, r, '"$N"', '"$TOTAL"'}' \
 		"$WORK"/shard*.log
 	grep -hE "SCRIPT ERROR|Parse Error|\[Failed\]|at line" "$WORK"/shard*.log | head -60
+	for ((k = 0; k < N; k++)); do
+		broken "$WORK/shard$k.log" || STATUS=1
+	done
 	# Kept when anything failed, so a crash's own log (and the shard's user://)
 	# can still be read; removed on a clean run.
 	if [ $STATUS -eq 0 ]; then rm -rf "$WORK"; else echo "(shard logs kept in $WORK)"; fi
@@ -80,5 +100,6 @@ else
 fi
 STATUS=$?
 grep -E "Scripts  |^Tests  |Passing Tests|Failing Tests|Risky|Pending|SCRIPT ERROR|Parse Error|\[Failed\]|at line" "$LOG" | head -60
+broken "$LOG" || STATUS=1
 echo "(exit $STATUS, full log: $LOG)"
 exit $STATUS

@@ -11,6 +11,64 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **MapView, and Show on map (28 Nov 2026).** The owner agreed to two follow-ups.
+  The map's classes are named for what they are now: `AtlasView` is `MapView`,
+  `AtlasLayout` is `MapLayout`, the baked file is `data/map_layout.tres` and the
+  tests are `test_map_view.gd`. A game's page in the Collection has
+  **🗺 Show on map** beside Play and Steam, for a game the drawing has: it opens
+  the map over the Collection on that game, zoomed in with its card up and its
+  lines lit, switching Owned off if it would hide the game.
+
+- **One map: the drawn one, now in Extras too (28 Nov 2026).** The owner: "get
+  rid of the atlas and instead let's have the new map replace it and also include
+  it in the extras section." The computed star chart is gone entirely: the
+  Collection's *✦ Show constellation* button, `tools/bake_atlas.py`, the five
+  baked skies (`data/atlas_layout*.tres` but the map), `AtlasLayoutBuilder` (the
+  runtime re-layout behind the Collection's filters and the Tree), the catalog
+  mode in `AtlasView` with its filters, capitals, hulls and cover art, the fields
+  `AtlasLayout` kept only for it, the importer's re-bake step, and their tests
+  (`AtlasView` went from 3,878 lines to about 2,900). The drawn map that already
+  served a run, Run History and the run-over screen is the only map, and the main
+  menu's Extras has a **🗺 Map** button after the Collection that opens it with no
+  run on it: no road, rifts or markers, and All games by default, remembered
+  apart from the run's Owned default. "Outside a run" is read off whether a run
+  page is mounted, since `GameState.phase` never leaves MENU in a fresh run. The
+  run-over screen's button reads "See the run on the map".
+
+- **The rank-up wheel, hardened (28 Nov 2026).** The owner asked for its weak
+  points to be found by questions, and answered them. It spins clockwise only
+  now, whichever way it is flung, with two arrows round the rim saying so. How
+  it ends is mixed up: a clean stop, a near-miss that settles on the slice
+  before the prize and creeps over, an overshoot that rocks back, or a long
+  crawl (each one a list of legs that always ends on the prize). The slices for
+  show are what is still locked first. A held reward is kept in the profile's
+  `held_rank_rewards.json` until shown or toasted, so a crash or a closed window
+  loses no announcement. Smaller fixes: a reward carries its kind and name as
+  fields rather than the card cutting its toast apart; the summary's Skip is
+  called Skip; `tools/gut.sh` fails a run in which a test file did not parse
+  (GUT reports those green); and the glyph fonts build to the same bytes twice
+  (fontTools was stamping the build time into each file) at pinned versions.
+  The wheel's symbol is 🛞, the owner's pick from a sheet of 21.
+
+- **The rank-up wheel (28 Nov 2026).** The owner: "something to play when the
+  player ranks up. It should look like a roulette and the player can spin it."
+  A rank still draws and saves its song, letter or look the moment its XP
+  lands, so nothing earned can be lost to a quit. What moved is the TELLING: while
+  a game is on, the toast is held (`RankRewardQueue`), and the report's summary
+  page offers 🛞 Rank-up rewards or Skip. The rewards page spins one wheel per
+  reward (`RewardWheel`), the game's and then the character's. A click, a drag
+  and let-go (its speed and direction carry on), or Spin sets it going; it always
+  comes to rest on what was drawn, and a click while it turns lands it at once.
+  The other slices are what the same game or character could give, for show.
+  Each landing shows a card with the thing itself to use at once: ▶ Play now, Wear
+  on Zoe, Wear on Retro Bat, Use this icon, each undone by a second press (a
+  title letter has no button; it is already in the title's pool). Skip on the
+  summary toasts them all as before, and anything held with no wheel to show it
+  (the run ends on the report, a game left without one) is toasted then. Radio
+  also holds lining the new song up next until it is shown. Two small things on
+  the way: a black logo letter (Haste's) sits on a light plate on the wheel, and
+  the rank bar's tooltip no longer says every rank is a song.
+
 - **The suite in parallel, here and on CI (27 Nov 2026).** The owner asked for
   the 25-minute suite to be faster, then for CI too. `tools/gut.sh --parallel`
   runs one shard per core, each keeping every N-th test of every file

@@ -333,54 +333,36 @@ func _close_button(root: Node) -> Button:
 # difference between them that hid it: opened from a run the same screen measured
 # exactly 1280 and fitted.
 
-func test_the_constellations_view_fits() -> void:
-	if AtlasView.load_layout() == null:
-		pending("no baked sky in this checkout — run tools/bake_atlas.py")
+func test_the_map_fits_opened_from_the_menu() -> void:
+	if MapView.load_drawn_map() == null:
+		pending("no drawn map in this checkout — run tools/bake_drawio_map.py")
 		return
-	var atlas := AtlasView.open(self, true)
+	var atlas := MapView.open(self)
 	await wait_frames(8)
-	_assert_fits("the Constellations view", atlas)
+	_assert_fits("the map from Extras", atlas)
 	atlas.free()
 
 func test_the_atlas_fits_when_a_run_opens_it() -> void:
-	if AtlasView.load_layout() == null:
-		pending("no baked sky in this checkout — run tools/bake_atlas.py")
+	if MapView.load_drawn_map() == null:
+		pending("no drawn map in this checkout — run tools/bake_drawio_map.py")
 		return
 	var ow = load("res://scenes/redesign2/Overworld2.tscn").instantiate()
 	add_child_autofree(ow)
 	await wait_frames(6)
 	ow.choose_start(0)
 	await wait_frames(6)
-	var atlas := AtlasView.open(ow, false)
+	var atlas := MapView.open(ow)
 	await wait_frames(8)
 	_assert_fits("the Atlas over a run", atlas)
-	atlas.free()
-
-# THE ROW THAT WAS ACTUALLY BREAKING IT. Thirteen controls, and the Region
-# dropdown among them is as wide as its widest item — the full display name of
-# whichever game is a capital of the baked sky. So this row's minimum width is a
-# fact about the CATALOG, and it will move again the next time the sky is rebaked;
-# a measurement is the only thing that can keep watching it.
-func test_the_atlas_filter_bar_wraps_rather_than_widening_the_page() -> void:
-	if AtlasView.load_layout() == null:
-		pending("no baked sky in this checkout — run tools/bake_atlas.py")
-		return
-	var atlas := AtlasView.open(self, true)
-	await wait_frames(8)
-	var row: Control = atlas._filter_bar.get_child(0)
-	assert_true(row is HFlowContainer,
-		"the filter bar is a flow, so a long region name costs a second line and not the page")
-	assert_lte(row.get_combined_minimum_size().x, float(Settings.CANVAS_BASE.x),
-		"and its minimum width is inside the canvas")
 	atlas.free()
 
 # The legend is the other row that can grow with what is on the sky — it gains a
 # chip per run mark — so it gets the same guarantee before it becomes the next one.
 func test_the_atlas_legend_wraps_rather_than_widening_the_page() -> void:
-	if AtlasView.load_layout() == null:
-		pending("no baked sky in this checkout — run tools/bake_atlas.py")
+	if MapView.load_drawn_map() == null:
+		pending("no drawn map in this checkout — run tools/bake_drawio_map.py")
 		return
-	var atlas := AtlasView.open(self, true)
+	var atlas := MapView.open(self)
 	await wait_frames(8)
 	var row: Control = atlas._legend_bar.get_child(0)
 	assert_true(row is HFlowContainer,

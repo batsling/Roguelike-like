@@ -66,7 +66,7 @@ OUT_DIR = os.path.join(PROJECT_ROOT, "data", "scrolls2.0")
 # The unidentified-name book (see names_tres). At the data root rather than inside
 # scrolls2.0/, because Data._load_dir keys everything in that folder by its `id`
 # and this is one singleton row, not a scroll — it is loaded by path, the way
-# AtlasView loads data/atlas_layout.tres.
+# MapView loads data/map_layout.tres.
 NAMES_PATH = os.path.join(PROJECT_ROOT, "data", "scroll_names.tres")
 
 
